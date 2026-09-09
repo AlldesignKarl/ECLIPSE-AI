@@ -66,6 +66,12 @@ La búsqueda web no necesita ninguna clave extra: va incluida en la API de Anthr
 3. En **Environment Variables** pega al menos `ANTHROPIC_API_KEY` y `PRO_ACCESS_CODE`.
 4. **Deploy**. En un par de minutos tienes la URL.
 
+### Instalarla en el móvil
+
+Abre la dirección en el navegador y usa **Compartir → Añadir a pantalla de inicio**
+(o el menú del navegador en Android). Queda el icono del eclipse junto al resto de
+tus apps y se abre a pantalla completa, sin barra de direcciones.
+
 Para activar el plan Pro: abre la app → menú → *Mejorar plan* → escribe tu
 `PRO_ACCESS_CODE`. Queda guardado en una cookie firmada, así que el servidor
 verifica el plan de verdad: no se puede desbloquear trucando el navegador.

@@ -7,9 +7,13 @@ export const metadata: Metadata = {
     "Asistente de IA que responde cualquier pregunta buscando en fuentes fiables: universidades, revistas científicas y organismos oficiales.",
   applicationName: "ECLIPSE",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: { url: "/apple-icon.png", sizes: "180x180" },
   },
+  manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "ECLIPSE", statusBarStyle: "black-translucent" },
 };
 
