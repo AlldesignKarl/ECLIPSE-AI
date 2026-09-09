@@ -105,6 +105,11 @@ export default function SettingsDialog({
           </p>
         </div>
 
+        <p className="text-[11.5px] leading-relaxed text-faint">
+          ECLIPSE es un producto de <span className="text-muted">Eclipse</span>, empresa fundada por{" "}
+          <span className="text-muted">Carlos Lafuente Pueyo</span>.
+        </p>
+
         <button
           onClick={() => {
             if (confirm("¿Borrar todas las conversaciones? No se puede deshacer.")) onClearAll();

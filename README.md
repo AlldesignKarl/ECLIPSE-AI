@@ -149,3 +149,7 @@ npm run build      # compilar
 npm start          # producción
 npm run typecheck  # comprobar tipos
 ```
+
+---
+
+ECLIPSE es un producto de **Eclipse**, empresa fundada por **Carlos Lafuente Pueyo**.

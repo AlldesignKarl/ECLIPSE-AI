@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   description:
     "Asistente de IA que responde cualquier pregunta buscando en fuentes fiables: universidades, revistas científicas y organismos oficiales.",
   applicationName: "ECLIPSE",
+  creator: "Eclipse",
+  publisher: "Eclipse",
+  authors: [{ name: "Carlos Lafuente Pueyo" }],
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
