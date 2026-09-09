@@ -2,7 +2,9 @@ import { NextRequest } from "next/server";
 import { generateImage, MediaError } from "@/lib/media";
 
 export const runtime = "nodejs";
-export const maxDuration = 180;
+// El plan gratuito de Vercel corta las funciones a los 60 s. Si despliegas en
+// un plan de pago o en tu propio servidor, puedes subir este número.
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const { prompt } = (await req.json().catch(() => ({}))) as { prompt?: string };

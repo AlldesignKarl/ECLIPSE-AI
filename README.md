@@ -129,6 +129,11 @@ src/
   poco y contesta ya, *Profundo* razona a fondo.
 - El bucle de herramientas del servidor puede pausarse (`pause_turn`) en búsquedas
   largas; la ruta de chat lo reanuda automáticamente hasta 4 veces.
+- Las funciones declaran 60 s de máximo, que es el tope del plan gratuito de Vercel.
+  El vídeo no se ve afectado porque la espera se hace desde el navegador, pero una
+  respuesta en modo *Profundo* con muchas búsquedas puede cortarse al llegar al
+  límite. Si te pasa a menudo, sube `maxDuration` en `src/app/api/*/route.ts` (hace
+  falta un plan de pago de Vercel, o alojarlo tú).
 
 ## Comandos
 

@@ -3,7 +3,9 @@ import { commitFiles, createRepo, GitHubError, requireToken, whoami } from "@/li
 import { currentPlan } from "@/lib/plan-server";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+// El plan gratuito de Vercel corta las funciones a los 60 s. Si despliegas en
+// un plan de pago o en tu propio servidor, puedes subir este número.
+export const maxDuration = 60;
 
 interface Body {
   /** `owner/repo` de un repositorio existente. */

@@ -8,7 +8,9 @@ import { SSE_HEADERS, sseChunk } from "@/lib/sse";
 import type { Attachment, Mode, Speed } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// El plan gratuito de Vercel corta las funciones a los 60 s. Si despliegas en
+// un plan de pago o en tu propio servidor, puedes subir este número.
+export const maxDuration = 60;
 
 interface Turn {
   role: "user" | "assistant";

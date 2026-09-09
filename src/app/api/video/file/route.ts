@@ -3,7 +3,9 @@ import { fetchVideoBytes, MediaError } from "@/lib/media";
 import { currentPlan } from "@/lib/plan-server";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// El plan gratuito de Vercel corta las funciones a los 60 s. Si despliegas en
+// un plan de pago o en tu propio servidor, puedes subir este número.
+export const maxDuration = 60;
 
 /** Sirve el vídeo generado sin exponer la clave de Google al navegador. */
 export async function GET(req: NextRequest) {
