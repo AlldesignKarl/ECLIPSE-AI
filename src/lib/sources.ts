@@ -154,8 +154,14 @@ export function domainOf(url: string): string {
   }
 }
 
-export function classify(url: string, title = ""): Source {
-  const domain = domainOf(url);
+/**
+ * Algunos buscadores devuelven enlaces de redirección que ocultan el dominio
+ * real. En esos casos nos pasan el dominio aparte para poder puntuarlo bien.
+ */
+export function classify(url: string, title = "", domainHint = ""): Source {
+  const real = domainOf(url);
+  const hinted = domainHint.replace(/^www\./, "").toLowerCase();
+  const domain = hinted || real;
   const rule = RULES.find((r) => r.test(domain));
   return {
     url,
@@ -166,14 +172,21 @@ export function classify(url: string, title = ""): Source {
   };
 }
 
+/** ¿Este texto parece un dominio (`nature.com`) y no un título? */
+export function looksLikeDomain(text: string): boolean {
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(text.trim());
+}
+
 /** Ordena por fiabilidad y elimina duplicados por URL. */
-export function rankSources(raw: { url: string; title?: string }[]): Source[] {
+export function rankSources(
+  raw: { url: string; title?: string; domainHint?: string }[],
+): Source[] {
   const seen = new Set<string>();
   const out: Source[] = [];
   for (const item of raw) {
     if (!item.url || seen.has(item.url)) continue;
     seen.add(item.url);
-    out.push(classify(item.url, item.title));
+    out.push(classify(item.url, item.title, item.domainHint));
   }
   return out.sort((a, b) => b.trust - a.trust);
 }

@@ -17,6 +17,7 @@ interface Props {
   onClose: () => void;
   plan: Plan;
   capabilities: Capabilities;
+  providerLabel: string;
   showThinking: boolean;
   onShowThinking: (v: boolean) => void;
   onClearAll: () => void;
@@ -43,6 +44,7 @@ export default function SettingsDialog({
   onClose,
   plan,
   capabilities,
+  providerLabel,
   showThinking,
   onShowThinking,
   onClearAll,
@@ -73,8 +75,8 @@ export default function SettingsDialog({
           <ul>
             <Row
               ok={capabilities.chat}
-              label="Modelo de lenguaje"
-              hint="Falta la variable ANTHROPIC_API_KEY"
+              label={`Motor de la IA · ${providerLabel}`}
+              hint="Falta GOOGLE_API_KEY (gratis) o ANTHROPIC_API_KEY"
             />
             <Row
               ok={capabilities.image}
@@ -84,7 +86,7 @@ export default function SettingsDialog({
             <Row
               ok={capabilities.video}
               label="Generación de vídeo (Pro)"
-              hint="Falta GOOGLE_API_KEY con acceso a Veo"
+              hint="Veo necesita una cuenta de Google de pago"
             />
             <Row
               ok={capabilities.proCodeConfigured}

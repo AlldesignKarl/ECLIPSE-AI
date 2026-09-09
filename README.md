@@ -48,33 +48,38 @@ haciendo exactamente: *Pensando*, *Buscando en la web*, *Leyendo fuentes*,
 
 ## Puesta en marcha
 
-### 1. Consigue las claves
+### 1. Consigue la clave
 
-| Clave | Para qué | Dónde |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | **Obligatoria.** Es el cerebro. | [console.anthropic.com](https://console.anthropic.com) → API Keys |
-| `PRO_ACCESS_CODE` | Tu contraseña para desbloquear el plan Pro. | La inventas tú |
-| `GOOGLE_API_KEY` | Imágenes y vídeo. | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-| `OPENAI_API_KEY` | Alternativa solo para imágenes. | [platform.openai.com](https://platform.openai.com) |
+| Clave | Para qué | Coste | Dónde |
+|---|---|---|---|
+| `GOOGLE_API_KEY` | **La recomendada.** Chat, búsqueda en Google con fuentes e imágenes. | **Gratis**, sin tarjeta | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| `PRO_ACCESS_CODE` | Tu contraseña para desbloquear el plan Pro. | — | La inventas tú |
+| `ANTHROPIC_API_KEY` | Motor alternativo. | De pago por uso, sin capa gratuita | [console.anthropic.com](https://console.anthropic.com) |
 
-La búsqueda web no necesita ninguna clave extra: va incluida en la API de Anthropic.
+Con `GOOGLE_API_KEY` sola ya funciona todo menos el vídeo. Si configuras las dos
+claves se usa Google; puedes forzar la otra con `AI_PROVIDER=anthropic`.
+
+**Los límites de la capa gratuita de Google** son de peticiones por minuto y por
+día. Para uso personal sobran; si te pasas, la aplicación te lo dice y basta con
+esperar un momento. El **vídeo (Veo) no entra en lo gratuito**: necesita una
+cuenta de Google con facturación activada.
 
 ### 2. Despliega (recomendado: Vercel, se hace desde el móvil)
 
 1. Entra en [vercel.com](https://vercel.com) e inicia sesión con GitHub.
 2. **Add New → Project** y elige este repositorio.
-3. En **Environment Variables** pega al menos `ANTHROPIC_API_KEY` y `PRO_ACCESS_CODE`.
+3. En **Environment Variables** pega `GOOGLE_API_KEY` y `PRO_ACCESS_CODE`.
 4. **Deploy**. En un par de minutos tienes la URL.
+
+Para activar el plan Pro: abre la app → menú → *Mejorar plan* → escribe tu
+`PRO_ACCESS_CODE`. Queda guardado en una cookie firmada, así que el servidor
+verifica el plan de verdad: no se puede desbloquear trucando el navegador.
 
 ### Instalarla en el móvil
 
 Abre la dirección en el navegador y usa **Compartir → Añadir a pantalla de inicio**
 (o el menú del navegador en Android). Queda el icono del eclipse junto al resto de
 tus apps y se abre a pantalla completa, sin barra de direcciones.
-
-Para activar el plan Pro: abre la app → menú → *Mejorar plan* → escribe tu
-`PRO_ACCESS_CODE`. Queda guardado en una cookie firmada, así que el servidor
-verifica el plan de verdad: no se puede desbloquear trucando el navegador.
 
 ### 3. O en local
 
@@ -116,7 +121,9 @@ src/
       title/              Titula la conversación automáticamente
   components/             Interfaz (React 19)
   lib/
-    anthropic.ts          Cliente y traducción velocidad → esfuerzo
+    provider.ts           Elige el motor: Google (gratis) o Anthropic
+    gemini.ts             Motor de Google: streaming y búsqueda con fuentes
+    anthropic.ts          Motor de Anthropic: cliente y velocidad → esfuerzo
     sources.ts            Clasificación de fiabilidad de fuentes
     prompts.ts            Instrucciones del sistema por modo
     project.ts            Extrae los archivos de las respuestas de código
@@ -124,6 +131,11 @@ src/
 ```
 
 **Detalles que importan**
+
+- Hay dos motores: Google (gratis, con búsqueda de Google) y Anthropic (de pago).
+  `src/lib/provider.ts` elige, prefiriendo el gratuito. Si el modelo de Google
+  configurado deja de existir, la aplicación consulta los disponibles en tu
+  cuenta y elige uno en vez de quedarse muerta.
 
 - El historial vive en `localStorage`: no hay base de datos ni cuentas. Lo único que
   sale del dispositivo es el mensaje que estás preguntando.

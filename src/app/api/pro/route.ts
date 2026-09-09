@@ -7,15 +7,19 @@ import {
   proCodeMatches,
 } from "@/lib/plan-server";
 import { imageProviderAvailable, videoProviderAvailable } from "@/lib/media";
+import { activeProvider, providerLabel } from "@/lib/provider";
 
 export const runtime = "nodejs";
 
 /** Estado actual: plan y qué capacidades están realmente configuradas. */
 export async function GET() {
+  const provider = activeProvider();
   return Response.json({
     plan: await currentPlan(),
+    provider,
+    providerLabel: providerLabel(provider),
     capabilities: {
-      chat: Boolean(process.env.ANTHROPIC_API_KEY),
+      chat: provider !== null,
       image: imageProviderAvailable(),
       video: videoProviderAvailable(),
       github: true,

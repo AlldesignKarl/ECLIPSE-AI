@@ -62,6 +62,7 @@ export default function ChatApp() {
 
   const [plan, setPlan] = useState<Plan>("free");
   const [caps, setCaps] = useState<Capabilities>(EMPTY_CAPS);
+  const [providerLabel, setProviderLabel] = useState("comprobando…");
   const [github, setGithub] = useState<GithubStatus>({
     connected: false,
     user: null,
@@ -99,9 +100,10 @@ export default function ChatApp() {
 
     void fetch("/api/pro")
       .then((r) => r.json())
-      .then((d: { plan?: Plan; capabilities?: Capabilities }) => {
+      .then((d: { plan?: Plan; capabilities?: Capabilities; providerLabel?: string }) => {
         if (d.plan) setPlan(d.plan);
         if (d.capabilities) setCaps(d.capabilities);
+        if (d.providerLabel) setProviderLabel(d.providerLabel);
       })
       .catch(() => {});
 
@@ -700,6 +702,7 @@ export default function ChatApp() {
         onClose={() => setSettingsOpen(false)}
         plan={plan}
         capabilities={caps}
+        providerLabel={providerLabel}
         showThinking={prefs.showThinking}
         onShowThinking={(showThinking) => setPrefs((p) => ({ ...p, showThinking }))}
         onClearAll={() => {

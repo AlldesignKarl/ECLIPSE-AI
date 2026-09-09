@@ -1,10 +1,12 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { getClient, humanError, MODEL, tuning } from "@/lib/anthropic";
+import { GeminiError, streamChat } from "@/lib/gemini";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt } from "@/lib/prompts";
+import { activeProvider } from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
-import { SSE_HEADERS, sseChunk } from "@/lib/sse";
+import { SSE_HEADERS, sseChunk, type StreamEvent } from "@/lib/sse";
 import type { Attachment, Mode, Speed } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -29,7 +31,8 @@ interface Body {
 const PRO_MODES: Mode[] = ["code", "video"];
 const MAX_CONTINUATIONS = 4;
 
-/** Convierte los adjuntos del usuario en bloques que entiende el modelo. */
+/* ------------------------------ Anthropic ------------------------------ */
+
 function toContentBlocks(turn: Turn): Anthropic.Beta.BetaContentBlockParam[] {
   const blocks: Anthropic.Beta.BetaContentBlockParam[] = [];
 
@@ -63,14 +66,12 @@ function toContentBlocks(turn: Turn): Anthropic.Beta.BetaContentBlockParam[] {
   return blocks;
 }
 
-/** Extrae las URLs que ha consultado el modelo, vengan de donde vengan. */
 function collectSources(content: Anthropic.Beta.BetaContentBlock[]) {
   const found: { url: string; title?: string }[] = [];
 
   for (const block of content) {
     if (block.type === "web_search_tool_result") {
       const results = block.content;
-      // En caso de error, `content` es un objeto, no una lista.
       if (Array.isArray(results)) {
         for (const r of results) {
           if ("url" in r && r.url) found.push({ url: r.url, title: r.title ?? undefined });
@@ -88,6 +89,159 @@ function collectSources(content: Anthropic.Beta.BetaContentBlock[]) {
   }
   return found;
 }
+
+async function runAnthropic(
+  send: (e: StreamEvent) => void,
+  opts: {
+    body: Body;
+    mode: Mode;
+    speed: Speed;
+    plan: "free" | "pro";
+    wantsWeb: boolean;
+    signal: AbortSignal;
+  },
+) {
+  const { effort, maxTokens, fast } = tuning(opts.speed, opts.plan);
+  const client = getClient();
+
+  const tools: Anthropic.Beta.BetaToolUnion[] = opts.wantsWeb
+    ? [
+        {
+          type: "web_search_20260209",
+          name: "web_search",
+          max_uses: opts.mode === "search" ? 8 : 4,
+        },
+        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 4, citations: { enabled: true } },
+      ]
+    : [];
+
+  const messages: Anthropic.Beta.BetaMessageParam[] = opts.body.messages.map((turn) => ({
+    role: turn.role,
+    content:
+      turn.role === "user"
+        ? toContentBlocks(turn)
+        : [{ type: "text" as const, text: turn.content || "(vacío)" }],
+  }));
+
+  const sources: { url: string; title?: string }[] = [];
+  let continuations = 0;
+  let stopReason: string | null = null;
+
+  do {
+    const run = client.beta.messages.stream({
+      model: MODEL,
+      max_tokens: maxTokens,
+      system: [
+        {
+          type: "text",
+          text: buildSystemPrompt({ mode: opts.mode, plan: opts.plan }),
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages,
+      thinking: { type: "adaptive", display: "summarized" },
+      output_config: { effort },
+      ...(tools.length ? { tools } : {}),
+      ...(fast ? { speed: "fast" as const, betas: ["fast-mode-2026-02-01"] } : {}),
+      stream: true,
+    });
+
+    for await (const event of run) {
+      if (opts.signal.aborted) {
+        run.abort();
+        break;
+      }
+      switch (event.type) {
+        case "content_block_start": {
+          const block = event.content_block;
+          if (block.type === "thinking") send({ t: "status", v: "pensando" });
+          else if (block.type === "text") send({ t: "status", v: "escribiendo" });
+          else if (block.type === "server_tool_use")
+            send({ t: "status", v: block.name === "web_fetch" ? "leyendo" : "buscando" });
+          else if (block.type === "web_search_tool_result") send({ t: "status", v: "procesando" });
+          break;
+        }
+        case "content_block_delta": {
+          const d = event.delta;
+          if (d.type === "text_delta") send({ t: "text", v: d.text });
+          else if (d.type === "thinking_delta") send({ t: "thinking", v: d.thinking });
+          break;
+        }
+        case "message_delta":
+          stopReason = event.delta.stop_reason ?? null;
+          break;
+      }
+    }
+
+    if (opts.signal.aborted) break;
+
+    const final = await run.finalMessage();
+    stopReason = final.stop_reason;
+    sources.push(...collectSources(final.content));
+
+    if (final.stop_reason === "refusal") {
+      send({
+        t: "error",
+        v: "El modelo ha declinado responder por motivos de seguridad. Prueba a reformular la petición.",
+      });
+      break;
+    }
+
+    if (final.stop_reason === "pause_turn" && continuations < MAX_CONTINUATIONS) {
+      messages.push({ role: "assistant", content: final.content });
+      continuations++;
+      send({ t: "status", v: "procesando" });
+      continue;
+    }
+    break;
+  } while (continuations <= MAX_CONTINUATIONS);
+
+  return { sources, stopReason };
+}
+
+/* -------------------------------- Google -------------------------------- */
+
+async function runGoogle(
+  send: (e: StreamEvent) => void,
+  opts: {
+    body: Body;
+    mode: Mode;
+    speed: Speed;
+    plan: "free" | "pro";
+    wantsWeb: boolean;
+    signal: AbortSignal;
+  },
+) {
+  const sources: { url: string; title?: string; domainHint?: string }[] = [];
+  let wrote = false;
+
+  send({ t: "status", v: opts.wantsWeb ? "buscando" : "pensando" });
+
+  const stream = streamChat({
+    system: buildSystemPrompt({ mode: opts.mode, plan: opts.plan }),
+    turns: opts.body.messages,
+    speed: opts.speed,
+    webSearch: opts.wantsWeb,
+    signal: opts.signal,
+  });
+
+  for await (const event of stream) {
+    if (opts.signal.aborted) break;
+    if (event.searching) send({ t: "status", v: "buscando" });
+    if (event.sources) sources.push(...event.sources);
+    if (event.text) {
+      if (!wrote) {
+        wrote = true;
+        send({ t: "status", v: "escribiendo" });
+      }
+      send({ t: "text", v: event.text });
+    }
+  }
+
+  return { sources, stopReason: null as string | null };
+}
+
+/* -------------------------------- Ruta ---------------------------------- */
 
 export async function POST(req: NextRequest) {
   let body: Body;
@@ -111,33 +265,23 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "No hay mensajes que responder." }, { status: 400 });
   }
 
-  const { effort, maxTokens, fast } = tuning(speed, plan);
+  const provider = activeProvider();
+  if (!provider) {
+    return Response.json(
+      {
+        error:
+          "No hay ningún motor de IA configurado. Añade GOOGLE_API_KEY (gratis, en aistudio.google.com/apikey) o ANTHROPIC_API_KEY.",
+      },
+      { status: 503 },
+    );
+  }
+
   const wantsWeb = mode === "search" || body.deepSearch === true || mode === "chat";
-
-  const tools: Anthropic.Beta.BetaToolUnion[] = wantsWeb
-    ? [
-        {
-          type: "web_search_20260209",
-          name: "web_search",
-          max_uses: mode === "search" ? 8 : 4,
-        },
-        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 4, citations: { enabled: true } },
-      ]
-    : [];
-
-  const messages: Anthropic.Beta.BetaMessageParam[] = body.messages.map((turn) => ({
-    role: turn.role,
-    content:
-      turn.role === "user"
-        ? toContentBlocks(turn)
-        : [{ type: "text" as const, text: turn.content || "(vacío)" }],
-  }));
-
   const started = Date.now();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (e: Parameters<typeof sseChunk>[0]) => {
+      const send = (e: StreamEvent) => {
         try {
           controller.enqueue(sseChunk(e));
         } catch {
@@ -145,7 +289,6 @@ export async function POST(req: NextRequest) {
         }
       };
 
-      // Latido: evita que proxies intermedios corten la conexión.
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(new TextEncoder().encode(": ping\n\n"));
@@ -155,105 +298,28 @@ export async function POST(req: NextRequest) {
       }, 15000);
 
       try {
-        const client = getClient();
         send({ t: "status", v: "conectando" });
+        const shared = { body, mode, speed, plan, wantsWeb, signal: req.signal };
 
-        const sources: { url: string; title?: string }[] = [];
-        let continuations = 0;
-        let stopReason: string | null = null;
-        let usage: Record<string, unknown> = {};
+        const result =
+          provider === "google"
+            ? await runGoogle(send, shared)
+            : await runAnthropic(send, shared);
 
-        do {
-          const params: Anthropic.Beta.MessageCreateParamsStreaming = {
-            model: MODEL,
-            max_tokens: maxTokens,
-            system: [
-              {
-                type: "text",
-                text: buildSystemPrompt({ mode, plan }),
-                cache_control: { type: "ephemeral" },
-              },
-            ],
-            messages,
-            thinking: { type: "adaptive", display: "summarized" },
-            output_config: { effort },
-            ...(tools.length ? { tools } : {}),
-            ...(fast ? { speed: "fast" as const, betas: ["fast-mode-2026-02-01"] } : {}),
-            stream: true,
-          };
-
-          const run = client.beta.messages.stream(params);
-
-          for await (const event of run) {
-            if (req.signal.aborted) {
-              run.abort();
-              break;
-            }
-            switch (event.type) {
-              case "content_block_start": {
-                const block = event.content_block;
-                if (block.type === "thinking") send({ t: "status", v: "pensando" });
-                else if (block.type === "text") send({ t: "status", v: "escribiendo" });
-                else if (block.type === "server_tool_use") {
-                  send({
-                    t: "status",
-                    v: block.name === "web_fetch" ? "leyendo" : "buscando",
-                  });
-                } else if (block.type === "web_search_tool_result") {
-                  send({ t: "status", v: "procesando" });
-                }
-                break;
-              }
-              case "content_block_delta": {
-                const d = event.delta;
-                if (d.type === "text_delta") send({ t: "text", v: d.text });
-                else if (d.type === "thinking_delta") send({ t: "thinking", v: d.thinking });
-                break;
-              }
-              case "message_delta": {
-                stopReason = event.delta.stop_reason ?? null;
-                usage = { ...usage, ...event.usage } as Record<string, unknown>;
-                break;
-              }
-            }
-          }
-
-          if (req.signal.aborted) break;
-
-          const final = await run.finalMessage();
-          stopReason = final.stop_reason;
-          sources.push(...collectSources(final.content));
-
-          if (final.stop_reason === "refusal") {
-            send({
-              t: "error",
-              v: "El modelo ha declinado responder a esta petición por motivos de seguridad. Prueba a reformularla.",
-            });
-            break;
-          }
-
-          // El bucle de herramientas del servidor se pausa: hay que reanudarlo.
-          if (final.stop_reason === "pause_turn" && continuations < MAX_CONTINUATIONS) {
-            messages.push({ role: "assistant", content: final.content });
-            continuations++;
-            send({ t: "status", v: "procesando" });
-            continue;
-          }
-          break;
-        } while (continuations <= MAX_CONTINUATIONS);
-
-        if (sources.length) send({ t: "sources", v: rankSources(sources) });
+        if (result.sources.length) send({ t: "sources", v: rankSources(result.sources) });
         send({
           t: "done",
           v: {
             elapsedMs: Date.now() - started,
-            stopReason,
-            usage,
-            truncated: stopReason === "max_tokens",
+            provider,
+            stopReason: result.stopReason,
           },
         });
       } catch (err) {
-        send({ t: "error", v: humanError(err) });
+        send({
+          t: "error",
+          v: err instanceof GeminiError ? err.message : humanError(err),
+        });
       } finally {
         clearInterval(heartbeat);
         try {
