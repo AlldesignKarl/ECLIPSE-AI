@@ -5,12 +5,18 @@ import Modal from "./Modal";
 import * as Icon from "./Icons";
 import type { Plan } from "@/lib/types";
 
+export interface Billing {
+  enabled: boolean;
+  price: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
   plan: Plan;
   onPlanChange: (plan: Plan) => void;
   proCodeConfigured: boolean;
+  billing: Billing;
 }
 
 const FREE = [
@@ -30,10 +36,47 @@ const PRO = [
   "Respuestas aceleradas (modo rápido)",
 ];
 
-export default function UpgradeDialog({ open, onClose, plan, onPlanChange, proCodeConfigured }: Props) {
+export default function UpgradeDialog({
+  open,
+  onClose,
+  plan,
+  onPlanChange,
+  proCodeConfigured,
+  billing,
+}: Props) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCode, setShowCode] = useState(false);
+
+  /** Lleva a Stripe. El pago y la tarjeta se gestionan allí, nunca aquí. */
+  const subscribe = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/billing/checkout", { method: "POST" });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? "No se pudo abrir el pago.");
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo abrir el pago.");
+      setBusy(false);
+    }
+  };
+
+  const manage = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/billing/portal", { method: "POST" });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? "No se pudo abrir la gestión.");
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo abrir la gestión.");
+      setBusy(false);
+    }
+  };
 
   const activate = async () => {
     setBusy(true);
@@ -72,7 +115,7 @@ export default function UpgradeDialog({ open, onClose, plan, onPlanChange, proCo
       subtitle={
         plan === "pro"
           ? "Tienes todas las funciones desbloqueadas."
-          : "Desbloquea vídeo, código y el máximo razonamiento."
+          : `${billing.price} al mes. Se cancela cuando quieras.`
       }
       wide
     >
@@ -97,7 +140,7 @@ export default function UpgradeDialog({ open, onClose, plan, onPlanChange, proCo
         </div>
 
         <div className="rounded-xl border border-pro/30 bg-gradient-to-b from-pro/10 to-transparent p-4">
-          <div className="mb-3 flex items-baseline gap-2">
+          <div className="mb-1 flex items-baseline gap-2">
             <span className="text-[14px] font-semibold text-ink">Pro</span>
             <Icon.Sparkle width={14} height={14} className="text-pro" />
             {plan === "pro" && (
@@ -105,6 +148,9 @@ export default function UpgradeDialog({ open, onClose, plan, onPlanChange, proCo
                 Activo
               </span>
             )}
+          </div>
+          <div className="mb-3 text-[12px] text-muted">
+            <span className="text-[18px] font-semibold text-ink">{billing.price}</span> al mes
           </div>
           <ul className="space-y-2">
             {PRO.map((f) => (
@@ -118,43 +164,85 @@ export default function UpgradeDialog({ open, onClose, plan, onPlanChange, proCo
       </div>
 
       {plan === "free" ? (
-        <div className="mt-4">
-          <label className="mb-1.5 block text-[12px] text-muted">Código de acceso Pro</label>
-          <div className="flex gap-2">
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && code.trim() && activate()}
-              type="password"
-              placeholder="Introduce tu código"
-              className="flex-1 rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[13.5px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
-            />
-            <button
-              onClick={activate}
-              disabled={busy || !code.trim()}
-              className="rounded-xl bg-ink px-4 py-2.5 text-[13.5px] font-medium text-void transition disabled:bg-line disabled:text-faint"
-            >
-              {busy ? "…" : "Activar"}
-            </button>
-          </div>
-          {error && <p className="mt-2 text-[12px] text-danger">{error}</p>}
-          {!proCodeConfigured && (
-            <p className="mt-2.5 text-[11.5px] leading-relaxed text-faint">
-              Este servidor todavía no tiene código Pro. Define la variable de entorno{" "}
-              <code className="rounded bg-raised px-1 py-0.5">PRO_ACCESS_CODE</code> con la clave que
-              quieras y reinicia el despliegue.
+        <div className="mt-4 space-y-3">
+          {billing.enabled ? (
+            <>
+              <button
+                onClick={subscribe}
+                disabled={busy}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-ink py-3 text-[14px] font-medium text-void transition disabled:bg-line disabled:text-faint"
+              >
+                {busy ? "Abriendo el pago…" : `Suscribirme por ${billing.price} al mes`}
+              </button>
+              <p className="text-center text-[11px] leading-relaxed text-faint">
+                El pago se completa en Stripe, que es quien gestiona la tarjeta y las facturas.
+                Cancelas cuando quieras desde tu propio panel.
+              </p>
+            </>
+          ) : (
+            <p className="rounded-xl border border-line-soft bg-panel/40 px-3.5 py-2.5 text-[12px] leading-relaxed text-muted">
+              Los pagos aún no están activados en este servidor. Añade{" "}
+              <code className="rounded bg-raised px-1 py-0.5 text-ink">STRIPE_SECRET_KEY</code> en
+              las variables de entorno para poder cobrar la suscripción.
             </p>
+          )}
+
+          {showCode ? (
+            <div>
+              <label className="mb-1.5 block text-[12px] text-muted">Código de acceso Pro</label>
+              <div className="flex gap-2">
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && code.trim() && activate()}
+                  type="password"
+                  placeholder="Introduce tu código"
+                  className="flex-1 rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[13.5px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
+                />
+                <button
+                  onClick={activate}
+                  disabled={busy || !code.trim()}
+                  className="rounded-xl border border-line px-4 py-2.5 text-[13.5px] text-ink transition disabled:text-faint"
+                >
+                  Activar
+                </button>
+              </div>
+              {!proCodeConfigured && (
+                <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
+                  Este servidor no tiene código Pro. Define{" "}
+                  <code className="rounded bg-raised px-1 py-0.5">PRO_ACCESS_CODE</code> para usarlo.
+                </p>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowCode(true)}
+              className="w-full text-center text-[12px] text-faint transition hover:text-muted"
+            >
+              Tengo un código de acceso
+            </button>
           )}
         </div>
       ) : (
-        <button
-          onClick={downgrade}
-          disabled={busy}
-          className="mt-4 text-[12.5px] text-faint transition hover:text-danger"
-        >
-          Volver al plan gratuito
-        </button>
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <button
+            onClick={manage}
+            disabled={busy}
+            className="rounded-xl border border-line px-4 py-2.5 text-[13px] text-ink transition hover:border-halo/40 disabled:text-faint"
+          >
+            Gestionar o cancelar suscripción
+          </button>
+          <button
+            onClick={downgrade}
+            disabled={busy}
+            className="text-[12.5px] text-faint transition hover:text-danger"
+          >
+            Salir del plan en este dispositivo
+          </button>
+        </div>
       )}
+
+      {error && <p className="mt-3 text-[12px] text-danger">{error}</p>}
     </Modal>
   );
 }

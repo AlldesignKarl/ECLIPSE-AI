@@ -9,7 +9,7 @@ import MessageItem from "./MessageItem";
 import SettingsDialog, { type Capabilities } from "./SettingsDialog";
 import Sidebar from "./Sidebar";
 import ThinkingBar from "./ThinkingBar";
-import UpgradeDialog from "./UpgradeDialog";
+import UpgradeDialog, { type Billing } from "./UpgradeDialog";
 import Welcome from "./Welcome";
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
 import { extractFiles, projectName } from "@/lib/project";
@@ -63,6 +63,7 @@ export default function ChatApp() {
   const [plan, setPlan] = useState<Plan>("free");
   const [caps, setCaps] = useState<Capabilities>(EMPTY_CAPS);
   const [providerLabel, setProviderLabel] = useState("comprobando…");
+  const [billing, setBilling] = useState<Billing>({ enabled: false, price: "10,00 €" });
   const [github, setGithub] = useState<GithubStatus>({
     connected: false,
     user: null,
@@ -100,11 +101,19 @@ export default function ChatApp() {
 
     void fetch("/api/pro")
       .then((r) => r.json())
-      .then((d: { plan?: Plan; capabilities?: Capabilities; providerLabel?: string }) => {
-        if (d.plan) setPlan(d.plan);
-        if (d.capabilities) setCaps(d.capabilities);
-        if (d.providerLabel) setProviderLabel(d.providerLabel);
-      })
+      .then(
+        (d: {
+          plan?: Plan;
+          capabilities?: Capabilities;
+          providerLabel?: string;
+          billing?: Billing;
+        }) => {
+          if (d.plan) setPlan(d.plan);
+          if (d.capabilities) setCaps(d.capabilities);
+          if (d.providerLabel) setProviderLabel(d.providerLabel);
+          if (d.billing) setBilling(d.billing);
+        },
+      )
       .catch(() => {});
 
     void fetch("/api/github")
@@ -118,8 +127,35 @@ export default function ChatApp() {
       )
       .catch(() => {});
 
-    // Vuelta del login de GitHub.
     const params = new URLSearchParams(window.location.search);
+
+    // Vuelta desde el pago de Stripe: confirmamos contra el servidor.
+    const paid = params.get("pago");
+    const sessionId = params.get("session_id");
+    if (paid === "ok" && sessionId) {
+      window.history.replaceState({}, "", "/");
+      setNotice("Confirmando el pago…");
+      void fetch("/api/billing/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      })
+        .then((r) => r.json())
+        .then((d: { plan?: Plan; error?: string }) => {
+          if (d.plan === "pro") {
+            setPlan("pro");
+            setNotice("Suscripción activa. Ya tienes el plan Pro.");
+          } else {
+            setNotice(d.error ?? "No se ha podido confirmar el pago.");
+          }
+        })
+        .catch(() => setNotice("No se ha podido confirmar el pago."));
+    } else if (paid === "cancelado") {
+      window.history.replaceState({}, "", "/");
+      setNotice("Has salido del pago. No se ha cobrado nada.");
+    }
+
+    // Vuelta del login de GitHub.
     if (params.get("github") === "ok") {
       setNotice("Cuenta de GitHub conectada.");
       window.history.replaceState({}, "", "/");
@@ -679,6 +715,7 @@ export default function ChatApp() {
         plan={plan}
         onPlanChange={setPlan}
         proCodeConfigured={caps.proCodeConfigured}
+        billing={billing}
       />
 
       <GithubDialog

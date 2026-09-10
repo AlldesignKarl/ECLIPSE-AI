@@ -75,6 +75,26 @@ Para activar el plan Pro: abre la app → menú → *Mejorar plan* → escribe t
 `PRO_ACCESS_CODE`. Queda guardado en una cookie firmada, así que el servidor
 verifica el plan de verdad: no se puede desbloquear trucando el navegador.
 
+### Cobrar la suscripción (opcional)
+
+El plan Pro puede venderse por suscripción mensual. **Stripe** gestiona el dinero:
+las tarjetas, las facturas y las cancelaciones pasan por ellos, y en el servidor de
+ECLIPSE nunca entra un número de tarjeta.
+
+1. Crea una cuenta en [stripe.com](https://stripe.com) (gratis; cobran comisión por
+   transacción). Para cobrar de verdad hay que verificar identidad y añadir una
+   cuenta bancaria.
+2. Copia la clave secreta desde **Developers → API keys**.
+3. Añade `STRIPE_SECRET_KEY` a las variables de entorno. El precio son 10,00 € al
+   mes por defecto; se cambia con `PRO_PRICE_CENTS`.
+
+No hace falta crear productos ni webhooks: el precio se define en la propia
+petición y el plan se comprueba consultando la suscripción a Stripe, con una caché
+de cinco minutos. Al cancelar desde el portal de Stripe, el acceso Pro decae solo.
+
+`PRO_ACCESS_CODE` sigue funcionando en paralelo como acceso manual, útil para ti
+mismo o para dar Pro a alguien sin cobrarle.
+
 ### Instalarla en el móvil
 
 Abre la dirección en el navegador y usa **Compartir → Añadir a pantalla de inicio**
@@ -118,9 +138,11 @@ src/
       image/  video/      Generación de imagen y vídeo
       github/             Conexión, repositorios y push
       pro/                Activación del plan (cookie firmada con HMAC)
+      billing/            Pago con Stripe: checkout, confirmación y portal
       title/              Titula la conversación automáticamente
   components/             Interfaz (React 19)
   lib/
+    stripe.ts             Suscripción Pro: pago y verificación
     provider.ts           Elige el motor: Google (gratis) o Anthropic
     gemini.ts             Motor de Google: streaming y búsqueda con fuentes
     anthropic.ts          Motor de Anthropic: cliente y velocidad → esfuerzo

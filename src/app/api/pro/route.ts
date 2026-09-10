@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
 import {
-  COOKIE_OPTIONS,
+  CLEAR_PLAN_COOKIE,
   currentPlan,
-  issueProToken,
-  PLAN_COOKIE,
+  planCookieHeader,
   proCodeMatches,
 } from "@/lib/plan-server";
 import { imageProviderAvailable, videoProviderAvailable } from "@/lib/media";
 import { activeProvider, providerLabel } from "@/lib/provider";
+import { priceLabel, stripeAvailable } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
@@ -18,6 +18,7 @@ export async function GET() {
     plan: await currentPlan(),
     provider,
     providerLabel: providerLabel(provider),
+    billing: { enabled: stripeAvailable(), price: priceLabel() },
     capabilities: {
       chat: provider !== null,
       image: imageProviderAvailable(),
@@ -45,18 +46,13 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "El código no es válido." }, { status: 401 });
 
   const res = Response.json({ plan: "pro" });
-  res.headers.append(
-    "Set-Cookie",
-    `${PLAN_COOKIE}=${issueProToken()}; Path=${COOKIE_OPTIONS.path}; Max-Age=${COOKIE_OPTIONS.maxAge}; HttpOnly; SameSite=Lax${
-      COOKIE_OPTIONS.secure ? "; Secure" : ""
-    }`,
-  );
+  res.headers.append("Set-Cookie", planCookieHeader());
   return res;
 }
 
 /** Vuelve al plan gratuito. */
 export async function DELETE() {
   const res = Response.json({ plan: "free" });
-  res.headers.append("Set-Cookie", `${PLAN_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`);
+  res.headers.append("Set-Cookie", CLEAR_PLAN_COOKIE);
   return res;
 }
