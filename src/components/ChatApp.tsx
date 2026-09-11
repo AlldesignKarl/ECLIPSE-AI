@@ -6,7 +6,12 @@ import EclipseLogo from "./EclipseLogo";
 import GithubDialog, { type GithubStatus } from "./GithubDialog";
 import * as Icon from "./Icons";
 import MessageItem from "./MessageItem";
-import SettingsDialog, { type Capabilities, type KeySource } from "./SettingsDialog";
+import SettingsDialog, {
+  EMPTY_KEY_SOURCES,
+  type Capabilities,
+  type Engine,
+  type KeySources,
+} from "./SettingsDialog";
 import Sidebar from "./Sidebar";
 import ThinkingBar from "./ThinkingBar";
 import UpgradeDialog, { type Billing } from "./UpgradeDialog";
@@ -64,7 +69,8 @@ export default function ChatApp() {
   const [caps, setCaps] = useState<Capabilities>(EMPTY_CAPS);
   const [providerLabel, setProviderLabel] = useState("comprobando…");
   const [billing, setBilling] = useState<Billing>({ enabled: false, price: "10,00 €" });
-  const [keySource, setKeySource] = useState<KeySource>("ninguna");
+  const [keySources, setKeySources] = useState<KeySources>(EMPTY_KEY_SOURCES);
+  const [engine, setEngine] = useState<Engine | null>(null);
   const [github, setGithub] = useState<GithubStatus>({
     connected: false,
     user: null,
@@ -108,13 +114,15 @@ export default function ChatApp() {
           capabilities?: Capabilities;
           providerLabel?: string;
           billing?: Billing;
-          keySource?: KeySource;
+          keySources?: KeySources;
+          engine?: Engine | null;
         }) => {
           if (d.plan) setPlan(d.plan);
           if (d.capabilities) setCaps(d.capabilities);
           if (d.providerLabel) setProviderLabel(d.providerLabel);
           if (d.billing) setBilling(d.billing);
-          if (d.keySource) setKeySource(d.keySource);
+          if (d.keySources) setKeySources(d.keySources);
+          setEngine(d.engine ?? null);
         },
       )
       .catch(() => {});
@@ -747,16 +755,25 @@ export default function ChatApp() {
         plan={plan}
         capabilities={caps}
         providerLabel={providerLabel}
-        keySource={keySource}
-        onKeyChange={(source) => {
-          setKeySource(source);
+        keySources={keySources}
+        engine={engine}
+        onKeysChange={() => {
           // Con la clave puesta cambia lo que la aplicación puede hacer.
           void fetch("/api/pro")
             .then((r) => r.json())
-            .then((d: { capabilities?: Capabilities; providerLabel?: string }) => {
-              if (d.capabilities) setCaps(d.capabilities);
-              if (d.providerLabel) setProviderLabel(d.providerLabel);
-            })
+            .then(
+              (d: {
+                capabilities?: Capabilities;
+                providerLabel?: string;
+                keySources?: KeySources;
+                engine?: Engine | null;
+              }) => {
+                if (d.capabilities) setCaps(d.capabilities);
+                if (d.providerLabel) setProviderLabel(d.providerLabel);
+                if (d.keySources) setKeySources(d.keySources);
+                setEngine(d.engine ?? null);
+              },
+            )
             .catch(() => {});
         }}
         showThinking={prefs.showThinking}

@@ -6,14 +6,58 @@ import * as Icon from "./Icons";
 import type { Plan } from "@/lib/types";
 
 export type KeySource = "entorno" | "dispositivo" | "ninguna";
+export type Engine = "groq" | "google" | "openrouter";
+export type KeySources = Record<Engine, KeySource>;
 
-export interface Capabilities {
-  chat: boolean;
-  image: boolean;
-  video: boolean;
-  github: boolean;
-  proCodeConfigured: boolean;
-}
+export const EMPTY_KEY_SOURCES: KeySources = {
+  groq: "ninguna",
+  google: "ninguna",
+  openrouter: "ninguna",
+};
+
+/**
+ * Los motores que puede usar ECLIPSE. Los tres tienen capa gratuita y ninguno
+ * pide tarjeta; cambian el límite diario y lo que saben hacer.
+ */
+const ENGINES: {
+  id: Engine;
+  name: string;
+  tag?: string;
+  limit: string;
+  keyUrl: string;
+  keyHost: string;
+  placeholder: string;
+  note: string;
+}[] = [
+  {
+    id: "groq",
+    name: "Groq",
+    tag: "recomendado",
+    limit: "1.000 mensajes al día",
+    keyUrl: "https://console.groq.com/keys",
+    keyHost: "console.groq.com/keys",
+    placeholder: "gsk_…",
+    note: "El más generoso y el más rápido. No busca en internet ni mira imágenes.",
+  },
+  {
+    id: "google",
+    name: "Google",
+    limit: "unas decenas de mensajes al día",
+    keyUrl: "https://aistudio.google.com/apikey",
+    keyHost: "aistudio.google.com/apikey",
+    placeholder: "AIza…",
+    note: "El único que busca en la web y lee imágenes y PDF. A cambio, el límite gratuito es corto.",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    limit: "50 mensajes al día",
+    keyUrl: "https://openrouter.ai/keys",
+    keyHost: "openrouter.ai/keys",
+    placeholder: "sk-or-…",
+    note: "Muchos modelos abiertos distintos. Útil como recambio cuando los otros se agotan.",
+  },
+];
 
 interface Props {
   open: boolean;
@@ -21,12 +65,21 @@ interface Props {
   plan: Plan;
   capabilities: Capabilities;
   providerLabel: string;
-  keySource: KeySource;
-  onKeyChange: (source: KeySource) => void;
+  keySources: KeySources;
+  engine: Engine | null;
+  onKeysChange: () => void;
   showThinking: boolean;
   onShowThinking: (v: boolean) => void;
   onClearAll: () => void;
   conversationCount: number;
+}
+
+export interface Capabilities {
+  chat: boolean;
+  image: boolean;
+  video: boolean;
+  github: boolean;
+  proCodeConfigured: boolean;
 }
 
 function Row({ ok, label, hint }: { ok: boolean; label: string; hint: string }) {
@@ -44,17 +97,24 @@ function Row({ ok, label, hint }: { ok: boolean; label: string; hint: string }) 
   );
 }
 
-/** Permite pegar la clave de Google sin pasar por el panel del hosting. */
-function KeyBox({
-  source,
+/** Elegir motor y pegar su clave, sin pasar por el panel del hosting. */
+function EngineBox({
+  sources,
+  engine,
   onChange,
 }: {
-  source: KeySource;
-  onChange: (s: KeySource) => void;
+  sources: KeySources;
+  engine: Engine | null;
+  onChange: () => void;
 }) {
+  const configured = ENGINES.filter((e) => sources[e.id] !== "ninguna");
+  const [tab, setTab] = useState<Engine>(engine ?? configured[0]?.id ?? "groq");
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const current = ENGINES.find((e) => e.id === tab) ?? ENGINES[0];
+  const source = sources[current.id];
 
   const save = async () => {
     setBusy(true);
@@ -63,12 +123,12 @@ function KeyBox({
       const res = await fetch("/api/key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: value }),
+        body: JSON.stringify({ key: value, provider: current.id }),
       });
-      const data = (await res.json()) as { source?: KeySource; error?: string };
+      const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "No se pudo guardar.");
       setValue("");
-      onChange(data.source ?? "dispositivo");
+      onChange();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar.");
     } finally {
@@ -78,86 +138,140 @@ function KeyBox({
 
   const forget = async () => {
     setBusy(true);
-    await fetch("/api/key", { method: "DELETE" }).catch(() => {});
-    onChange("ninguna");
+    await fetch(`/api/key?provider=${current.id}`, { method: "DELETE" }).catch(() => {});
+    onChange();
     setBusy(false);
   };
 
-  if (source === "entorno")
-    return (
-      <div className="rounded-xl border border-ok/25 bg-ok/8 px-3.5 py-3">
-        <div className="flex items-center gap-2 text-[13px] text-ink">
-          <Icon.Check width={14} height={14} className="text-ok" />
-          Clave configurada en el servidor
-        </div>
-        <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
-          Viene de las variables de entorno, así que vale para todo el mundo que entre.
-        </p>
-      </div>
-    );
-
-  if (source === "dispositivo")
-    return (
-      <div className="rounded-xl border border-line-soft bg-panel/40 px-3.5 py-3">
-        <div className="flex items-center gap-2 text-[13px] text-ink">
-          <Icon.Check width={14} height={14} className="text-ok" />
-          Clave guardada en este dispositivo
-        </div>
-        <p className="mt-1 text-[11.5px] leading-relaxed text-faint">
-          Guardada en una cookie de tu navegador. Si entras desde otro móvil u ordenador,
-          tendrás que volver a pegarla allí.
-        </p>
-        <button
-          onClick={forget}
-          disabled={busy}
-          className="mt-2 text-[12px] text-faint transition hover:text-danger"
-        >
-          Olvidar la clave
-        </button>
-      </div>
-    );
+  const use = async () => {
+    setBusy(true);
+    await fetch("/api/key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: current.id, use: true }),
+    }).catch(() => {});
+    onChange();
+    setBusy(false);
+  };
 
   return (
-    <div className="rounded-xl border border-pro/30 bg-gradient-to-b from-pro/10 to-transparent p-3.5">
-      <div className="text-[13.5px] font-medium text-ink">Conecta la IA</div>
+    <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
+      <div className="text-[13.5px] font-medium text-ink">Motor de la IA</div>
       <p className="mt-1 text-[12px] leading-relaxed text-muted">
-        ECLIPSE necesita una clave de Google para responder. Es gratis y no pide tarjeta:
-        entra en{" "}
-        <a
-          href="https://aistudio.google.com/apikey"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-halo underline underline-offset-2"
-        >
-          aistudio.google.com/apikey
-        </a>
-        , pulsa <strong className="text-ink">Create API key</strong> y pégala aquí.
+        ECLIPSE necesita una clave para responder. Las tres son gratuitas y ninguna pide
+        tarjeta: eliges una, la pegas aquí y listo.
       </p>
 
-      <div className="mt-3 flex gap-2">
-        <input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && value.trim() && save()}
-          type="password"
-          placeholder="AIza…"
-          autoComplete="off"
-          className="min-w-0 flex-1 rounded-xl border border-line bg-panel px-3.5 py-2.5 font-mono text-[13px] text-ink outline-none transition placeholder:text-faint focus:border-pro/45"
-        />
-        <button
-          onClick={save}
-          disabled={busy || !value.trim()}
-          className="shrink-0 rounded-xl bg-ink px-4 py-2.5 text-[13.5px] font-medium text-void transition disabled:bg-line disabled:text-faint"
-        >
-          {busy ? "…" : "Guardar"}
-        </button>
+      {/* Pestañas de motor */}
+      <div className="mt-3 flex gap-1.5">
+        {ENGINES.map((e) => {
+          const on = e.id === tab;
+          const ready = sources[e.id] !== "ninguna";
+          return (
+            <button
+              key={e.id}
+              onClick={() => {
+                setTab(e.id);
+                setValue("");
+                setError(null);
+              }}
+              className={`flex-1 rounded-lg border px-2 py-1.5 text-[12px] transition ${
+                on ? "border-halo/45 bg-panel text-ink" : "border-line text-faint hover:text-muted"
+              }`}
+            >
+              <span className="flex items-center justify-center gap-1.5">
+                {ready && <span className="h-1.5 w-1.5 rounded-full bg-ok" aria-hidden />}
+                {e.name}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {error && <p className="mt-2 text-[12px] text-danger">{error}</p>}
-      <p className="mt-2 text-[11px] leading-relaxed text-faint">
-        Se comprueba con Google antes de guardarla, y se queda en una cookie segura de tu
-        navegador: no la ve nadie más.
+      <p className="mt-2.5 text-[11.5px] leading-relaxed text-faint">
+        <span className="text-muted">{current.limit}</span>
+        {current.tag ? ` · ${current.tag}` : ""}. {current.note}
       </p>
+
+      {source === "entorno" && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-ok/25 bg-ok/8 px-3 py-2 text-[12.5px] text-ink">
+          <Icon.Check width={14} height={14} className="shrink-0 text-ok" />
+          Clave puesta en el servidor: vale para todo el que entre.
+        </div>
+      )}
+
+      {source === "dispositivo" && (
+        <div className="mt-3 rounded-lg border border-line-soft bg-void/40 px-3 py-2.5">
+          <div className="flex items-center gap-2 text-[12.5px] text-ink">
+            <Icon.Check width={14} height={14} className="shrink-0 text-ok" />
+            Clave guardada en este dispositivo
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-faint">
+            Está en una cookie de tu navegador. Si entras desde otro móvil, tendrás que
+            pegarla allí también.
+          </p>
+          <div className="mt-2 flex gap-4">
+            {engine !== current.id && (
+              <button
+                onClick={use}
+                disabled={busy}
+                className="text-[12px] text-halo transition hover:text-ink"
+              >
+                Usar este motor
+              </button>
+            )}
+            <button
+              onClick={forget}
+              disabled={busy}
+              className="text-[12px] text-faint transition hover:text-danger"
+            >
+              Olvidar la clave
+            </button>
+          </div>
+        </div>
+      )}
+
+      {source === "ninguna" && (
+        <>
+          <p className="mt-3 text-[12px] leading-relaxed text-muted">
+            Entra en{" "}
+            <a
+              href={current.keyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-halo underline underline-offset-2"
+            >
+              {current.keyHost}
+            </a>
+            , crea la clave y pégala aquí.
+          </p>
+
+          <div className="mt-2.5 flex gap-2">
+            <input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && value.trim() && save()}
+              type="password"
+              placeholder={current.placeholder}
+              autoComplete="off"
+              className="min-w-0 flex-1 rounded-xl border border-line bg-panel px-3.5 py-2.5 font-mono text-[13px] text-ink outline-none transition placeholder:text-faint focus:border-pro/45"
+            />
+            <button
+              onClick={save}
+              disabled={busy || !value.trim()}
+              className="shrink-0 rounded-xl bg-ink px-4 py-2.5 text-[13.5px] font-medium text-void transition disabled:bg-line disabled:text-faint"
+            >
+              {busy ? "…" : "Guardar"}
+            </button>
+          </div>
+
+          {error && <p className="mt-2 text-[12px] text-danger">{error}</p>}
+          <p className="mt-2 text-[11px] leading-relaxed text-faint">
+            Se comprueba antes de guardarla, y se queda en una cookie segura de tu navegador:
+            no la ve nadie más.
+          </p>
+        </>
+      )}
     </div>
   );
 }
@@ -168,8 +282,9 @@ export default function SettingsDialog({
   plan,
   capabilities,
   providerLabel,
-  keySource,
-  onKeyChange,
+  keySources,
+  engine,
+  onKeysChange,
   showThinking,
   onShowThinking,
   onClearAll,
@@ -178,7 +293,7 @@ export default function SettingsDialog({
   return (
     <Modal open={open} onClose={onClose} title="Ajustes">
       <div className="space-y-5">
-        <KeyBox source={keySource} onChange={onKeyChange} />
+        <EngineBox sources={keySources} engine={engine} onChange={onKeysChange} />
 
         <label className="flex cursor-pointer items-center gap-3">
           <input
@@ -203,7 +318,7 @@ export default function SettingsDialog({
             <Row
               ok={capabilities.chat}
               label={`Motor de la IA · ${providerLabel}`}
-              hint="Falta GOOGLE_API_KEY (gratis) o ANTHROPIC_API_KEY"
+              hint="Pega arriba una clave gratuita (Groq, Google u OpenRouter)"
             />
             <Row
               ok={capabilities.image}

@@ -2,10 +2,11 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { getClient, humanError, MODEL, tuning } from "@/lib/anthropic";
 import { GeminiError, streamChat } from "@/lib/gemini";
-import { resolveGoogleKey } from "@/lib/keys";
+import { resolveKey } from "@/lib/keys";
+import { CompatError, streamCompat, type CompatProvider } from "@/lib/openai-compat";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt } from "@/lib/prompts";
-import { activeProvider } from "@/lib/provider";
+import { activeProvider, providerSearches } from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
 import { SSE_HEADERS, sseChunk, type StreamEvent } from "@/lib/sse";
 import type { Attachment, Mode, Speed } from "@/lib/types";
@@ -135,7 +136,7 @@ async function runAnthropic(
       system: [
         {
           type: "text",
-          text: buildSystemPrompt({ mode: opts.mode, plan: opts.plan }),
+          text: buildSystemPrompt({ mode: opts.mode, plan: opts.plan, web: opts.wantsWeb }),
           cache_control: { type: "ephemeral" },
         },
       ],
@@ -219,11 +220,11 @@ async function runGoogle(
   send({ t: "status", v: opts.wantsWeb ? "buscando" : "pensando" });
 
   const stream = streamChat({
-    system: buildSystemPrompt({ mode: opts.mode, plan: opts.plan }),
+    system: buildSystemPrompt({ mode: opts.mode, plan: opts.plan, web: opts.wantsWeb }),
     turns: opts.body.messages,
     speed: opts.speed,
     webSearch: opts.wantsWeb,
-    key: await resolveGoogleKey(),
+    key: await resolveKey("google"),
     signal: opts.signal,
   });
 
@@ -242,6 +243,46 @@ async function runGoogle(
   }
 
   return { sources, stopReason: null as string | null };
+}
+
+/* ------------------------- Groq / OpenRouter ---------------------------- */
+
+async function runCompat(
+  send: (e: StreamEvent) => void,
+  opts: {
+    provider: CompatProvider;
+    body: Body;
+    mode: Mode;
+    speed: Speed;
+    plan: "free" | "pro";
+    signal: AbortSignal;
+  },
+) {
+  let wrote = false;
+  send({ t: "status", v: "pensando" });
+
+  const stream = streamCompat({
+    provider: opts.provider,
+    key: await resolveKey(opts.provider),
+    // Estos motores no navegan: se lo decimos para que no finja que ha buscado.
+    system: buildSystemPrompt({ mode: opts.mode, plan: opts.plan, web: false }),
+    turns: opts.body.messages,
+    speed: opts.speed,
+    signal: opts.signal,
+  });
+
+  for await (const event of stream) {
+    if (opts.signal.aborted) break;
+    if (event.text) {
+      if (!wrote) {
+        wrote = true;
+        send({ t: "status", v: "escribiendo" });
+      }
+      send({ t: "text", v: event.text });
+    }
+  }
+
+  return { sources: [] as { url: string; title?: string }[], stopReason: null as string | null };
 }
 
 /* -------------------------------- Ruta ---------------------------------- */
@@ -273,14 +314,15 @@ export async function POST(req: NextRequest) {
     return Response.json(
       {
         error:
-          "Todavía no has puesto la clave de la IA. Ábrela en Ajustes (las tres rayitas) y pega ahí tu clave gratuita de Google: la consigues en aistudio.google.com/apikey.",
+          "Todavía no has puesto la clave de la IA. Ábrela en Ajustes (las tres rayitas) y pega ahí una clave gratuita: la de Groq se saca en console.groq.com/keys en un minuto y no pide tarjeta.",
         code: "no_key",
       },
       { status: 503 },
     );
   }
 
-  const wantsWeb = mode === "search" || body.deepSearch === true || mode === "chat";
+  const wantsWeb =
+    providerSearches(provider) && (mode === "search" || body.deepSearch === true || mode === "chat");
   const started = Date.now();
 
   const stream = new ReadableStream<Uint8Array>({
@@ -308,7 +350,9 @@ export async function POST(req: NextRequest) {
         const result =
           provider === "google"
             ? await runGoogle(send, shared)
-            : await runAnthropic(send, shared);
+            : provider === "anthropic"
+              ? await runAnthropic(send, shared)
+              : await runCompat(send, { ...shared, provider });
 
         if (result.sources.length) send({ t: "sources", v: rankSources(result.sources) });
         send({
@@ -322,7 +366,10 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         send({
           t: "error",
-          v: err instanceof GeminiError ? err.message : humanError(err),
+          v:
+            err instanceof GeminiError || err instanceof CompatError
+              ? err.message
+              : humanError(err),
         });
       } finally {
         clearInterval(heartbeat);

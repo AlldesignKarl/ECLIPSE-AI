@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { getClient, MODEL } from "@/lib/anthropic";
 import { oneShot } from "@/lib/gemini";
-import { resolveGoogleKey } from "@/lib/keys";
+import { resolveKey } from "@/lib/keys";
+import { oneShotCompat } from "@/lib/openai-compat";
 import { TITLE_PROMPT } from "@/lib/prompts";
 import { activeProvider } from "@/lib/provider";
 
@@ -21,8 +22,14 @@ export async function POST(req: NextRequest) {
 
   try {
     if (provider === "google") {
-      const key = await resolveGoogleKey();
+      const key = await resolveKey("google");
       return Response.json({ title: clean(await oneShot(`${TITLE_PROMPT}\n\n${snippet}`, key)) });
+    }
+
+    if (provider === "groq" || provider === "openrouter") {
+      const key = await resolveKey(provider);
+      const title = await oneShotCompat(provider, key, `${TITLE_PROMPT}\n\n${snippet}`);
+      return Response.json({ title: clean(title) });
     }
 
     if (provider === "anthropic") {

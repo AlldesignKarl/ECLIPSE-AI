@@ -6,7 +6,7 @@ import {
   proCodeMatches,
 } from "@/lib/plan-server";
 import { imageProviderAvailable, videoProviderAvailable } from "@/lib/media";
-import { googleKeySource } from "@/lib/keys";
+import { keySources, preferredEngine } from "@/lib/keys";
 import { activeProvider, providerLabel } from "@/lib/provider";
 import { priceLabel, stripeAvailable } from "@/lib/stripe";
 
@@ -20,7 +20,8 @@ export async function GET() {
     provider,
     providerLabel: providerLabel(provider),
     billing: { enabled: stripeAvailable(), price: priceLabel() },
-    keySource: await googleKeySource(),
+    keySources: await keySources(),
+    engine: await preferredEngine(),
     capabilities: {
       chat: provider !== null,
       image: await imageProviderAvailable(),

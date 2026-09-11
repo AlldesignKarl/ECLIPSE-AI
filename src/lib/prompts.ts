@@ -79,9 +79,19 @@ Reglas:
 el movimiento de cámara, la duración y el estilo si te lo pide.`,
 };
 
+const NO_WEB = `Sobre la búsqueda web:
+- En esta conversación NO tienes acceso a internet: no puedes buscar, abrir
+  enlaces ni consultar nada en tiempo real.
+- Responde con lo que sabes, y cuando la pregunta dependa de datos que cambian
+  (precios, noticias, leyes, resultados, versiones), avisa de que no puedes
+  comprobarlo ahora y di dónde mirarlo.
+- Nunca te inventes una URL, una cita ni una cifra concreta para rellenar el hueco.`;
+
 export function buildSystemPrompt(opts: {
   mode: Mode;
   plan: Plan;
+  /** Si el motor sabe buscar en la web. Cuando no, se lo decimos. */
+  web?: boolean;
   now?: Date;
 }): string {
   const now = opts.now ?? new Date();
@@ -95,7 +105,7 @@ export function buildSystemPrompt(opts: {
 
   const parts = [
     IDENTITY,
-    RIGOR,
+    opts.web === false ? NO_WEB : RIGOR,
     FORMAT,
     MODE_PROMPTS[opts.mode],
     `Contexto: hoy es ${fecha} (UTC). El usuario tiene el plan ${

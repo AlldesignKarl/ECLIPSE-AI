@@ -16,7 +16,7 @@
 
 **Plan Gratis**
 
-- Conversación con razonamiento (modelo Claude Opus 5).
+- Conversación con razonamiento.
 - Búsqueda web con **prioridad a fuentes fiables**: universidades (`.edu`, `.ac.uk`),
   revistas revisadas por pares (Nature, Science, The Lancet…), repositorios
   académicos (arXiv, PubMed, doi.org) y organismos oficiales. Cada respuesta muestra
@@ -52,12 +52,20 @@ haciendo exactamente: *Pensando*, *Buscando en la web*, *Leyendo fuentes*,
 
 | Clave | Para qué | Coste | Dónde |
 |---|---|---|---|
-| `GOOGLE_API_KEY` | **La recomendada.** Chat, búsqueda en Google con fuentes e imágenes. | **Gratis**, sin tarjeta | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| `GROQ_API_KEY` | **La recomendada para empezar.** Chat rápido, ~1.000 mensajes al día. No navega ni ve imágenes. | **Gratis**, sin tarjeta | [console.groq.com/keys](https://console.groq.com/keys) |
+| `GOOGLE_API_KEY` | Chat, **búsqueda en Google con fuentes**, lectura de imágenes y PDF, creación de imágenes. Límite diario corto. | **Gratis**, sin tarjeta | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| `OPENROUTER_API_KEY` | Modelos abiertos variados, ~50 mensajes al día. Recambio. | **Gratis**, sin tarjeta | [openrouter.ai/keys](https://openrouter.ai/keys) |
 | `PRO_ACCESS_CODE` | Tu contraseña para desbloquear el plan Pro. | — | La inventas tú |
 | `ANTHROPIC_API_KEY` | Motor alternativo. | De pago por uso, sin capa gratuita | [console.anthropic.com](https://console.anthropic.com) |
 
-Con `GOOGLE_API_KEY` sola ya funciona todo menos el vídeo. Si configuras las dos
-claves se usa Google; puedes forzar la otra con `AI_PROVIDER=anthropic`.
+No hace falta ponerlas aquí: desde **Ajustes**, dentro de la aplicación, se elige
+el motor y se pega la clave, que se guarda en una cookie `HttpOnly` del navegador.
+Si pones varias, se prueban en este orden — `groq`, `google`, `openrouter`,
+`anthropic` — y se puede fijar una con `AI_PROVIDER`.
+
+Con `GOOGLE_API_KEY` funciona todo menos el vídeo: es el único motor que busca en
+la web y lee imágenes. Con `GROQ_API_KEY` se conversa y se programa mucho más
+rato antes de topar con el límite, pero sin búsqueda ni archivos adjuntos.
 
 **Los límites de la capa gratuita de Google** son de peticiones por minuto y por
 día. Para uso personal sobran; si te pasas, la aplicación te lo dice y basta con

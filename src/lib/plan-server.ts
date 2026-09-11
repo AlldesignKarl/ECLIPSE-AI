@@ -11,6 +11,8 @@ function secret(): string {
     process.env.PRO_SECRET ||
     process.env.STRIPE_SECRET_KEY ||
     process.env.GOOGLE_API_KEY ||
+    process.env.GROQ_API_KEY ||
+    process.env.OPENROUTER_API_KEY ||
     process.env.ANTHROPIC_API_KEY ||
     "eclipse-dev-secret"
   );

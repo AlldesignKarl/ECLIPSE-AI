@@ -12,40 +12,100 @@ import { cookies } from "next/headers";
  * La variable de entorno siempre manda sobre la cookie.
  */
 
-export const GOOGLE_KEY_COOKIE = "eclipse_gkey";
+export type KeyProvider = "google" | "groq" | "openrouter";
+export type KeySource = "entorno" | "dispositivo" | "ninguna";
+
+interface Slot {
+  cookie: string;
+  env: string[];
+}
+
+const SLOTS: Record<KeyProvider, Slot> = {
+  google: { cookie: "eclipse_gkey", env: ["GOOGLE_API_KEY", "GEMINI_API_KEY"] },
+  groq: { cookie: "eclipse_groqkey", env: ["GROQ_API_KEY"] },
+  openrouter: { cookie: "eclipse_orkey", env: ["OPENROUTER_API_KEY"] },
+};
+
+export const KEY_PROVIDERS = Object.keys(SLOTS) as KeyProvider[];
+
+/** Cookie con el motor que ha elegido el usuario en Ajustes. */
+export const ENGINE_COOKIE = "eclipse_engine";
+
 const MAX_AGE = 60 * 60 * 24 * 365;
 
-export function googleKeyFromEnv(): string {
-  return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "";
+export function isKeyProvider(v: unknown): v is KeyProvider {
+  return typeof v === "string" && v in SLOTS;
+}
+
+function fromEnv(provider: KeyProvider): string {
+  for (const name of SLOTS[provider].env) {
+    const value = process.env[name];
+    if (value) return value;
+  }
+  return "";
 }
 
 /** La clave que toca usar en esta petición. */
-export async function resolveGoogleKey(): Promise<string> {
-  const fromEnv = googleKeyFromEnv();
-  if (fromEnv) return fromEnv;
+export async function resolveKey(provider: KeyProvider): Promise<string> {
+  const env = fromEnv(provider);
+  if (env) return env;
 
   const jar = await cookies();
-  return jar.get(GOOGLE_KEY_COOKIE)?.value ?? "";
+  return jar.get(SLOTS[provider].cookie)?.value ?? "";
 }
 
-export async function googleKeyAvailable(): Promise<boolean> {
-  return Boolean(await resolveGoogleKey());
+export async function keyAvailable(provider: KeyProvider): Promise<boolean> {
+  return Boolean(await resolveKey(provider));
 }
 
 /** De dónde viene la clave, para poder explicárselo al usuario en Ajustes. */
-export async function googleKeySource(): Promise<"entorno" | "dispositivo" | "ninguna"> {
-  if (googleKeyFromEnv()) return "entorno";
+export async function keySource(provider: KeyProvider): Promise<KeySource> {
+  if (fromEnv(provider)) return "entorno";
   const jar = await cookies();
-  return jar.get(GOOGLE_KEY_COOKIE)?.value ? "dispositivo" : "ninguna";
+  return jar.get(SLOTS[provider].cookie)?.value ? "dispositivo" : "ninguna";
 }
 
-export function keyCookieHeader(key: string): string {
-  return `${GOOGLE_KEY_COOKIE}=${encodeURIComponent(key)}; Path=/; Max-Age=${MAX_AGE}; HttpOnly; SameSite=Lax${
+/** El estado de todas las claves de golpe, para pintar Ajustes de una vez. */
+export async function keySources(): Promise<Record<KeyProvider, KeySource>> {
+  const jar = await cookies();
+  const out = {} as Record<KeyProvider, KeySource>;
+
+  for (const provider of KEY_PROVIDERS) {
+    out[provider] = fromEnv(provider)
+      ? "entorno"
+      : jar.get(SLOTS[provider].cookie)?.value
+        ? "dispositivo"
+        : "ninguna";
+  }
+  return out;
+}
+
+/** El motor que el usuario prefiere, si guardó alguno. */
+export async function preferredEngine(): Promise<KeyProvider | null> {
+  const jar = await cookies();
+  const value = jar.get(ENGINE_COOKIE)?.value;
+  return isKeyProvider(value) ? value : null;
+}
+
+function cookieLine(name: string, value: string, maxAge: number): string {
+  return `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${
     process.env.NODE_ENV === "production" ? "; Secure" : ""
   }`;
 }
 
-export const CLEAR_KEY_COOKIE = `${GOOGLE_KEY_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`;
+export function keyCookieHeader(provider: KeyProvider, key: string): string {
+  return cookieLine(SLOTS[provider].cookie, key, MAX_AGE);
+}
+
+export function clearKeyCookie(provider: KeyProvider): string {
+  return `${SLOTS[provider].cookie}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`;
+}
+
+export function engineCookieHeader(provider: KeyProvider): string {
+  return cookieLine(ENGINE_COOKIE, provider, MAX_AGE);
+}
+
+export const CLEAR_ENGINE_COOKIE = `${ENGINE_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`;
 
 /** Comprueba contra Google que la clave sirve, antes de guardarla. */
 export async function verifyGoogleKey(
@@ -70,3 +130,10 @@ export async function verifyGoogleKey(
     return { ok: false, error: "No se ha podido contactar con Google para comprobar la clave." };
   }
 }
+
+/* Compatibilidad con el código que solo conocía Google. */
+export const GOOGLE_KEY_COOKIE = SLOTS.google.cookie;
+export const resolveGoogleKey = () => resolveKey("google");
+export const googleKeyAvailable = () => keyAvailable("google");
+export const googleKeySource = () => keySource("google");
+export const googleKeyFromEnv = () => fromEnv("google");
