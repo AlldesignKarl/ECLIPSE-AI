@@ -16,9 +16,29 @@ interface Conn {
   token: string;
 }
 
+/**
+ * Cada proveedor bautiza sus variables a su manera, y Vercel además deja
+ * ponerles un prefijo al conectarlas. Así que en vez de exigir un nombre
+ * exacto, buscamos la pareja url/token por su forma: cualquier variable que
+ * acabe en REST_URL con su correspondiente REST_TOKEN. Un nombre inesperado
+ * deja de ser un fallo silencioso que nadie sabe diagnosticar.
+ */
 function conn(): Conn | null {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "";
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || "";
+  const exact = (name: string) => process.env[name] || "";
+
+  let url =
+    exact("UPSTASH_REDIS_REST_URL") || exact("KV_REST_API_URL") || exact("REDIS_REST_URL");
+  let token =
+    exact("UPSTASH_REDIS_REST_TOKEN") || exact("KV_REST_API_TOKEN") || exact("REDIS_REST_TOKEN");
+
+  if (!url || !token) {
+    for (const [name, value] of Object.entries(process.env)) {
+      if (!value) continue;
+      if (!url && /REST_(API_)?URL$/.test(name) && /^https?:\/\//.test(value)) url = value;
+      if (!token && /REST_(API_)?TOKEN$/.test(name)) token = value;
+    }
+  }
+
   return url && token ? { url: url.replace(/\/+$/, ""), token } : null;
 }
 
