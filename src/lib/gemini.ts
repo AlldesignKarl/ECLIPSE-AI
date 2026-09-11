@@ -46,11 +46,18 @@ async function listChatModels(key: string): Promise<string[]> {
       .map((m) => (m.name as string).replace(/^models\//, ""))
       .filter((n) => n.startsWith("gemini") && !/embedding|image|tts|audio|live|vision/.test(n));
 
-    // Los "lite" y "flash" son los que suelen tener cuota gratuita.
-    const score = (n: string) =>
-      (n.includes("lite") ? 0 : n.includes("flash") ? 1 : 3) + (n.includes("preview") ? 1 : 0);
+    // Los "lite" y "flash" son los que suelen conservar cuota gratuita, y
+    // dentro de cada familia probamos primero los más nuevos: la lista que
+    // devuelve Google incluye modelos ya retirados.
+    const kind = (n: string) => (n.includes("lite") ? 0 : n.includes("flash") ? 1 : 3);
+    const version = (n: string) => {
+      const m = n.match(/gemini-(\d+(?:\.\d+)?)/);
+      return m ? Number(m[1]) : 0;
+    };
 
-    return [...new Set(names)].sort((a, b) => score(a) - score(b));
+    return [...new Set(names)].sort(
+      (a, b) => kind(a) - kind(b) || version(b) - version(a) || a.localeCompare(b),
+    );
   } catch {
     return [];
   }
@@ -198,27 +205,36 @@ export async function* streamChat(opts: {
     });
 
   const wanted = resolvedModel ?? chatModel();
-  let res = await open(wanted);
-  let last = { message: "", raw: "" };
   const pinned = Boolean(process.env.GEMINI_MODEL);
+  const tried = new Set<string>();
+  let last = { message: "", raw: "" };
 
-  // Modelo retirado o desconocido. Google suele decir en el propio mensaje de
-  // error cuál hay que usar ahora, así que le hacemos caso; y si no, le
-  // preguntamos qué modelos tiene esta cuenta. Reintentamos una sola vez.
-  // Si el usuario ha fijado GEMINI_MODEL a mano, respetamos su elección.
-  if ((res.status === 404 || res.status === 400) && !pinned) {
-    last = await readError(res);
+  /**
+   * Un intento con un modelo. Si Google contesta que ese modelo ya no existe,
+   * en el propio error nombra el que hay que usar: le hacemos caso y
+   * reintentamos con ese. La lista de modelos de la cuenta incluye retirados,
+   * así que esto hace falta en cada intento, no solo en el primero.
+   */
+  async function attempt(model: string): Promise<Response> {
+    tried.add(model);
+    let r = await open(model);
+    if ((r.status === 400 || r.status === 404) && !pinned) {
+      last = await readError(r);
 
-    const proposed = (last.message.match(/models\/[a-zA-Z0-9.\-]+/g) ?? [])
-      .map((m) => m.replace(/^models\//, ""))
-      .find((name) => name !== wanted && name.startsWith("gemini"));
+      const suggested = (last.message.match(/models\/[a-zA-Z0-9.\-]+/g) ?? [])
+        .map((m) => m.replace(/^models\//, ""))
+        .find((name) => name.startsWith("gemini") && !tried.has(name));
 
-    const alternative = proposed ?? (await pickModel(key));
-    if (alternative && alternative !== wanted) {
-      resolvedModel = alternative;
-      res = await open(alternative);
+      if (suggested) {
+        tried.add(suggested);
+        r = await open(suggested);
+        if (r.ok || r.status === 429) resolvedModel = suggested;
+      }
     }
+    return r;
   }
+
+  let res = await attempt(wanted);
 
   // Sin cuota. El límite de la capa gratuita es por minuto y Google dice
   // cuántos segundos faltan, así que esperamos nosotros en vez de hacérselo
@@ -231,23 +247,21 @@ export async function* streamChat(opts: {
     await sleep(wait * 1000);
     res = await open(resolvedModel ?? wanted);
 
-    // Sigue sin cuota. Puede que este modelo no tenga plan gratuito, así que
-    // recorremos los que sí tenga la cuenta hasta dar con uno que responda.
+    // Sigue sin cuota: puede que ese modelo no tenga plan gratuito. Probamos
+    // los demás de la cuenta hasta dar con uno que responda.
     if (res.status === 429 && !pinned) {
       last = await readError(res);
-      const tried = new Set([wanted, resolvedModel ?? wanted]);
 
       for (const candidate of await listChatModels(key)) {
         if (tried.has(candidate)) continue;
-        tried.add(candidate);
 
-        res = await open(candidate);
-        if (res.status !== 429) {
+        res = await attempt(candidate);
+        if (res.ok) {
           resolvedModel = candidate;
           break;
         }
-        last = await readError(res);
-        if (tried.size >= 5) break;
+        if (res.status !== 429) last = await readError(res);
+        if (tried.size >= 6) break;
       }
     }
   }
