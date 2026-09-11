@@ -27,10 +27,11 @@ export function chatModel(): string {
  */
 let resolvedModel: string | null = null;
 
-async function pickModel(key: string, preferLite = false): Promise<string | null> {
+/** Los modelos de chat de esta cuenta, de más a menos recomendable. */
+async function listChatModels(key: string): Promise<string[]> {
   try {
     const res = await fetch(`${BASE}/models`, { headers: { "x-goog-api-key": key } });
-    if (!res.ok) return null;
+    if (!res.ok) return [];
 
     const json = (await res.json()) as {
       models?: { name?: string; supportedGenerationMethods?: string[] }[];
@@ -45,15 +46,19 @@ async function pickModel(key: string, preferLite = false): Promise<string | null
       .map((m) => (m.name as string).replace(/^models\//, ""))
       .filter((n) => n.startsWith("gemini") && !/embedding|image|tts|audio|live|vision/.test(n));
 
-    // "flash" es el que más cuota gratuita tiene, así que va primero. Cuando
-    // nos hemos quedado sin cuota, buscamos el "lite", que suele tener más.
-    if (preferLite) {
-      return names.find((n) => n.includes("lite")) ?? names.find((n) => n.includes("flash")) ?? null;
-    }
-    return names.find((n) => n.includes("flash") && !n.includes("lite")) ?? names[0] ?? null;
+    // Los "lite" y "flash" son los que suelen tener cuota gratuita.
+    const score = (n: string) =>
+      (n.includes("lite") ? 0 : n.includes("flash") ? 1 : 3) + (n.includes("preview") ? 1 : 0);
+
+    return [...new Set(names)].sort((a, b) => score(a) - score(b));
   } catch {
-    return null;
+    return [];
   }
+}
+
+async function pickModel(key: string): Promise<string | null> {
+  const names = await listChatModels(key);
+  return names.find((n) => n.includes("flash") && !n.includes("lite")) ?? names[0] ?? null;
 }
 
 export class GeminiError extends Error {
@@ -226,13 +231,23 @@ export async function* streamChat(opts: {
     await sleep(wait * 1000);
     res = await open(resolvedModel ?? wanted);
 
-    // Sigue sin haber cuota: probamos con un modelo ligero, que suele tener más.
+    // Sigue sin cuota. Puede que este modelo no tenga plan gratuito, así que
+    // recorremos los que sí tenga la cuenta hasta dar con uno que responda.
     if (res.status === 429 && !pinned) {
       last = await readError(res);
-      const lite = await pickModel(key, true);
-      if (lite && lite !== (resolvedModel ?? wanted)) {
-        resolvedModel = lite;
-        res = await open(lite);
+      const tried = new Set([wanted, resolvedModel ?? wanted]);
+
+      for (const candidate of await listChatModels(key)) {
+        if (tried.has(candidate)) continue;
+        tried.add(candidate);
+
+        res = await open(candidate);
+        if (res.status !== 429) {
+          resolvedModel = candidate;
+          break;
+        }
+        last = await readError(res);
+        if (tried.size >= 5) break;
       }
     }
   }
@@ -250,10 +265,11 @@ export async function* streamChat(opts: {
     if (res.status === 429) {
       const wait = retryDelaySeconds(detail.raw || last.raw);
       throw new GeminiError(
-        "Sigues sin cuota en la capa gratuita de Google" +
-          (wait ? `: pide esperar unos ${wait} segundos más` : "") +
-          ". No se te ha cobrado nada. Si te pasa a menudo, activa la facturación en tu cuenta " +
-          "de Google (pagas solo por uso) y el límite desaparece.",
+        wait
+          ? `Google pide esperar unos ${wait} segundos más. No se te ha cobrado nada: inténtalo otra vez en un momento.`
+          : "Ningún modelo de tu cuenta de Google tiene cuota gratuita disponible. No es que se " +
+            "haya agotado: es que el plan gratuito ya no cubre estos modelos. Activa la " +
+            "facturación en Google (pagas solo por uso, céntimos) y funcionará al momento.",
         429,
       );
     }
