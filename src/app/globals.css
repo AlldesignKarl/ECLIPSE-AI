@@ -15,10 +15,12 @@
   --color-danger: #ff6b6b;
   --color-ok: #4ade80;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
+  --font-sans: var(--font-eclipse-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-serif: var(--font-eclipse-serif), ui-serif, Georgia, "Times New Roman",
+    serif;
+  --font-mono: var(--font-eclipse-mono), ui-monospace, SFMono-Regular, "SF Mono",
+    Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 :root {

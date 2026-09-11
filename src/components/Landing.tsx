@@ -56,10 +56,10 @@ export default function Landing({ onEnter, price }: Props) {
         <div className="relative mx-auto flex max-w-2xl flex-col items-center px-5 pb-20 pt-10 text-center sm:pt-16">
           <EclipseMark size={168} />
 
-          <h1 className="mt-10 text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink sm:text-[46px]">
+          <h1 className="mt-10 font-serif text-[38px] font-medium leading-[1.08] tracking-[-0.015em] text-ink sm:text-[52px]">
             Pregunta cualquier cosa.
             <br />
-            <span className="text-muted">Con las fuentes delante.</span>
+            <span className="text-muted italic">Con las fuentes delante.</span>
           </h1>
 
           <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted">
@@ -104,7 +104,7 @@ export default function Landing({ onEnter, price }: Props) {
       {/* ------------------------------------------------------- Honestidad */}
       <section className="mx-auto max-w-5xl px-5 pb-16">
         <div className="rounded-2xl border border-line-soft bg-panel/40 p-7 sm:p-9">
-          <h2 className="text-[19px] font-medium text-ink">
+          <h2 className="font-serif text-[23px] font-medium leading-snug text-ink sm:text-[26px]">
             Prefiere decir “no lo sé” antes que quedar bien
           </h2>
           <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted">

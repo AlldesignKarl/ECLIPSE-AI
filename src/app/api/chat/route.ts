@@ -8,6 +8,7 @@ import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { activeProvider, providerSearches } from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
+import { priceLabel, stripeAvailable } from "@/lib/stripe";
 import { SSE_HEADERS, sseChunk, type StreamEvent } from "@/lib/sse";
 import type { Attachment, Mode, Speed } from "@/lib/types";
 
@@ -31,6 +32,11 @@ interface Body {
 }
 
 const PRO_MODES: Mode[] = ["code", "video"];
+
+/** Lo que ECLIPSE tiene que saber de su propia app: precio y forma de pago. */
+function product() {
+  return { price: priceLabel(), billingEnabled: stripeAvailable() };
+}
 const MAX_CONTINUATIONS = 4;
 
 /* ------------------------------ Anthropic ------------------------------ */
@@ -136,7 +142,13 @@ async function runAnthropic(
       system: [
         {
           type: "text",
-          text: buildSystemPrompt({ mode: opts.mode, plan: opts.plan, web: opts.wantsWeb }),
+          text: buildSystemPrompt({
+            ...product(),
+            mode: opts.mode,
+            plan: opts.plan,
+            web: opts.wantsWeb,
+            engine: "anthropic",
+          }),
           cache_control: { type: "ephemeral" },
         },
       ],
@@ -220,7 +232,13 @@ async function runGoogle(
   send({ t: "status", v: opts.wantsWeb ? "buscando" : "pensando" });
 
   const stream = streamChat({
-    system: buildSystemPrompt({ mode: opts.mode, plan: opts.plan, web: opts.wantsWeb }),
+    system: buildSystemPrompt({
+      ...product(),
+      mode: opts.mode,
+      plan: opts.plan,
+      web: opts.wantsWeb,
+      engine: "google",
+    }),
     turns: opts.body.messages,
     speed: opts.speed,
     webSearch: opts.wantsWeb,
@@ -265,7 +283,13 @@ async function runCompat(
     provider: opts.provider,
     key: await resolveKey(opts.provider),
     // Estos motores no navegan: se lo decimos para que no finja que ha buscado.
-    system: buildSystemPrompt({ mode: opts.mode, plan: opts.plan, web: false }),
+    system: buildSystemPrompt({
+      ...product(),
+      mode: opts.mode,
+      plan: opts.plan,
+      web: false,
+      engine: opts.provider,
+    }),
     turns: opts.body.messages,
     speed: opts.speed,
     signal: opts.signal,
