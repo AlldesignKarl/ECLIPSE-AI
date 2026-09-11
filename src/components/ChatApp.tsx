@@ -238,19 +238,22 @@ export default function ChatApp() {
   }, [flushStream]);
 
   /* ------------------------------- Título ------------------------------ */
+  /**
+   * El título sale del propio mensaje, sin pedírselo a la IA. Antes gastaba
+   * una petición por conversación, y en la capa gratuita de Google cada
+   * petición cuenta: dos por mensaje agotaban el cupo por minuto enseguida.
+   */
   const nameConversation = useCallback(
-    async (id: string, text: string) => {
-      try {
-        const res = await fetch("/api/title", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
-        });
-        const { title } = (await res.json()) as { title: string };
-        if (title) upsert(id, (c) => ({ ...c, title }));
-      } catch {
-        /* el título se queda como está */
+    (id: string, text: string) => {
+      const clean = text.replace(/\s+/g, " ").trim();
+      if (!clean) return;
+
+      let title = clean.slice(0, 48);
+      if (clean.length > 48) {
+        const cut = title.lastIndexOf(" ");
+        title = (cut > 20 ? title.slice(0, cut) : title) + "…";
       }
+      upsert(id, (c) => ({ ...c, title: title[0].toUpperCase() + title.slice(1) }));
     },
     [upsert],
   );
@@ -488,7 +491,7 @@ export default function ChatApp() {
       setAttachments([]);
       stickToBottom.current = true;
 
-      if (conversation.messages.length === 0 && text) void nameConversation(id, text);
+      if (conversation.messages.length === 0 && text) nameConversation(id, text);
 
       if (currentMode === "image") await runImage(id, text);
       else if (currentMode === "video") await runVideo(id, text);

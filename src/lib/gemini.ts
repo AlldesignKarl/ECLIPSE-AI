@@ -207,7 +207,9 @@ export async function* streamChat(opts: {
       );
     if (res.status === 429)
       throw new GeminiError(
-        "Has alcanzado el límite gratuito de Google por ahora. Espera un minuto y vuelve a intentarlo.",
+        "Has llegado al límite de peticiones por minuto de la capa gratuita de Google. " +
+          "Espera un minuto y vuelve a intentarlo: no se ha gastado nada. Si te pasa a menudo, " +
+          "activa la facturación en tu cuenta de Google y el límite desaparece.",
         429,
       );
     throw new GeminiError(`Google: ${detail}`, res.status);
