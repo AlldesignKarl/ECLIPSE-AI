@@ -72,6 +72,7 @@ export default function Composer({
 }: Props) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
   // La caja crece con el texto, hasta un tope.
@@ -146,7 +147,7 @@ export default function Composer({
                     />
                   ) : (
                     <span className="grid h-7 w-7 place-items-center rounded bg-panel text-[9px] font-semibold uppercase text-muted">
-                      {a.kind === "pdf" ? "PDF" : "TXT"}
+                      {a.kind === "pdf" ? "PDF" : a.kind === "video" ? "VID" : "TXT"}
                     </span>
                   )}
                   <span className="max-w-[140px] truncate text-[12px] text-ink">{a.name}</span>
@@ -186,11 +187,24 @@ export default function Composer({
           />
 
           <div className="flex items-center gap-1.5 px-2.5 pb-2.5">
+            {/* Galería y archivos. El móvil pide permiso a las fotos al abrirlo. */}
             <input
               ref={fileInput}
               type="file"
               multiple
-              accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/*,.md,.csv,.json,.ts,.tsx,.js,.py,.yml,.yaml"
+              accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif,video/*,application/pdf,text/*,.md,.csv,.json,.ts,.tsx,.js,.py,.yml,.yaml"
+              className="hidden"
+              onChange={(e) => {
+                onFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            {/* `capture` abre la cámara directamente: es el "escanear". */}
+            <input
+              ref={cameraInput}
+              type="file"
+              accept="image/*"
+              capture="environment"
               className="hidden"
               onChange={(e) => {
                 onFiles(e.target.files);
@@ -200,10 +214,18 @@ export default function Composer({
             <button
               onClick={() => fileInput.current?.click()}
               className="rounded-lg p-2 text-muted transition hover:bg-raised hover:text-ink"
-              aria-label="Adjuntar archivo"
-              title="Imágenes, PDF o texto"
+              aria-label="Adjuntar de la galería"
+              title="Fotos, vídeos, PDF o texto"
             >
               <Icon.Paperclip width={17} height={17} />
+            </button>
+            <button
+              onClick={() => cameraInput.current?.click()}
+              className="rounded-lg p-2 text-muted transition hover:bg-raised hover:text-ink"
+              aria-label="Escanear con la cámara"
+              title="Escanear con la cámara"
+            >
+              <Icon.Camera width={17} height={17} />
             </button>
 
             {/* Velocidad */}

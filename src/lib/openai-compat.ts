@@ -67,11 +67,22 @@ function toMessages(
 
   for (const turn of turns) {
     const images = (turn.attachments ?? []).filter((a) => a.kind === "image" && a.data);
+    const videos = (turn.attachments ?? []).filter((a) => a.kind === "video");
     const texts = (turn.attachments ?? [])
       .filter((a) => a.kind === "text" && a.data)
       .map((a) => `<archivo nombre="${a.name}">\n${a.data}\n</archivo>`);
 
-    const written = [...texts, turn.content].filter(Boolean).join("\n\n") || "(sin texto)";
+    const written =
+      [
+        ...texts,
+        ...videos.map(
+          (a) =>
+            `(El usuario ha adjuntado el vídeo "${a.name}". Este motor no puede verlo: dilo con naturalidad y pídele una captura.)`,
+        ),
+        turn.content,
+      ]
+        .filter(Boolean)
+        .join("\n\n") || "(sin texto)";
 
     if (turn.role === "user" && images.length && !vision) {
       out.push({

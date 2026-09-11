@@ -56,6 +56,7 @@ haciendo exactamente: *Pensando*, *Buscando en la web*, *Leyendo fuentes*,
 | `GOOGLE_API_KEY` | Chat, **búsqueda en Google con fuentes**, lectura de imágenes y PDF, creación de imágenes. Límite diario corto. | **Gratis**, sin tarjeta | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | `OPENROUTER_API_KEY` | Modelos abiertos variados, ~50 mensajes al día. Recambio. | **Gratis**, sin tarjeta | [openrouter.ai/keys](https://openrouter.ai/keys) |
 | `PRO_ACCESS_CODE` | Tu contraseña para desbloquear el plan Pro. | — | La inventas tú |
+| `UPSTASH_REDIS_REST_URL` + `_TOKEN` | Cuentas con correo y contraseña. Sin esto la app va sin registro. | **Gratis**, sin tarjeta | Vercel → Storage → Upstash Redis, o [console.upstash.com](https://console.upstash.com) |
 | `ANTHROPIC_API_KEY` | Motor alternativo. | De pago por uso, sin capa gratuita | [console.anthropic.com](https://console.anthropic.com) |
 
 No hace falta ponerlas aquí: desde **Ajustes**, dentro de la aplicación, se elige

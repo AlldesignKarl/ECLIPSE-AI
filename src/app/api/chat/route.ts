@@ -54,6 +54,11 @@ function toContentBlocks(turn: Turn): Anthropic.Beta.BetaContentBlockParam[] {
           data: file.data,
         },
       });
+    } else if (file.kind === "video") {
+      blocks.push({
+        type: "text",
+        text: `(El usuario ha adjuntado el vídeo "${file.name}". Este motor no puede verlo: dilo con naturalidad y pídele una captura del momento que le interese.)`,
+      });
     } else if (file.kind === "pdf") {
       blocks.push({
         type: "document",

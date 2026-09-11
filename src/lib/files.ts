@@ -11,6 +11,7 @@ export const MAX_FILE_BYTES = 3 * 1024 * 1024; // 3 MB por archivo
 /** Tope del conjunto de adjuntos, ya codificados. */
 export const MAX_TOTAL_ENCODED = 4_000_000;
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+const VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime", "video/mpeg", "video/3gpp"];
 
 const TEXT_EXTENSIONS =
   /\.(txt|md|markdown|csv|tsv|json|ya?ml|xml|html?|css|scss|jsx?|tsx?|py|rb|go|rs|java|kt|c|h|cpp|cs|php|sh|sql|ini|toml|env|log|srt|vtt)$/i;
@@ -29,6 +30,15 @@ export class FileTooLarge extends Error {}
 
 /** Convierte un archivo del navegador en algo que el modelo pueda leer. */
 export async function toAttachment(file: File): Promise<Attachment> {
+  // Los vídeos de móvil pesan muchísimo y la petición entera no puede pasar de
+  // 4,5 MB, así que casi siempre habrá que recortarlos antes.
+  if (file.type.startsWith("video/") && file.size > MAX_FILE_BYTES)
+    throw new FileTooLarge(
+      `"${file.name}" pesa ${humanSize(file.size)} y el máximo son ${Math.round(
+        MAX_FILE_BYTES / 1024 / 1024,
+      )} MB. Recorta el vídeo a unos segundos (o haz una captura del momento que te interesa) y vuelve a probar.`,
+    );
+
   if (file.size > MAX_FILE_BYTES)
     throw new FileTooLarge(
       `"${file.name}" pesa demasiado. El máximo por archivo son ${Math.round(
@@ -40,6 +50,15 @@ export async function toAttachment(file: File): Promise<Attachment> {
 
   if (IMAGE_TYPES.includes(file.type)) {
     return { ...base, kind: "image", data: base64FromBuffer(await file.arrayBuffer()) };
+  }
+
+  if (VIDEO_TYPES.includes(file.type) || /\.(mp4|webm|mov|m4v|3gp)$/i.test(file.name)) {
+    return {
+      ...base,
+      mime: VIDEO_TYPES.includes(file.type) ? file.type : "video/mp4",
+      kind: "video",
+      data: base64FromBuffer(await file.arrayBuffer()),
+    };
   }
 
   if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
@@ -64,7 +83,7 @@ export async function toAttachment(file: File): Promise<Attachment> {
   }
 
   throw new FileTooLarge(
-    `No puedo leer "${file.name}". Admito imágenes, PDF y archivos de texto o código.`,
+    `No puedo leer "${file.name}". Admito imágenes, vídeos cortos, PDF y archivos de texto o código.`,
   );
 }
 

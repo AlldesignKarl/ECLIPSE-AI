@@ -99,7 +99,7 @@ function toContents(turns: Turn[]): Content[] {
     const parts: Part[] = [];
 
     for (const file of turn.attachments ?? []) {
-      if (file.kind === "image" || file.kind === "pdf") {
+      if (file.kind === "image" || file.kind === "pdf" || file.kind === "video") {
         parts.push({
           inlineData: {
             mimeType: file.kind === "pdf" ? "application/pdf" : file.mime,

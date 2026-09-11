@@ -55,7 +55,9 @@ export default function MessageItem({
                       className="h-8 w-8 rounded object-cover"
                     />
                   ) : (
-                    <span className="text-[10px] font-semibold uppercase">{a.kind}</span>
+                    <span className="text-[10px] font-semibold uppercase">
+                      {a.kind === "pdf" ? "PDF" : a.kind === "video" ? "VID" : "TXT"}
+                    </span>
                   )}
                   <span className="max-w-[160px] truncate">{a.name}</span>
                 </div>

@@ -12,8 +12,8 @@ export interface Attachment {
   mime: string;
   size: number;
   /** Cómo se envía al modelo. */
-  kind: "image" | "pdf" | "text";
-  /** base64 sin cabecera `data:` para image/pdf; texto plano para `text`. */
+  kind: "image" | "pdf" | "text" | "video";
+  /** base64 sin cabecera `data:` para image/pdf/video; texto plano para `text`. */
   data: string;
 }
 

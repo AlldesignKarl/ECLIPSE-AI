@@ -20,6 +20,9 @@ interface Props {
   onUpgrade: () => void;
   onGithub: () => void;
   onSettings: () => void;
+  /** Correo de la sesión abierta, si la app lleva cuentas. */
+  user?: string | null;
+  onSignOut?: () => void;
 }
 
 export default function Sidebar({
@@ -36,6 +39,8 @@ export default function Sidebar({
   onUpgrade,
   onGithub,
   onSettings,
+  user = null,
+  onSignOut,
 }: Props) {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -201,7 +206,7 @@ export default function Sidebar({
         </nav>
 
         {/* Pie */}
-        <div className="space-y-1 border-t border-line-soft p-3">
+        <div className="space-y-1 border-t border-line-soft p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {plan === "free" ? (
             <button
               onClick={onUpgrade}
@@ -238,6 +243,22 @@ export default function Sidebar({
             <Icon.Settings width={16} height={16} />
             Ajustes
           </button>
+
+          {user && (
+            <div className="mt-1 border-t border-line-soft pt-2">
+              <div className="flex items-center gap-2.5 px-3 py-1.5">
+                <Icon.User width={16} height={16} className="shrink-0 text-faint" />
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">{user}</span>
+              </div>
+              <button
+                onClick={onSignOut}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-faint transition hover:bg-panel hover:text-ink"
+              >
+                <Icon.LogOut width={16} height={16} />
+                Cerrar sesión
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>

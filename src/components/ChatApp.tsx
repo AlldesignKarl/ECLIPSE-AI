@@ -48,7 +48,13 @@ const EMPTY_CAPS: Capabilities = {
   proCodeConfigured: false,
 };
 
-export default function ChatApp() {
+interface ChatAppProps {
+  /** Correo de quien ha entrado, o null si la app va sin cuentas. */
+  user?: string | null;
+  onSignOut?: () => void;
+}
+
+export default function ChatApp({ user = null, onSignOut }: ChatAppProps) {
   /* ------------------------------ Estado ------------------------------ */
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -601,6 +607,12 @@ export default function ChatApp() {
           setGithubOpen(true);
         }}
         onSettings={() => setSettingsOpen(true)}
+        user={user}
+        onSignOut={async () => {
+          await fetch("/api/auth", { method: "DELETE" }).catch(() => {});
+          setSidebar(false);
+          onSignOut?.();
+        }}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">

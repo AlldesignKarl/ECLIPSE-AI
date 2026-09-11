@@ -156,3 +156,29 @@ export const Pin = (p: P) => (
     <path d="M12 12.3V20" />
   </svg>
 );
+
+export const ChevronLeft = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+);
+
+export const Camera = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2a1.5 1.5 0 0 0 1.26-.69l.7-1.08A1.5 1.5 0 0 1 9.92 4.5h4.16a1.5 1.5 0 0 1 1.26.73l.7 1.08A1.5 1.5 0 0 0 17.3 7h2.2A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" />
+    <circle cx="12" cy="13" r="3.4" />
+  </svg>
+);
+
+export const LogOut = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M16 17l5-5-5-5M21 12H10" />
+  </svg>
+);
+
+export const User = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="8" r="3.6" />
+    <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+  </svg>
+);
