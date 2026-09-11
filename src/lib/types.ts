@@ -78,7 +78,8 @@ export type Status =
   | "escribiendo"
   | "generando_imagen"
   | "generando_video"
-  | "programando";
+  | "programando"
+  | "esperando";
 
 export const STATUS_LABEL: Record<Status, string> = {
   idle: "",
@@ -91,4 +92,5 @@ export const STATUS_LABEL: Record<Status, string> = {
   generando_imagen: "Creando la imagen",
   generando_video: "Generando el vídeo",
   programando: "Escribiendo código",
+  esperando: "Sin cuota ahora mismo, reintentando solo",
 };

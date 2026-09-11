@@ -27,7 +27,7 @@ export function chatModel(): string {
  */
 let resolvedModel: string | null = null;
 
-async function pickModel(key: string): Promise<string | null> {
+async function pickModel(key: string, preferLite = false): Promise<string | null> {
   try {
     const res = await fetch(`${BASE}/models`, { headers: { "x-goog-api-key": key } });
     if (!res.ok) return null;
@@ -45,7 +45,11 @@ async function pickModel(key: string): Promise<string | null> {
       .map((m) => (m.name as string).replace(/^models\//, ""))
       .filter((n) => n.startsWith("gemini") && !/embedding|image|tts|audio|live|vision/.test(n));
 
-    // "flash" es el que más cuota gratuita tiene, así que va primero.
+    // "flash" es el que más cuota gratuita tiene, así que va primero. Cuando
+    // nos hemos quedado sin cuota, buscamos el "lite", que suele tener más.
+    if (preferLite) {
+      return names.find((n) => n.includes("lite")) ?? names.find((n) => n.includes("flash")) ?? null;
+    }
     return names.find((n) => n.includes("flash") && !n.includes("lite")) ?? names[0] ?? null;
   } catch {
     return null;
@@ -113,6 +117,8 @@ export interface GeminiEvent {
   text?: string;
   sources?: { url: string; title?: string; domainHint?: string }[];
   searching?: boolean;
+  /** Segundos que vamos a esperar antes de reintentar por falta de cuota. */
+  waiting?: number;
 }
 
 interface Chunk {
@@ -128,13 +134,23 @@ interface Chunk {
   error?: { message?: string };
 }
 
-async function readError(res: Response): Promise<string> {
+/** Google dice en el error cuántos segundos hay que esperar. Le hacemos caso. */
+function retryDelaySeconds(detail: string): number | null {
+  const match = detail.match(/retryDelay"?\s*[:=]\s*"?(\d+(?:\.\d+)?)s/i);
+  if (match) return Math.ceil(Number(match[1]));
+  const loose = detail.match(/(\d+(?:\.\d+)?)\s*s(?:econds?)?\b/i);
+  return loose ? Math.ceil(Number(loose[1])) : null;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function readError(res: Response): Promise<{ message: string; raw: string }> {
   const raw = await res.text().catch(() => "");
   try {
     const json = JSON.parse(raw) as { error?: { message?: string } };
-    return json.error?.message || raw.slice(0, 300);
+    return { message: json.error?.message || raw.slice(0, 300), raw };
   } catch {
-    return raw.slice(0, 300) || `HTTP ${res.status}`;
+    return { message: raw.slice(0, 300) || `HTTP ${res.status}`, raw };
   }
 }
 
@@ -178,16 +194,17 @@ export async function* streamChat(opts: {
 
   const wanted = resolvedModel ?? chatModel();
   let res = await open(wanted);
-  let firstError = "";
+  let last = { message: "", raw: "" };
+  const pinned = Boolean(process.env.GEMINI_MODEL);
 
   // Modelo retirado o desconocido. Google suele decir en el propio mensaje de
   // error cuál hay que usar ahora, así que le hacemos caso; y si no, le
   // preguntamos qué modelos tiene esta cuenta. Reintentamos una sola vez.
   // Si el usuario ha fijado GEMINI_MODEL a mano, respetamos su elección.
-  if ((res.status === 404 || res.status === 400) && !process.env.GEMINI_MODEL) {
-    firstError = await readError(res);
+  if ((res.status === 404 || res.status === 400) && !pinned) {
+    last = await readError(res);
 
-    const proposed = (firstError.match(/models\/[a-zA-Z0-9.\-]+/g) ?? [])
+    const proposed = (last.message.match(/models\/[a-zA-Z0-9.\-]+/g) ?? [])
       .map((m) => m.replace(/^models\//, ""))
       .find((name) => name !== wanted && name.startsWith("gemini"));
 
@@ -198,21 +215,50 @@ export async function* streamChat(opts: {
     }
   }
 
+  // Sin cuota. El límite de la capa gratuita es por minuto y Google dice
+  // cuántos segundos faltan, así que esperamos nosotros en vez de hacérselo
+  // esperar al usuario. Una sola vez: la función tiene 60 s de margen.
+  if (res.status === 429) {
+    last = await readError(res);
+    const wait = Math.min(retryDelaySeconds(last.raw) ?? 20, 25);
+
+    yield { waiting: wait };
+    await sleep(wait * 1000);
+    res = await open(resolvedModel ?? wanted);
+
+    // Sigue sin haber cuota: probamos con un modelo ligero, que suele tener más.
+    if (res.status === 429 && !pinned) {
+      last = await readError(res);
+      const lite = await pickModel(key, true);
+      if (lite && lite !== (resolvedModel ?? wanted)) {
+        resolvedModel = lite;
+        res = await open(lite);
+      }
+    }
+  }
+
   if (!res.ok) {
-    const detail = (await readError(res)) || firstError;
+    const detail = res.bodyUsed ? last : await readError(res);
+    const message = detail.message || last.message;
+
     if (res.status === 404 || res.status === 400)
       throw new GeminiError(
-        `Google no acepta el modelo "${resolvedModel ?? wanted}". Define GEMINI_MODEL con uno disponible en tu cuenta. (${detail})`,
+        `Google no acepta el modelo "${resolvedModel ?? wanted}". Define GEMINI_MODEL con uno disponible en tu cuenta. (${message})`,
         res.status,
       );
-    if (res.status === 429)
+
+    if (res.status === 429) {
+      const wait = retryDelaySeconds(detail.raw || last.raw);
       throw new GeminiError(
-        "Has llegado al límite de peticiones por minuto de la capa gratuita de Google. " +
-          "Espera un minuto y vuelve a intentarlo: no se ha gastado nada. Si te pasa a menudo, " +
-          "activa la facturación en tu cuenta de Google y el límite desaparece.",
+        "Sigues sin cuota en la capa gratuita de Google" +
+          (wait ? `: pide esperar unos ${wait} segundos más` : "") +
+          ". No se te ha cobrado nada. Si te pasa a menudo, activa la facturación en tu cuenta " +
+          "de Google (pagas solo por uso) y el límite desaparece.",
         429,
       );
-    throw new GeminiError(`Google: ${detail}`, res.status);
+    }
+
+    throw new GeminiError(`Google: ${message}`, res.status);
   }
 
   if (!res.body) throw new GeminiError("Google no ha devuelto contenido.");
@@ -299,7 +345,7 @@ export async function oneShot(
     }),
   });
 
-  if (!res.ok) throw new GeminiError(`Google: ${await readError(res)}`, res.status);
+  if (!res.ok) throw new GeminiError(`Google: ${(await readError(res)).message}`, res.status);
 
   const json = (await res.json()) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[];

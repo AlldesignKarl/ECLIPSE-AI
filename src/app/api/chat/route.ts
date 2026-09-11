@@ -229,6 +229,7 @@ async function runGoogle(
 
   for await (const event of stream) {
     if (opts.signal.aborted) break;
+    if (event.waiting) send({ t: "status", v: "esperando" });
     if (event.searching) send({ t: "status", v: "buscando" });
     if (event.sources) sources.push(...event.sources);
     if (event.text) {
