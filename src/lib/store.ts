@@ -47,6 +47,24 @@ export function storeAvailable(): boolean {
   return conn() !== null;
 }
 
+/**
+ * Qué mitad de la configuración falta. Sin esto, "las cuentas no están
+ * activadas" es un callejón sin salida: no se distingue una base de datos sin
+ * conectar de una conectada a medias. No se devuelve ningún valor ni nombre de
+ * variable, solo si está o no está.
+ */
+export function storeStatus(): { url: boolean; token: boolean } {
+  let url = false;
+  let token = false;
+
+  for (const [name, value] of Object.entries(process.env)) {
+    if (!value) continue;
+    if (/REST_(API_)?URL$/.test(name) && /^https?:\/\//.test(value)) url = true;
+    if (/REST_(API_)?TOKEN$/.test(name)) token = true;
+  }
+  return { url, token };
+}
+
 export class StoreError extends Error {}
 
 async function command<T>(...args: (string | number)[]): Promise<T> {

@@ -7,13 +7,20 @@ import {
   signIn,
   signUp,
 } from "@/lib/auth";
+import { storeStatus } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /** ¿Hay cuentas en este servidor y quién ha entrado? */
 export async function GET() {
-  return Response.json({ enabled: authAvailable(), user: await currentUser() });
+  const enabled = authAvailable();
+  return Response.json({
+    enabled,
+    user: await currentUser(),
+    // Para poder decirle al dueño qué le falta, sin enseñar ningún secreto.
+    ...(enabled ? {} : { falta: storeStatus() }),
+  });
 }
 
 /** Crear cuenta o entrar. */
