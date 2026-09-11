@@ -1,0 +1,45 @@
+"use client";
+
+/**
+ * El eclipse en grande, con una luz que recorre el anillo.
+ *
+ * La luz es un degradado cónico girando, recortado a la banda del anillo con
+ * una máscara radial: así el brillo viaja por el borde en lugar de girar todo
+ * el dibujo, que es lo que hace que parezca luz de verdad y no una rueda.
+ */
+export default function EclipseMark({ size = 180 }: { size?: number }) {
+  const flare =
+    "M 2 120 C 44 118.4, 62 114, 70 99 C 75.5 110.5, 75.5 129.5, 70 141 C 62 126, 44 121.6, 2 120 Z";
+
+  return (
+    <div
+      className="relative select-none"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      {/* Halo ambiental */}
+      <div className="eclipse-halo absolute inset-0 rounded-full" />
+
+      {/* La luz que recorre el anillo */}
+      <div className="eclipse-sweep absolute inset-0 rounded-full" />
+
+      <svg viewBox="0 0 240 240" width={size} height={size} className="relative">
+        <defs>
+          <linearGradient id="mark-flare" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0" />
+            <stop offset="22%" stopColor="#e8ecf3" stopOpacity="0.72" />
+            <stop offset="55%" stopColor="#f6f8fb" stopOpacity="0.96" />
+            <stop offset="100%" stopColor="#fff" stopOpacity="1" />
+          </linearGradient>
+        </defs>
+
+        <g className="eclipse-flares">
+          <path d={flare} fill="url(#mark-flare)" />
+          <path d={flare} fill="url(#mark-flare)" transform="translate(240,0) scale(-1,1)" />
+        </g>
+
+        <circle cx="120" cy="120" r="58" fill="none" stroke="#fff" strokeWidth="10" />
+      </svg>
+    </div>
+  );
+}

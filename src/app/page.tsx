@@ -1,5 +1,5 @@
-import ChatApp from "@/components/ChatApp";
+import Shell from "@/components/Shell";
 
 export default function Page() {
-  return <ChatApp />;
+  return <Shell />;
 }
