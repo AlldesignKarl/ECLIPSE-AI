@@ -36,6 +36,14 @@ async function readError(res: Response): Promise<string> {
   }
 }
 
+/** ¿Es un "no te queda cuota" del proveedor? */
+function isQuota(status: number, detail: string): boolean {
+  return (
+    status === 429 ||
+    /quota|rate.?limit|billing|limit: 0|insufficient/i.test(detail)
+  );
+}
+
 /* ------------------------------- Imágenes ------------------------------- */
 
 async function geminiImage(prompt: string): Promise<ImageResult> {
@@ -51,7 +59,16 @@ async function geminiImage(prompt: string): Promise<ImageResult> {
     }),
   });
 
-  if (!res.ok) throw new MediaError(`Google: ${await readError(res)}`, res.status);
+  if (!res.ok) {
+    const detail = await readError(res);
+    // El volcado de error de Google no le dice nada a nadie: lo traducimos.
+    throw new MediaError(
+      isQuota(res.status, detail)
+        ? "Tu cuenta de Google no tiene cuota gratuita para crear imágenes. No pasa nada: lo intento con el servicio gratuito."
+        : `Google no ha podido crear la imagen: ${detail.slice(0, 180)}`,
+      res.status,
+    );
+  }
 
   const json = (await res.json()) as {
     candidates?: {
@@ -77,6 +94,94 @@ async function geminiImage(prompt: string): Promise<ImageResult> {
   };
 }
 
+/**
+ * Pollinations: un servicio gratuito que no pide clave ni cuenta. Va limitado y
+ * a veces tarda, pero es la única forma de crear imágenes sin pagar ni
+ * registrarse en ningún sitio, así que lo usamos de red de seguridad.
+ */
+async function pollinationsImage(prompt: string): Promise<ImageResult> {
+  const url = new URL(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`);
+  url.searchParams.set("width", "1024");
+  url.searchParams.set("height", "1024");
+  url.searchParams.set("nologo", "true");
+  url.searchParams.set("model", process.env.POLLINATIONS_MODEL || "flux");
+  url.searchParams.set("seed", String(Math.floor(Math.random() * 1e9)));
+
+  let res: Response;
+  try {
+    // Vercel corta la función a los 60 s; dejamos margen para responder.
+    res = await fetch(url, { signal: AbortSignal.timeout(48000), cache: "no-store" });
+  } catch {
+    throw new MediaError(
+      "El servicio gratuito de imágenes no ha respondido a tiempo. Vuelve a intentarlo en un minuto.",
+      504,
+    );
+  }
+
+  if (!res.ok)
+    throw new MediaError(
+      res.status === 429
+        ? "El servicio gratuito de imágenes está saturado ahora mismo. Prueba otra vez en un par de minutos."
+        : `El servicio gratuito de imágenes ha fallado (${res.status}). Inténtalo de nuevo.`,
+      res.status,
+    );
+
+  const mime = res.headers.get("content-type") ?? "";
+  if (!mime.startsWith("image/"))
+    throw new MediaError("El servicio gratuito de imágenes no ha devuelto una imagen.", 502);
+
+  const bytes = Buffer.from(await res.arrayBuffer());
+  if (bytes.byteLength < 1024)
+    throw new MediaError("El servicio gratuito de imágenes ha devuelto una imagen vacía.", 502);
+
+  return {
+    dataUrl: `data:${mime.split(";")[0]};base64,${bytes.toString("base64")}`,
+    provider: "pollinations/flux",
+    note: "Creada con el servicio gratuito, que va más justo de calidad y de velocidad.",
+  };
+}
+
+/**
+ * Cloudflare Workers AI: 10.000 "neuronas" al día gratis y sin tarjeta, que dan
+ * para cientos de imágenes. Necesita dos datos del panel de Cloudflare.
+ */
+function cloudflareConfigured(): boolean {
+  return Boolean(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN);
+}
+
+async function cloudflareImage(prompt: string): Promise<ImageResult> {
+  const model = process.env.CLOUDFLARE_IMAGE_MODEL || "@cf/black-forest-labs/flux-1-schnell";
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/${model}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+      },
+      body: JSON.stringify({ prompt, steps: 4 }),
+      signal: AbortSignal.timeout(48000),
+    },
+  );
+
+  if (!res.ok) throw new MediaError(`Cloudflare: ${await readError(res)}`, res.status);
+
+  // Según el modelo devuelve JSON con base64 o directamente los bytes.
+  const mime = res.headers.get("content-type") ?? "";
+  if (mime.startsWith("image/")) {
+    const bytes = Buffer.from(await res.arrayBuffer());
+    return {
+      dataUrl: `data:${mime.split(";")[0]};base64,${bytes.toString("base64")}`,
+      provider: `cloudflare/${model}`,
+    };
+  }
+
+  const json = (await res.json()) as { result?: { image?: string } };
+  const image = json.result?.image;
+  if (!image) throw new MediaError("Cloudflare no devolvió ninguna imagen.", 502);
+  return { dataUrl: `data:image/jpeg;base64,${image}`, provider: `cloudflare/${model}` };
+}
+
 async function openaiImage(prompt: string): Promise<ImageResult> {
   const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
   const res = await fetch("https://api.openai.com/v1/images/generations", {
@@ -98,17 +203,42 @@ async function openaiImage(prompt: string): Promise<ImageResult> {
   throw new MediaError("OpenAI no devolvió ninguna imagen.");
 }
 
+/** Siempre hay con qué: si no hay claves, queda el servicio gratuito sin clave. */
 export async function imageProviderAvailable(): Promise<boolean> {
-  return Boolean((await resolveGoogleKey()) || process.env.OPENAI_API_KEY);
+  return true;
 }
 
+/**
+ * Crea la imagen con el mejor proveedor disponible y, si ese se queda sin
+ * cuota, baja al siguiente. La última parada nunca falla por falta de clave:
+ * es el servicio gratuito. Así crear imágenes sigue funcionando aunque la
+ * cuenta de Google no tenga ni un hueco libre, que es lo normal.
+ */
 export async function generateImage(prompt: string): Promise<ImageResult> {
-  if (await resolveGoogleKey()) return geminiImage(prompt);
-  if (process.env.OPENAI_API_KEY) return openaiImage(prompt);
-  throw new MediaError(
-    "No hay proveedor de imágenes configurado. Añade GOOGLE_API_KEY (Gemini) o OPENAI_API_KEY.",
-    503,
-  );
+  const attempts: (() => Promise<ImageResult>)[] = [];
+
+  if (await resolveGoogleKey()) attempts.push(() => geminiImage(prompt));
+  if (process.env.OPENAI_API_KEY) attempts.push(() => openaiImage(prompt));
+  if (cloudflareConfigured()) attempts.push(() => cloudflareImage(prompt));
+  attempts.push(() => pollinationsImage(prompt));
+
+  let last: unknown;
+  for (const attempt of attempts) {
+    try {
+      return await attempt();
+    } catch (err) {
+      last = err;
+      const status = err instanceof MediaError ? err.status : 500;
+      const detail = err instanceof Error ? err.message : "";
+      // Sin cuota o caído: probamos con el siguiente. Un fallo distinto
+      // (petición mal formada, contenido rechazado) sí se le cuenta al usuario.
+      if (!isQuota(status, detail) && status < 500) throw err;
+    }
+  }
+
+  throw last instanceof Error
+    ? last
+    : new MediaError("No se ha podido crear la imagen. Inténtalo de nuevo.", 502);
 }
 
 /* -------------------------------- Vídeo --------------------------------- */

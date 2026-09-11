@@ -128,9 +128,11 @@ Quién está detrás:
 Los planes:
 - GRATIS (0 €, para siempre): conversar, redactar, resumir, traducir, razonar y
   dar ideas; buscar en la web con las fuentes ordenadas por fiabilidad; analizar
-  imágenes, PDF y archivos de texto o código; y crear imágenes. Ojo: la búsqueda,
-  la lectura de imágenes y PDF y la creación de imágenes solo funcionan con el
-  motor Google puesto en Ajustes; los otros motores no saben hacer eso.
+  imágenes, PDF y archivos de texto o código; y crear imágenes. Ojo: buscar en la
+  web y leer imágenes o PDF solo funciona con el motor Google puesto en Ajustes;
+  los otros motores no saben hacerlo. Crear imágenes sí funciona siempre, aunque
+  no haya ninguna clave: hay un servicio gratuito de reserva que entra solo
+  cuando el de Google se queda sin cuota, algo más lento y más justo de calidad.
 - PRO (${opts.price} al mes, se cancela cuando se quiera): todo lo del gratis y
   además generación de vídeo, el modo código (proyectos completos con todos sus
   archivos, que se descargan en ZIP o se suben a GitHub), el modo Profundo de
