@@ -57,6 +57,15 @@ haciendo exactamente: *Pensando*, *Buscando en la web*, *Leyendo fuentes*,
 | `OPENROUTER_API_KEY` | Modelos abiertos variados, ~50 mensajes al día. Recambio. | **Gratis**, sin tarjeta | [openrouter.ai/keys](https://openrouter.ai/keys) |
 | `PRO_ACCESS_CODE` | Tu contraseña para desbloquear el plan Pro. | — | La inventas tú |
 | `UPSTASH_REDIS_REST_URL` + `_TOKEN` | Cuentas con correo y contraseña. Sin esto la app va sin registro. | **Gratis**, sin tarjeta | Vercel → Storage → Upstash Redis, o [console.upstash.com](https://console.upstash.com) |
+
+> **Si las cuentas no se activan**, abre `/api/auth` en tu propio dominio. Cuando
+> están apagadas responde además `falta: { url, token }`, que dice cuál de las dos
+> claves no ha llegado al despliegue. Los dos en `false` casi siempre significan
+> que la base de datos está conectada a otro proyecto —fácil de hacer si tienes
+> varias cuentas de Vercel—; la solución es copiar las dos variables a mano en el
+> proyecto correcto, el que tiene el dominio que estás abriendo. Y recuerda que
+> las variables de entorno solo entran en despliegues **nuevos**: después de
+> añadirlas hay que redesplegar.
 | `ANTHROPIC_API_KEY` | Motor alternativo. | De pago por uso, sin capa gratuita | [console.anthropic.com](https://console.anthropic.com) |
 
 No hace falta ponerlas aquí: desde **Ajustes**, dentro de la aplicación, se elige
