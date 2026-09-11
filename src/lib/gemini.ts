@@ -17,7 +17,7 @@ export function googleKey(): string {
 }
 
 export function chatModel(): string {
-  return process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  return process.env.GEMINI_MODEL || "gemini-3.6-flash";
 }
 
 /**
@@ -36,17 +36,17 @@ async function pickModel(key: string): Promise<string | null> {
       models?: { name?: string; supportedGenerationMethods?: string[] }[];
     };
 
-    const usable = (json.models ?? [])
-      .filter((m) => m.name && (m.supportedGenerationMethods ?? []).includes("generateContent"))
+    const all = (json.models ?? []).filter((m) => m.name);
+    const chat = all.filter((m) => (m.supportedGenerationMethods ?? []).includes("generateContent"));
+
+    // Si ninguno declara generateContent, no nos quedamos sin nada: los
+    // modelos nuevos pueden anunciar métodos distintos.
+    const names = (chat.length ? chat : all)
       .map((m) => (m.name as string).replace(/^models\//, ""))
-      .filter(
-        (n) =>
-          n.startsWith("gemini") &&
-          !/embedding|image|tts|audio|live|vision/.test(n),
-      );
+      .filter((n) => n.startsWith("gemini") && !/embedding|image|tts|audio|live|vision/.test(n));
 
     // "flash" es el que más cuota gratuita tiene, así que va primero.
-    return usable.find((n) => n.includes("flash") && !n.includes("lite")) ?? usable[0] ?? null;
+    return names.find((n) => n.includes("flash") && !n.includes("lite")) ?? names[0] ?? null;
   } catch {
     return null;
   }
@@ -178,11 +178,20 @@ export async function* streamChat(opts: {
 
   const wanted = resolvedModel ?? chatModel();
   let res = await open(wanted);
+  let firstError = "";
 
-  // Modelo desconocido: buscamos uno válido y reintentamos una sola vez.
+  // Modelo retirado o desconocido. Google suele decir en el propio mensaje de
+  // error cuál hay que usar ahora, así que le hacemos caso; y si no, le
+  // preguntamos qué modelos tiene esta cuenta. Reintentamos una sola vez.
   // Si el usuario ha fijado GEMINI_MODEL a mano, respetamos su elección.
-  if (res.status === 404 && !process.env.GEMINI_MODEL) {
-    const alternative = await pickModel(key);
+  if ((res.status === 404 || res.status === 400) && !process.env.GEMINI_MODEL) {
+    firstError = await readError(res);
+
+    const proposed = (firstError.match(/models\/[a-zA-Z0-9.\-]+/g) ?? [])
+      .map((m) => m.replace(/^models\//, ""))
+      .find((name) => name !== wanted && name.startsWith("gemini"));
+
+    const alternative = proposed ?? (await pickModel(key));
     if (alternative && alternative !== wanted) {
       resolvedModel = alternative;
       res = await open(alternative);
@@ -190,11 +199,11 @@ export async function* streamChat(opts: {
   }
 
   if (!res.ok) {
-    const detail = await readError(res);
-    if (res.status === 404)
+    const detail = (await readError(res)) || firstError;
+    if (res.status === 404 || res.status === 400)
       throw new GeminiError(
-        `Google no reconoce el modelo "${wanted}". Cambia la variable GEMINI_MODEL por uno disponible en tu cuenta. (${detail})`,
-        404,
+        `Google no acepta el modelo "${resolvedModel ?? wanted}". Define GEMINI_MODEL con uno disponible en tu cuenta. (${detail})`,
+        res.status,
       );
     if (res.status === 429)
       throw new GeminiError(
