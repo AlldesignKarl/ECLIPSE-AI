@@ -1,3 +1,5 @@
+import { googleKeyFromEnv, resolveGoogleKey } from "./keys";
+
 /**
  * Generación de imagen y vídeo. Se apoya en proveedores externos configurables
  * por variables de entorno para que la app funcione con lo que tengas a mano.
@@ -21,7 +23,7 @@ export interface ImageResult {
 }
 
 function googleKey() {
-  return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "";
+  return googleKeyFromEnv();
 }
 
 async function readError(res: Response): Promise<string> {
@@ -37,7 +39,7 @@ async function readError(res: Response): Promise<string> {
 /* ------------------------------- Imágenes ------------------------------- */
 
 async function geminiImage(prompt: string): Promise<ImageResult> {
-  const key = googleKey();
+  const key = await resolveGoogleKey();
   const model = process.env.GEMINI_IMAGE_MODEL || "gemini-3-pro-image-preview";
 
   const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
@@ -96,12 +98,12 @@ async function openaiImage(prompt: string): Promise<ImageResult> {
   throw new MediaError("OpenAI no devolvió ninguna imagen.");
 }
 
-export function imageProviderAvailable(): boolean {
-  return Boolean(googleKey() || process.env.OPENAI_API_KEY);
+export async function imageProviderAvailable(): Promise<boolean> {
+  return Boolean((await resolveGoogleKey()) || process.env.OPENAI_API_KEY);
 }
 
 export async function generateImage(prompt: string): Promise<ImageResult> {
-  if (googleKey()) return geminiImage(prompt);
+  if (await resolveGoogleKey()) return geminiImage(prompt);
   if (process.env.OPENAI_API_KEY) return openaiImage(prompt);
   throw new MediaError(
     "No hay proveedor de imágenes configurado. Añade GOOGLE_API_KEY (Gemini) o OPENAI_API_KEY.",
@@ -111,8 +113,8 @@ export async function generateImage(prompt: string): Promise<ImageResult> {
 
 /* -------------------------------- Vídeo --------------------------------- */
 
-export function videoProviderAvailable(): boolean {
-  return Boolean(googleKey());
+export async function videoProviderAvailable(): Promise<boolean> {
+  return Boolean(await resolveGoogleKey());
 }
 
 /** Arranca la generación y devuelve el identificador de la operación. */
@@ -120,7 +122,7 @@ export async function startVideo(
   prompt: string,
   aspectRatio = "16:9",
 ): Promise<{ operation: string }> {
-  const key = googleKey();
+  const key = await resolveGoogleKey();
   if (!key)
     throw new MediaError(
       "El vídeo necesita GOOGLE_API_KEY (modelo Veo) en las variables de entorno.",
@@ -151,7 +153,7 @@ export interface VideoStatus {
 }
 
 export async function pollVideo(operation: string): Promise<VideoStatus> {
-  const key = googleKey();
+  const key = await resolveGoogleKey();
   const res = await fetch(`${GEMINI_BASE}/${operation}`, {
     headers: { "x-goog-api-key": key },
   });
@@ -177,7 +179,7 @@ export async function pollVideo(operation: string): Promise<VideoStatus> {
 
 /** Descarga el vídeo con la clave del servidor (nunca se expone al navegador). */
 export async function fetchVideoBytes(uri: string): Promise<Response> {
-  const key = googleKey();
+  const key = await resolveGoogleKey();
   if (!uri.startsWith(GEMINI_BASE) && !uri.startsWith("https://generativelanguage.googleapis.com"))
     throw new MediaError("URI de vídeo no permitida.", 400);
 

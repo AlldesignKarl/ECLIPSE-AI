@@ -1,3 +1,4 @@
+import { googleKeyFromEnv } from "./keys";
 import { looksLikeDomain } from "./sources";
 import type { Attachment, Speed } from "./types";
 
@@ -12,11 +13,7 @@ import type { Attachment, Speed } from "./types";
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 export function googleKey(): string {
-  return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "";
-}
-
-export function geminiAvailable(): boolean {
-  return Boolean(googleKey());
+  return googleKeyFromEnv();
 }
 
 export function chatModel(): string {
@@ -150,9 +147,11 @@ export async function* streamChat(opts: {
   turns: Turn[];
   speed: Speed;
   webSearch: boolean;
+  /** Clave resuelta por quien llama (variable de entorno o dispositivo). */
+  key: string;
   signal?: AbortSignal;
 }): AsyncGenerator<GeminiEvent> {
-  const key = googleKey();
+  const key = opts.key;
   if (!key)
     throw new GeminiError(
       "Falta GOOGLE_API_KEY. Consíguela gratis en https://aistudio.google.com/apikey",
@@ -273,9 +272,12 @@ export async function* streamChat(opts: {
 }
 
 /** Una respuesta corta y sin streaming. Se usa para titular conversaciones. */
-export async function oneShot(prompt: string, maxOutputTokens = 40): Promise<string> {
-  const key = googleKey();
-  if (!key) throw new GeminiError("Falta GOOGLE_API_KEY.", 503);
+export async function oneShot(
+  prompt: string,
+  key: string,
+  maxOutputTokens = 40,
+): Promise<string> {
+  if (!key) throw new GeminiError("Falta la clave de Google.", 503);
 
   const res = await fetch(`${BASE}/models/${resolvedModel ?? chatModel()}:generateContent`, {
     method: "POST",

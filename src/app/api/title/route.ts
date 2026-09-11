@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getClient, MODEL } from "@/lib/anthropic";
 import { oneShot } from "@/lib/gemini";
+import { resolveGoogleKey } from "@/lib/keys";
 import { TITLE_PROMPT } from "@/lib/prompts";
 import { activeProvider } from "@/lib/provider";
 
@@ -15,12 +16,13 @@ export async function POST(req: NextRequest) {
   const { text } = (await req.json().catch(() => ({}))) as { text?: string };
   if (!text?.trim()) return Response.json({ title: "Nueva conversación" });
 
-  const provider = activeProvider();
+  const provider = await activeProvider();
   const snippet = text.slice(0, 1500);
 
   try {
     if (provider === "google") {
-      return Response.json({ title: clean(await oneShot(`${TITLE_PROMPT}\n\n${snippet}`)) });
+      const key = await resolveGoogleKey();
+      return Response.json({ title: clean(await oneShot(`${TITLE_PROMPT}\n\n${snippet}`, key)) });
     }
 
     if (provider === "anthropic") {

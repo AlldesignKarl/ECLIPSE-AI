@@ -6,7 +6,7 @@ import EclipseLogo from "./EclipseLogo";
 import GithubDialog, { type GithubStatus } from "./GithubDialog";
 import * as Icon from "./Icons";
 import MessageItem from "./MessageItem";
-import SettingsDialog, { type Capabilities } from "./SettingsDialog";
+import SettingsDialog, { type Capabilities, type KeySource } from "./SettingsDialog";
 import Sidebar from "./Sidebar";
 import ThinkingBar from "./ThinkingBar";
 import UpgradeDialog, { type Billing } from "./UpgradeDialog";
@@ -64,6 +64,7 @@ export default function ChatApp() {
   const [caps, setCaps] = useState<Capabilities>(EMPTY_CAPS);
   const [providerLabel, setProviderLabel] = useState("comprobando…");
   const [billing, setBilling] = useState<Billing>({ enabled: false, price: "10,00 €" });
+  const [keySource, setKeySource] = useState<KeySource>("ninguna");
   const [github, setGithub] = useState<GithubStatus>({
     connected: false,
     user: null,
@@ -107,11 +108,13 @@ export default function ChatApp() {
           capabilities?: Capabilities;
           providerLabel?: string;
           billing?: Billing;
+          keySource?: KeySource;
         }) => {
           if (d.plan) setPlan(d.plan);
           if (d.capabilities) setCaps(d.capabilities);
           if (d.providerLabel) setProviderLabel(d.providerLabel);
           if (d.billing) setBilling(d.billing);
+          if (d.keySource) setKeySource(d.keySource);
         },
       )
       .catch(() => {});
@@ -285,6 +288,7 @@ export default function ChatApp() {
         if (!res.ok) {
           const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
           if (data.code === "pro_required") setUpgradeOpen(true);
+          if (data.code === "no_key") setSettingsOpen(true);
           throw new Error(data.error ?? `Error ${res.status}`);
         }
 
@@ -740,6 +744,18 @@ export default function ChatApp() {
         plan={plan}
         capabilities={caps}
         providerLabel={providerLabel}
+        keySource={keySource}
+        onKeyChange={(source) => {
+          setKeySource(source);
+          // Con la clave puesta cambia lo que la aplicación puede hacer.
+          void fetch("/api/pro")
+            .then((r) => r.json())
+            .then((d: { capabilities?: Capabilities; providerLabel?: string }) => {
+              if (d.capabilities) setCaps(d.capabilities);
+              if (d.providerLabel) setProviderLabel(d.providerLabel);
+            })
+            .catch(() => {});
+        }}
         showThinking={prefs.showThinking}
         onShowThinking={(showThinking) => setPrefs((p) => ({ ...p, showThinking }))}
         onClearAll={() => {

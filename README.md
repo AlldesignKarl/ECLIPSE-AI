@@ -64,6 +64,14 @@ día. Para uso personal sobran; si te pasas, la aplicación te lo dice y basta c
 esperar un momento. El **vídeo (Veo) no entra en lo gratuito**: necesita una
 cuenta de Google con facturación activada.
 
+La clave se puede poner de dos maneras:
+
+- **Variable de entorno** en el hosting: vale para todo el que entre en la app.
+- **Desde la propia app**: menú → *Ajustes* → *Conecta la IA*. Se comprueba con
+  Google y se guarda en una cookie `HttpOnly` de ese navegador. Útil cuando
+  configurar el panel del hosting desde el móvil se hace cuesta arriba, o para
+  probar sin tocar el despliegue. La variable de entorno siempre manda.
+
 ### 2. Despliega (recomendado: Vercel, se hace desde el móvil)
 
 1. Entra en [vercel.com](https://vercel.com) e inicia sesión con GitHub.

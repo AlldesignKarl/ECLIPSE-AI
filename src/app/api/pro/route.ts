@@ -6,6 +6,7 @@ import {
   proCodeMatches,
 } from "@/lib/plan-server";
 import { imageProviderAvailable, videoProviderAvailable } from "@/lib/media";
+import { googleKeySource } from "@/lib/keys";
 import { activeProvider, providerLabel } from "@/lib/provider";
 import { priceLabel, stripeAvailable } from "@/lib/stripe";
 
@@ -13,16 +14,17 @@ export const runtime = "nodejs";
 
 /** Estado actual: plan y qué capacidades están realmente configuradas. */
 export async function GET() {
-  const provider = activeProvider();
+  const provider = await activeProvider();
   return Response.json({
     plan: await currentPlan(),
     provider,
     providerLabel: providerLabel(provider),
     billing: { enabled: stripeAvailable(), price: priceLabel() },
+    keySource: await googleKeySource(),
     capabilities: {
       chat: provider !== null,
-      image: imageProviderAvailable(),
-      video: videoProviderAvailable(),
+      image: await imageProviderAvailable(),
+      video: await videoProviderAvailable(),
       github: true,
       proCodeConfigured: Boolean(process.env.PRO_ACCESS_CODE),
     },

@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { getClient, humanError, MODEL, tuning } from "@/lib/anthropic";
 import { GeminiError, streamChat } from "@/lib/gemini";
+import { resolveGoogleKey } from "@/lib/keys";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { activeProvider } from "@/lib/provider";
@@ -222,6 +223,7 @@ async function runGoogle(
     turns: opts.body.messages,
     speed: opts.speed,
     webSearch: opts.wantsWeb,
+    key: await resolveGoogleKey(),
     signal: opts.signal,
   });
 
@@ -265,12 +267,13 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "No hay mensajes que responder." }, { status: 400 });
   }
 
-  const provider = activeProvider();
+  const provider = await activeProvider();
   if (!provider) {
     return Response.json(
       {
         error:
-          "No hay ningún motor de IA configurado. Añade GOOGLE_API_KEY (gratis, en aistudio.google.com/apikey) o ANTHROPIC_API_KEY.",
+          "Todavía no has puesto la clave de la IA. Ábrela en Ajustes (las tres rayitas) y pega ahí tu clave gratuita de Google: la consigues en aistudio.google.com/apikey.",
+        code: "no_key",
       },
       { status: 503 },
     );

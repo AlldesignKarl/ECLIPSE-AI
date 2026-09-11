@@ -1,4 +1,4 @@
-import { geminiAvailable } from "./gemini";
+import { googleKeyAvailable } from "./keys";
 
 export type Provider = "google" | "anthropic";
 
@@ -7,14 +7,15 @@ export type Provider = "google" | "anthropic";
  * gratuita: así la aplicación funciona sin tarjeta. Con AI_PROVIDER se puede
  * forzar uno concreto si están configurados los dos.
  */
-export function activeProvider(): Provider | null {
+export async function activeProvider(): Promise<Provider | null> {
   const forced = (process.env.AI_PROVIDER || "").toLowerCase();
   const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
+  const hasGoogle = await googleKeyAvailable();
 
-  if (forced === "google" && geminiAvailable()) return "google";
+  if (forced === "google" && hasGoogle) return "google";
   if (forced === "anthropic" && hasAnthropic) return "anthropic";
 
-  if (geminiAvailable()) return "google";
+  if (hasGoogle) return "google";
   if (hasAnthropic) return "anthropic";
   return null;
 }
