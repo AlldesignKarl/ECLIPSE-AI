@@ -67,7 +67,7 @@ export default function Welcome({ plan, onPick }: Props) {
 
       {plan === "free" && (
         <p className="mt-6 text-center text-[11.5px] text-faint">
-          Con el plan Pro se añaden la generación de vídeo y el modo Profundo.
+          Con el plan Pro se añaden la creación de bots y el modo Profundo.
         </p>
         )}
       </div>

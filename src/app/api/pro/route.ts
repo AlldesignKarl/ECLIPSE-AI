@@ -6,7 +6,7 @@ import {
   proEsRegalado,
   proCodeMatches,
 } from "@/lib/plan-server";
-import { imageProviderAvailable, videoProviderAvailable } from "@/lib/media";
+import { imageProviderAvailable } from "@/lib/media";
 import { keySources, preferredEngine } from "@/lib/keys";
 import { activeProvider, providerLabel } from "@/lib/provider";
 import { priceLabelLive, stripeAvailable } from "@/lib/stripe";
@@ -27,7 +27,6 @@ export async function GET() {
     capabilities: {
       chat: provider !== null,
       image: await imageProviderAvailable(),
-      video: await videoProviderAvailable(),
       proCodeConfigured: Boolean(process.env.PRO_ACCESS_CODE),
     },
   });

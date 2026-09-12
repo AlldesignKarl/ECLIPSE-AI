@@ -10,8 +10,8 @@
 
 <p align="center">
   Un asistente de IA que responde cualquier pregunta, busca en la web priorizando
-  universidades y publicaciones científicas, lee tus archivos y crea imágenes y
-  vídeo.
+  universidades y publicaciones científicas, lee tus archivos, crea imágenes y
+  construye bots.
 </p>
 
 ---
@@ -32,7 +32,8 @@
 **Plan Pro**
 
 - Todo lo anterior, más:
-- **Generación de vídeo** (Veo).
+- **Modo Bot**: bots de Discord, Telegram y otros, con todos sus archivos y los
+  pasos para arrancarlos. Se ven en un panel y se descargan en ZIP.
 - **Modo Profundo** (máximo razonamiento) y **respuestas aceleradas**.
 
 ## Cómo se ve
@@ -74,14 +75,13 @@ el motor y se pega la clave, que se guarda en una cookie `HttpOnly` del navegado
 Si pones varias, se prueban en este orden — `groq`, `google`, `openrouter`,
 `anthropic` — y se puede fijar una con `AI_PROVIDER`.
 
-Con `GOOGLE_API_KEY` funciona todo menos el vídeo: es el único motor que busca en
+Con `GOOGLE_API_KEY` funciona todo: es el único motor que busca en
 la web y lee imágenes. Con `GROQ_API_KEY` se conversa y se programa mucho más
 rato antes de topar con el límite, pero sin búsqueda ni archivos adjuntos.
 
 **Los límites de la capa gratuita de Google** son de peticiones por minuto y por
 día. Para uso personal sobran; si te pasas, la aplicación te lo dice y basta con
-esperar un momento. El **vídeo (Veo) no entra en lo gratuito**: necesita una
-cuenta de Google con facturación activada.
+esperar un momento.
 
 La clave se puede poner de dos maneras:
 
@@ -146,7 +146,7 @@ src/
     page.tsx              Punto de entrada
     api/
       chat/               Streaming SSE: razonamiento, búsqueda y texto
-      image/  video/      Generación de imagen y vídeo
+      image/              Generación de imagen
       pro/                Activación del plan (cookie firmada con HMAC)
       billing/            Pago con Stripe: checkout, confirmación y portal
       title/              Titula la conversación automáticamente
@@ -180,8 +180,6 @@ src/
 - El bucle de herramientas del servidor puede pausarse (`pause_turn`) en búsquedas
   largas; la ruta de chat lo reanuda automáticamente hasta 4 veces.
 - Las funciones declaran 60 s de máximo, que es el tope del plan gratuito de Vercel.
-  El vídeo no se ve afectado porque la espera se hace desde el navegador, pero una
-  respuesta en modo *Profundo* con muchas búsquedas puede cortarse al llegar al
   límite. Si te pasa a menudo, sube `maxDuration` en `src/app/api/*/route.ts` (hace
   falta un plan de pago de Vercel, o alojarlo tú).
 

@@ -43,7 +43,7 @@ const MODES: {
   { id: "chat", label: "Chat", icon: Icon.Sparkle, pro: false, hint: "Conversación general" },
   { id: "search", label: "Investigar", icon: Icon.Search, pro: false, hint: "Busca y contrasta fuentes" },
   { id: "image", label: "Imagen", icon: Icon.Image, pro: false, hint: "Crear una imagen" },
-  { id: "video", label: "Vídeo", icon: Icon.Video, pro: true, hint: "Generar vídeo" },
+  { id: "bot", label: "Bot", icon: Icon.Bot, pro: true, hint: "Bots de Discord, Telegram…" },
 ];
 
 const SPEEDS: { id: Speed; label: string; icon: typeof Icon.Bolt }[] = [
@@ -56,8 +56,7 @@ const PLACEHOLDERS: Record<Mode, string> = {
   chat: "Pregunta lo que quieras…",
   search: "¿Qué quieres que investigue?",
   image: "Describe la imagen que quieres crear…",
-  code: "Describe la aplicación que quieres construir…",
-  video: "Describe el vídeo: plano, movimiento, estilo…",
+  bot: "Describe el bot que quieres: qué plataforma y qué tiene que hacer…",
 };
 
 export default function Composer({
@@ -416,7 +415,7 @@ export default function Composer({
               ))}
             </div>
 
-            {mode !== "image" && mode !== "video" && (
+            {mode !== "image" && (
               <button
                 onClick={() => onDeepSearch(!deepSearch)}
                 title="Obligar a buscar en la web y priorizar fuentes académicas"

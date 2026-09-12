@@ -31,7 +31,7 @@ const FREE = [
 
 const PRO = [
   "Todo lo del plan Gratis",
-  "Generación de vídeo",
+  "Crear bots de Discord, Telegram y otros, listos para arrancar",
   "Modo Profundo con el máximo razonamiento",
   "Respuestas aceleradas (modo rápido)",
 ];

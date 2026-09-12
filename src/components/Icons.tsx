@@ -202,3 +202,12 @@ export const Play = (p: P) => (
     <path d="M7.5 5.2v13.6a.6.6 0 0 0 .93.5l10.3-6.8a.6.6 0 0 0 0-1l-10.3-6.8a.6.6 0 0 0-.93.5z" />
   </svg>
 );
+
+export const Bot = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="3.5" y="7.5" width="17" height="12" rx="3.5" />
+    <circle cx="9" cy="13" r="1.15" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="13" r="1.15" fill="currentColor" stroke="none" />
+    <path d="M12 4.5v3M9.5 16.5h5M2 12v3M22 12v3" />
+  </svg>
+);

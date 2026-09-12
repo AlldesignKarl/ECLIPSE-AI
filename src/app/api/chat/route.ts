@@ -31,7 +31,7 @@ interface Body {
   deepSearch?: boolean;
 }
 
-const PRO_MODES: Mode[] = ["code", "video"];
+const PRO_MODES: Mode[] = ["bot"];
 
 /** Lo que ECLIPSE tiene que saber de su propia app: precio, pago y clave. */
 async function product(provider: Awaited<ReturnType<typeof activeProvider>>) {

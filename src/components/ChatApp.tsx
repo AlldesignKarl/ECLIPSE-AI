@@ -44,7 +44,6 @@ import type {
 const EMPTY_CAPS: Capabilities = {
   chat: true,
   image: false,
-  video: false,
   proCodeConfigured: false,
 };
 
@@ -386,7 +385,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
 
       const text = bufferRef.current.text;
       const thinking = bufferRef.current.thinking;
-      const files = currentMode === "code" ? extractFiles(text) : [];
+      const files = currentMode === "bot" ? extractFiles(text) : [];
 
       const reply = makeMessage("assistant", text, {
         thinking: thinking || undefined,
@@ -454,74 +453,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
     [upsert],
   );
 
-  const runVideo = useCallback(
-    async (conversationId: string, prompt: string) => {
-      setStatus("generando_video");
-      try {
-        const start = await fetch("/api/video", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
-        });
-        const startData = (await start.json()) as {
-          operation?: string;
-          error?: string;
-          code?: string;
-        };
-        if (!start.ok || !startData.operation) {
-          if (startData.code === "pro_required") setUpgradeOpen(true);
-          throw new Error(startData.error ?? "No se pudo iniciar el vídeo.");
-        }
-
-        // Veo tarda: consultamos cada 8 segundos hasta 6 minutos.
-        const deadline = Date.now() + 6 * 60_000;
-        let uri: string | undefined;
-        while (Date.now() < deadline) {
-          await new Promise((r) => setTimeout(r, 8000));
-          const poll = await fetch(
-            `/api/video/status?operation=${encodeURIComponent(startData.operation)}`,
-          );
-          const pollData = (await poll.json()) as {
-            done?: boolean;
-            uri?: string;
-            error?: string;
-          };
-          if (pollData.error) throw new Error(pollData.error);
-          if (pollData.done && pollData.uri) {
-            uri = pollData.uri;
-            break;
-          }
-        }
-        if (!uri) throw new Error("El vídeo ha tardado demasiado. Inténtalo de nuevo.");
-
-        upsert(conversationId, (c) => ({
-          ...c,
-          messages: [
-            ...c.messages,
-            makeMessage("assistant", "Vídeo listo.", {
-              artifacts: [
-                { type: "video", url: `/api/video/file?uri=${encodeURIComponent(uri)}`, prompt },
-              ],
-            }),
-          ],
-        }));
-      } catch (err) {
-        upsert(conversationId, (c) => ({
-          ...c,
-          messages: [
-            ...c.messages,
-            makeMessage("assistant", "", {
-              error: err instanceof Error ? err.message : "No se pudo generar el vídeo.",
-            }),
-          ],
-        }));
-      } finally {
-        setStatus("idle");
-      }
-    },
-    [upsert],
-  );
-
   const send = useCallback(
     async (overrideText?: string, overrideMode?: Mode) => {
       const text = (overrideText ?? input).trim();
@@ -549,7 +480,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       if (conversation.messages.length === 0 && text) nameConversation(id, text);
 
       if (currentMode === "image") await runImage(id, text);
-      else if (currentMode === "video") await runVideo(id, text);
       else await runChat(id, history, currentMode);
     },
     [
@@ -561,7 +491,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       upsert,
       nameConversation,
       runImage,
-      runVideo,
       runChat,
     ],
   );

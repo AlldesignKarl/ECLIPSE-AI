@@ -26,12 +26,12 @@ export default function MessageItem({
   const [openThinking, setOpenThinking] = useState(false);
 
   /**
-   * En modo código el texto lleva los archivos dentro. Se enseña solo la
+   * En modo bot el texto lleva los archivos dentro. Se enseña solo la
    * explicación: los archivos ya tienen su panel justo debajo, y así la
    * conversación se lee de un vistazo en vez de a base de scroll.
    */
   const enCodigo = streaming
-    ? message.mode === "code"
+    ? message.mode === "bot"
     : Boolean(message.artifacts?.some((a) => a.type === "code" && a.files?.length));
 
   const texto = useMemo(

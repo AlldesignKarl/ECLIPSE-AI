@@ -213,7 +213,7 @@ export default function Sidebar({
               <Icon.Sparkle width={17} height={17} className="text-pro" />
               <span className="flex-1">
                 <span className="block text-[13px] font-medium text-ink">Mejorar plan</span>
-                <span className="block text-[11px] text-muted">Vídeo, modo Profundo y velocidad</span>
+                <span className="block text-[11px] text-muted">Bots, modo Profundo y velocidad</span>
               </span>
             </button>
           ) : (

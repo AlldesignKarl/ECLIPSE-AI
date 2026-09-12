@@ -25,9 +25,9 @@ const CAPABILITIES = [
     text: "Describe lo que tienes en la cabeza y lo dibuja. Para una idea, una portada o una prueba rápida.",
   },
   {
-    icon: Icon.Sparkle,
-    title: "Escribe contigo",
-    text: "Redacta, resume, traduce, compara y te ayuda a pensar. Desde un correo hasta un trabajo largo, con el tono que le pidas.",
+    icon: Icon.Bot,
+    title: "Construye bots",
+    text: "Le dices qué quieres que haga tu bot de Discord o de Telegram y te lo monta entero, con sus archivos y los pasos para ponerlo en marcha.",
   },
 ];
 
@@ -43,7 +43,7 @@ const PREGUNTAS = [
   },
   {
     q: "¿Es gratis?",
-    a: "Sí. El plan Gratis no caduca y no pide tarjeta: conversar, buscar con fuentes, analizar archivos y crear imágenes están incluidos. El plan Pro añade la generación de vídeo, el modo Profundo y respuestas más rápidas.",
+    a: "Sí. El plan Gratis no caduca y no pide tarjeta: conversar, buscar con fuentes, analizar archivos y crear imágenes están incluidos. El plan Pro añade la creación de bots, el modo Profundo y respuestas más rápidas.",
   },
   {
     q: "¿Hay que registrarse?",
@@ -64,7 +64,7 @@ const PREGUNTAS = [
 ];
 
 const FREE = ["Conversación sin límite", "Búsqueda con fuentes", "Imágenes, PDF y archivos", "Crear imágenes"];
-const PRO = ["Todo lo del plan Gratis", "Generación de vídeo", "Modo Profundo", "Respuestas aceleradas"];
+const PRO = ["Todo lo del plan Gratis", "Crear bots de Discord y Telegram", "Modo Profundo", "Respuestas aceleradas"];
 
 export default function Landing({ onEnter, price }: Props) {
   return (

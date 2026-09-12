@@ -1,7 +1,7 @@
 export type Plan = "free" | "pro";
 
 /** Modos de trabajo del asistente. Los `pro` requieren plan Pro. */
-export type Mode = "chat" | "search" | "image" | "code" | "video";
+export type Mode = "chat" | "search" | "image" | "bot";
 
 export type Speed = "rapido" | "equilibrado" | "profundo";
 
@@ -79,7 +79,6 @@ export type Status =
   | "procesando"
   | "escribiendo"
   | "generando_imagen"
-  | "generando_video"
   | "programando"
   | "esperando";
 
@@ -92,7 +91,6 @@ export const STATUS_LABEL: Record<Status, string> = {
   procesando: "Procesando",
   escribiendo: "Escribiendo",
   generando_imagen: "Creando la imagen",
-  generando_video: "Generando el vídeo",
   programando: "Escribiendo código",
   esperando: "Sin cuota ahora mismo, reintentando solo",
 };

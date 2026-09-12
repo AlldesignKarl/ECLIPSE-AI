@@ -77,7 +77,6 @@ interface Props {
 export interface Capabilities {
   chat: boolean;
   image: boolean;
-  video: boolean;
   proCodeConfigured: boolean;
 }
 
@@ -323,11 +322,6 @@ export default function SettingsDialog({
               ok={capabilities.image}
               label="Generación de imágenes"
               hint="Falta GOOGLE_API_KEY u OPENAI_API_KEY"
-            />
-            <Row
-              ok={capabilities.video}
-              label="Generación de vídeo (Pro)"
-              hint="Veo necesita una cuenta de Google de pago"
             />
             <Row
               ok={capabilities.proCodeConfigured}
