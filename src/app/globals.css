@@ -375,22 +375,23 @@ body {
   background: conic-gradient(
     from var(--sweep-angle),
     transparent 0deg,
-    transparent 300deg,
-    rgba(255, 255, 255, 0.28) 336deg,
-    rgba(255, 255, 255, 0.95) 354deg,
+    transparent 286deg,
+    rgba(214, 226, 255, 0.34) 320deg,
+    rgba(255, 255, 255, 0.9) 348deg,
+    rgba(255, 255, 255, 1) 357deg,
     rgba(255, 255, 255, 0) 360deg
   );
   /* Justo por fuera del anillo: su borde exterior cae en el 52,5 %. */
   -webkit-mask: radial-gradient(
     circle,
-    transparent 50%,
-    #000 55%,
-    #000 60%,
-    transparent 68%
+    transparent 49%,
+    #000 54%,
+    #000 62%,
+    transparent 72%
   );
-  mask: radial-gradient(circle, transparent 50%, #000 55%, #000 60%, transparent 68%);
+  mask: radial-gradient(circle, transparent 49%, #000 54%, #000 62%, transparent 72%);
   animation: sweep-run 4.5s linear infinite;
-  filter: blur(3px);
+  filter: blur(3.5px);
 }
 
 @keyframes sweep-run {
@@ -404,9 +405,10 @@ body {
   .eclipse-sweep {
     background: conic-gradient(
       transparent 0deg,
-      transparent 300deg,
-      rgba(255, 255, 255, 0.28) 336deg,
-      rgba(255, 255, 255, 0.95) 354deg,
+      transparent 286deg,
+      rgba(214, 226, 255, 0.34) 320deg,
+      rgba(255, 255, 255, 0.9) 348deg,
+      rgba(255, 255, 255, 1) 357deg,
       rgba(255, 255, 255, 0) 360deg
     );
     animation: eclipse-spin 4.5s linear infinite;
@@ -432,26 +434,29 @@ body {
   height: 265%;
   background: radial-gradient(
     circle at 50% 50%,
-    rgba(232, 240, 255, 0.3) 0%,
-    rgba(190, 175, 255, 0.15) 24%,
-    rgba(140, 160, 220, 0.05) 42%,
-    transparent 62%
+    rgba(228, 238, 255, 0.78) 0%,
+    rgba(176, 158, 255, 0.44) 22%,
+    rgba(126, 146, 232, 0.18) 40%,
+    rgba(90, 110, 200, 0.06) 54%,
+    transparent 66%
   );
-  filter: blur(20px);
+  filter: blur(22px);
   animation: bloom-breathe 7s ease-in-out infinite;
 }
 
 .eclipse-rim {
-  width: 150%;
-  height: 150%;
+  width: 165%;
+  height: 165%;
   background: radial-gradient(
     circle at 50% 50%,
-    transparent 32%,
-    rgba(236, 242, 255, 0.28) 40%,
-    rgba(207, 214, 230, 0.1) 50%,
-    transparent 64%
+    transparent 28%,
+    rgba(243, 247, 255, 0.52) 38%,
+    rgba(196, 206, 242, 0.22) 50%,
+    transparent 68%
   );
-  filter: blur(10px);
+  /* Muy desenfocado a propósito: si se enfoca se ve un donut gris, y lo que
+     queremos es corona, no aro. */
+  filter: blur(17px);
   animation: bloom-breathe 7s ease-in-out infinite reverse;
 }
 
@@ -460,18 +465,19 @@ body {
   height: 24%;
   background: radial-gradient(
     ellipse at 50% 50%,
-    rgba(248, 250, 255, 0.4) 0%,
-    rgba(205, 216, 248, 0.14) 24%,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(202, 214, 255, 0.34) 22%,
+    rgba(150, 170, 240, 0.1) 40%,
     transparent 60%
   );
-  filter: blur(7px);
+  filter: blur(8px);
   animation: streak-breathe 7s ease-in-out infinite;
 }
 
 @keyframes bloom-breathe {
   0%,
   100% {
-    opacity: 0.7;
+    opacity: 0.85;
     transform: scale(0.97);
   }
   50% {
@@ -483,11 +489,11 @@ body {
 @keyframes streak-breathe {
   0%,
   100% {
-    opacity: 0.55;
+    opacity: 0.72;
     transform: scaleX(0.92);
   }
   50% {
-    opacity: 0.95;
+    opacity: 1;
     transform: scaleX(1.06);
   }
 }
