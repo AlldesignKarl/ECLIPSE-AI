@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import EclipseLogo from "./EclipseLogo";
 import * as Icon from "./Icons";
 import { groupByDate } from "@/lib/storage";
@@ -42,6 +42,13 @@ export default function Sidebar({
 }: Props) {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
+  const [borrando, setBorrando] = useState<string | null>(null);
+
+  // Al cerrar el menú se olvida la pregunta: si no, al volver a abrirlo
+  // aparecería un "¿Borrarla?" que nadie acaba de pedir.
+  useEffect(() => {
+    if (!open) setBorrando(null);
+  }, [open]);
   const [draft, setDraft] = useState("");
 
   const groups = useMemo(() => {
@@ -164,7 +171,7 @@ export default function Sidebar({
                             setEditing(c.id);
                             setDraft(c.title);
                           }}
-                          className={`flex w-full items-center gap-2 rounded-lg py-2 pl-3 pr-14 text-left text-[13px] transition ${
+                          className={`flex w-full items-center gap-2 rounded-lg py-2 pl-3 pr-16 text-left text-[13px] transition ${
                             active
                               ? "bg-raised text-ink"
                               : "text-muted hover:bg-panel hover:text-ink"
@@ -174,24 +181,48 @@ export default function Sidebar({
                         </button>
                       )}
 
-                      {editing !== c.id && (
-                        <div className="absolute right-1.5 top-1/2 hidden -translate-y-1/2 gap-0.5 group-hover:flex">
+                      {/* Siempre a la vista: en un móvil no hay ratón sobre el
+                          que pasar, y así estos botones no existían. */}
+                      {editing !== c.id && borrando !== c.id && (
+                        <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 gap-0.5">
                           <button
                             onClick={() => {
                               setEditing(c.id);
                               setDraft(c.title);
                             }}
-                            className="rounded-md p-1.5 text-faint transition hover:bg-line hover:text-ink"
-                            aria-label="Renombrar"
+                            className="rounded-md p-2 text-faint transition hover:bg-line hover:text-ink"
+                            aria-label={`Renombrar ${c.title}`}
                           >
-                            <Icon.Copy width={13} height={13} />
+                            <Icon.Pencil width={14} height={14} />
                           </button>
                           <button
-                            onClick={() => onDelete(c.id)}
-                            className="rounded-md p-1.5 text-faint transition hover:bg-line hover:text-danger"
-                            aria-label="Eliminar"
+                            onClick={() => setBorrando(c.id)}
+                            className="rounded-md p-2 text-faint transition hover:bg-line hover:text-danger"
+                            aria-label={`Eliminar ${c.title}`}
                           >
-                            <Icon.Trash width={13} height={13} />
+                            <Icon.Trash width={14} height={14} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Un toque de más no puede costar una conversación. */}
+                      {borrando === c.id && (
+                        <div className="absolute inset-0 flex items-center gap-1.5 rounded-lg bg-panel px-2.5">
+                          <span className="flex-1 truncate text-[12px] text-muted">¿Borrarla?</span>
+                          <button
+                            onClick={() => {
+                              onDelete(c.id);
+                              setBorrando(null);
+                            }}
+                            className="rounded-md px-2 py-1 text-[12px] font-medium text-danger transition hover:bg-danger/10"
+                          >
+                            Borrar
+                          </button>
+                          <button
+                            onClick={() => setBorrando(null)}
+                            className="rounded-md px-2 py-1 text-[12px] text-faint transition hover:text-ink"
+                          >
+                            No
                           </button>
                         </div>
                       )}

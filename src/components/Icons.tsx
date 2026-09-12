@@ -211,3 +211,10 @@ export const Bot = (p: P) => (
     <path d="M12 4.5v3M9.5 16.5h5M2 12v3M22 12v3" />
   </svg>
 );
+
+export const Pencil = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 20h4.2l9.4-9.4a2.4 2.4 0 0 0-3.4-3.4L4.8 16.6z" />
+    <path d="M13.8 6.6 17.4 10.2" />
+  </svg>
+);
