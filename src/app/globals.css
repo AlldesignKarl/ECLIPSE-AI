@@ -360,61 +360,6 @@ body {
  * La banda del anillo, en proporciones del propio dibujo: radio 58 y grosor 10
  * sobre un lienzo de 240. Sobre el radio de la caja (120) son el 44 % y el 52 %.
  */
-@property --sweep-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
-.eclipse-sweep {
-  /* La luz va por FUERA del anillo, no encima.
-     Encima no se vería: el anillo ya es blanco puro, así que pintar blanco
-     sobre blanco no cambia nada y lo único que asomaba era el borde, que sobre
-     el resplandor parecía una mancha gris. Por fuera es luz que se derrama, y
-     sobre el fondo oscuro siempre aclara. */
-  background: conic-gradient(
-    from var(--sweep-angle),
-    transparent 0deg,
-    transparent 286deg,
-    rgba(214, 226, 255, 0.34) 320deg,
-    rgba(255, 255, 255, 0.9) 348deg,
-    rgba(255, 255, 255, 1) 357deg,
-    rgba(255, 255, 255, 0) 360deg
-  );
-  /* Justo por fuera del anillo: su borde exterior cae en el 52,5 %. */
-  -webkit-mask: radial-gradient(
-    circle,
-    transparent 49%,
-    #000 54%,
-    #000 62%,
-    transparent 72%
-  );
-  mask: radial-gradient(circle, transparent 49%, #000 54%, #000 62%, transparent 72%);
-  animation: sweep-run 4.5s linear infinite;
-  filter: blur(3.5px);
-}
-
-@keyframes sweep-run {
-  to {
-    --sweep-angle: 360deg;
-  }
-}
-
-/* Respaldo para navegadores sin @property: gira el elemento entero. */
-@supports not (background: conic-gradient(from var(--sweep-angle), red, blue)) {
-  .eclipse-sweep {
-    background: conic-gradient(
-      transparent 0deg,
-      transparent 286deg,
-      rgba(214, 226, 255, 0.34) 320deg,
-      rgba(255, 255, 255, 0.9) 348deg,
-      rgba(255, 255, 255, 1) 357deg,
-      rgba(255, 255, 255, 0) 360deg
-    );
-    animation: eclipse-spin 4.5s linear infinite;
-  }
-}
-
 /* ---------- La luz de detrás del logo ----------
    Tres capas, que una sola se nota plana: un resplandor ancho que sale por
    detrás, un halo ceñido al anillo, y una franja horizontal que prolonga las
@@ -434,14 +379,14 @@ body {
   height: 265%;
   background: radial-gradient(
     circle at 50% 50%,
-    rgba(228, 238, 255, 0.78) 0%,
-    rgba(176, 158, 255, 0.44) 22%,
-    rgba(126, 146, 232, 0.18) 40%,
-    rgba(90, 110, 200, 0.06) 54%,
+    rgba(228, 238, 255, 0.56) 0%,
+    rgba(176, 158, 255, 0.32) 22%,
+    rgba(126, 146, 232, 0.13) 40%,
+    rgba(90, 110, 200, 0.05) 54%,
     transparent 66%
   );
   filter: blur(22px);
-  animation: bloom-breathe 7s ease-in-out infinite;
+  animation: luz-vaiven 13s ease-in-out infinite;
 }
 
 .eclipse-rim {
@@ -450,14 +395,16 @@ body {
   background: radial-gradient(
     circle at 50% 50%,
     transparent 28%,
-    rgba(243, 247, 255, 0.52) 38%,
-    rgba(196, 206, 242, 0.22) 50%,
+    rgba(243, 247, 255, 0.38) 38%,
+    rgba(196, 206, 242, 0.16) 50%,
     transparent 68%
   );
   /* Muy desenfocado a propósito: si se enfoca se ve un donut gris, y lo que
      queremos es corona, no aro. */
   filter: blur(17px);
-  animation: bloom-breathe 7s ease-in-out infinite reverse;
+  /* El halo sigue a la luz, pero se mueve la mitad: pegado al anillo, un
+     desplazamiento grande cantaría. */
+  animation: luz-vaiven-corto 13s ease-in-out infinite;
 }
 
 .eclipse-streak {
@@ -465,36 +412,55 @@ body {
   height: 24%;
   background: radial-gradient(
     ellipse at 50% 50%,
-    rgba(255, 255, 255, 0.88) 0%,
-    rgba(202, 214, 255, 0.34) 22%,
-    rgba(150, 170, 240, 0.1) 40%,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(202, 214, 255, 0.24) 22%,
+    rgba(150, 170, 240, 0.08) 40%,
     transparent 60%
   );
   filter: blur(8px);
-  animation: streak-breathe 7s ease-in-out infinite;
+  animation: luz-vaiven-franja 13s ease-in-out infinite;
 }
 
-@keyframes bloom-breathe {
+/* El vaivén: la luz cruza despacio de un lado a otro, como un foco lejano que
+   se mueve. Va y vuelve dentro del mismo ciclo (0 % y 100 % son el mismo sitio)
+   para que no dé un salto al reiniciarse, y `ease-in-out` la frena en los
+   extremos, que es lo que hace que parezca un movimiento y no un rebote.
+   El desplazamiento es en % del propio resplandor, que ya es enorme, así que
+   un 7 % mueve bastante en pantalla. */
+@keyframes luz-vaiven {
   0%,
   100% {
-    opacity: 0.85;
-    transform: scale(0.97);
+    transform: translateX(-7%) scale(1);
+    opacity: 0.82;
   }
   50% {
+    transform: translateX(7%) scale(1.04);
     opacity: 1;
-    transform: scale(1.06);
   }
 }
 
-@keyframes streak-breathe {
+@keyframes luz-vaiven-corto {
   0%,
   100% {
-    opacity: 0.72;
-    transform: scaleX(0.92);
+    transform: translateX(-3.5%);
+    opacity: 0.8;
   }
   50% {
+    transform: translateX(3.5%);
     opacity: 1;
-    transform: scaleX(1.06);
+  }
+}
+
+/* La franja se estira hacia el lado al que va la luz, como una sombra larga. */
+@keyframes luz-vaiven-franja {
+  0%,
+  100% {
+    transform: translateX(-4%) scaleX(0.94);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateX(4%) scaleX(1.04);
+    opacity: 1;
   }
 }
 
@@ -534,7 +500,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eclipse-sweep,
   .eclipse-halo,
   .eclipse-flares {
     animation: none;

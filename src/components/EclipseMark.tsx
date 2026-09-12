@@ -1,11 +1,10 @@
 "use client";
 
 /**
- * El eclipse en grande, con una luz que recorre el anillo.
+ * El eclipse en grande, con luz saliendo por detrás.
  *
- * La luz es un degradado cónico girando, recortado a la banda del anillo con
- * una máscara radial: así el brillo viaja por el borde en lugar de girar todo
- * el dibujo, que es lo que hace que parezca luz de verdad y no una rueda.
+ * La luz no gira: cruza muy despacio de un lado a otro, como un foco lejano
+ * que se mueve. Girar llamaba demasiado la atención y competía con el logo.
  */
 export default function EclipseMark({
   size = 180,
@@ -37,9 +36,6 @@ export default function EclipseMark({
       ) : (
         <div className="eclipse-halo absolute inset-0 rounded-full" />
       )}
-
-      {/* La luz que recorre el anillo */}
-      <div className="eclipse-sweep absolute inset-0 rounded-full" />
 
       <svg viewBox="0 0 240 240" width={size} height={size} className="relative z-10">
         <defs>
