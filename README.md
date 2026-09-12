@@ -2,6 +2,10 @@
   <img src="public/logo.png" width="120" alt="ECLIPSE" />
 </p>
 
+<p align="center">
+  <a href="https://eclipse-ia.vercel.app"><strong>eclipse-ia.vercel.app</strong></a>
+</p>
+
 <h1 align="center">ECLIPSE AI</h1>
 
 <p align="center">
