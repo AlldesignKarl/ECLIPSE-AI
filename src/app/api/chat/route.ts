@@ -8,7 +8,7 @@ import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { activeProvider, providerSearches } from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
-import { priceLabel, stripeAvailable } from "@/lib/stripe";
+import { priceLabelLive, stripeAvailable } from "@/lib/stripe";
 import { SSE_HEADERS, sseChunk, type StreamEvent } from "@/lib/sse";
 import type { Attachment, Mode, Speed } from "@/lib/types";
 
@@ -34,8 +34,8 @@ interface Body {
 const PRO_MODES: Mode[] = ["code", "video"];
 
 /** Lo que ECLIPSE tiene que saber de su propia app: precio y forma de pago. */
-function product() {
-  return { price: priceLabel(), billingEnabled: stripeAvailable() };
+async function product() {
+  return { price: await priceLabelLive(), billingEnabled: stripeAvailable() };
 }
 const MAX_CONTINUATIONS = 4;
 
@@ -148,7 +148,7 @@ async function runAnthropic(
         {
           type: "text",
           text: buildSystemPrompt({
-            ...product(),
+            ...(await product()),
             mode: opts.mode,
             plan: opts.plan,
             web: opts.wantsWeb,
@@ -238,7 +238,7 @@ async function runGoogle(
 
   const stream = streamChat({
     system: buildSystemPrompt({
-      ...product(),
+      ...(await product()),
       mode: opts.mode,
       plan: opts.plan,
       web: opts.wantsWeb,
@@ -289,7 +289,7 @@ async function runCompat(
     key: await resolveKey(opts.provider),
     // Estos motores no navegan: se lo decimos para que no finja que ha buscado.
     system: buildSystemPrompt({
-      ...product(),
+      ...(await product()),
       mode: opts.mode,
       plan: opts.plan,
       web: false,

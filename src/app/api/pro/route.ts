@@ -8,7 +8,7 @@ import {
 import { imageProviderAvailable, videoProviderAvailable } from "@/lib/media";
 import { keySources, preferredEngine } from "@/lib/keys";
 import { activeProvider, providerLabel } from "@/lib/provider";
-import { priceLabel, stripeAvailable } from "@/lib/stripe";
+import { priceLabelLive, stripeAvailable } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
@@ -19,7 +19,7 @@ export async function GET() {
     plan: await currentPlan(),
     provider,
     providerLabel: providerLabel(provider),
-    billing: { enabled: stripeAvailable(), price: priceLabel() },
+    billing: { enabled: stripeAvailable(), price: await priceLabelLive() },
     keySources: await keySources(),
     engine: await preferredEngine(),
     capabilities: {

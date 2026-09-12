@@ -32,7 +32,46 @@ export function priceCents(): number {
 }
 
 export function priceLabel(): string {
-  return `${(priceCents() / 100).toFixed(2).replace(".", ",")} €`;
+  return format(priceCents(), process.env.PRO_CURRENCY || "eur");
+}
+
+function format(cents: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: currency.toUpperCase(),
+    }).format(cents / 100);
+  } catch {
+    return `${(cents / 100).toFixed(2).replace(".", ",")} €`;
+  }
+}
+
+/**
+ * El precio que se le enseña al usuario.
+ *
+ * Cuando el cobro usa una tarifa creada en el panel de Stripe, el importe vive
+ * allí: escribirlo también aquí es pedir que algún día la web anuncie un precio
+ * y Stripe cobre otro. Así que se pregunta, y se guarda un rato.
+ */
+let livePrice: { label: string; until: number } | null = null;
+
+export async function priceLabelLive(): Promise<string> {
+  const id = process.env.STRIPE_PRICE_ID;
+  if (!id || !stripeAvailable()) return priceLabel();
+
+  if (livePrice && livePrice.until > Date.now()) return livePrice.label;
+
+  try {
+    const price = await getStripe().prices.retrieve(id);
+    if (price.unit_amount == null) return priceLabel();
+
+    const label = format(price.unit_amount, price.currency);
+    livePrice = { label, until: Date.now() + 60 * 60 * 1000 };
+    return label;
+  } catch {
+    // Si Stripe no contesta, el precio de siempre antes que ninguno.
+    return priceLabel();
+  }
 }
 
 /** Lo que se cobra: un precio ya creado en Stripe, o uno definido aquí mismo. */
