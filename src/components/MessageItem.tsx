@@ -7,14 +7,13 @@ import Markdown from "./Markdown";
 import { proseOnly } from "@/lib/project";
 import ProjectPanel from "./ProjectPanel";
 import Sources from "./Sources";
-import type { GeneratedFile, Message } from "@/lib/types";
+import type { Message } from "@/lib/types";
 
 interface Props {
   message: Message;
   streaming?: boolean;
   showThinking: boolean;
   onRetry?: () => void;
-  onPushProject: (files: GeneratedFile[], title: string) => void;
 }
 
 export default function MessageItem({
@@ -22,7 +21,6 @@ export default function MessageItem({
   streaming,
   showThinking,
   onRetry,
-  onPushProject,
 }: Props) {
   const [copied, setCopied] = useState(false);
   const [openThinking, setOpenThinking] = useState(false);
@@ -169,7 +167,6 @@ export default function MessageItem({
                   key={i}
                   title={art.title ?? "proyecto"}
                   files={art.files}
-                  onPush={onPushProject}
                 />
               );
 

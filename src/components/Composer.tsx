@@ -43,7 +43,6 @@ const MODES: {
   { id: "chat", label: "Chat", icon: Icon.Sparkle, pro: false, hint: "Conversación general" },
   { id: "search", label: "Investigar", icon: Icon.Search, pro: false, hint: "Busca y contrasta fuentes" },
   { id: "image", label: "Imagen", icon: Icon.Image, pro: false, hint: "Crear una imagen" },
-  { id: "code", label: "Código", icon: Icon.Code, pro: true, hint: "Proyectos completos" },
   { id: "video", label: "Vídeo", icon: Icon.Video, pro: true, hint: "Generar vídeo" },
 ];
 

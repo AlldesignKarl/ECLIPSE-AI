@@ -28,7 +28,6 @@ export async function GET() {
       chat: provider !== null,
       image: await imageProviderAvailable(),
       video: await videoProviderAvailable(),
-      github: true,
       proCodeConfigured: Boolean(process.env.PRO_ACCESS_CODE),
     },
   });

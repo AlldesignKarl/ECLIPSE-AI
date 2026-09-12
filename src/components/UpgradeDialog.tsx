@@ -32,8 +32,6 @@ const FREE = [
 const PRO = [
   "Todo lo del plan Gratis",
   "Generación de vídeo",
-  "Modo código: proyectos completos, listos para ejecutar",
-  "Subir esos proyectos directamente a GitHub",
   "Modo Profundo con el máximo razonamiento",
   "Respuestas aceleradas (modo rápido)",
 ];

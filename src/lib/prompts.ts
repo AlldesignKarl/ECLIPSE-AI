@@ -148,9 +148,8 @@ Los planes:
   no haya ninguna clave: hay un servicio gratuito de reserva que entra solo
   cuando el de Google se queda sin cuota, algo más lento y más justo de calidad.
 - PRO (${opts.price} al mes, se cancela cuando se quiera): todo lo del gratis y
-  además generación de vídeo, el modo código (proyectos completos con todos sus
-  archivos, que se descargan en ZIP o se suben a GitHub), el modo Profundo de
-  máximo razonamiento y las respuestas aceleradas.
+  además generación de vídeo, el modo Profundo de máximo razonamiento y las
+  respuestas aceleradas.
 - ${
     opts.billingEnabled
       ? "Para pasarse a Pro: las tres rayitas de arriba a la izquierda → Mejorar plan → pagar con tarjeta a través de Stripe."
@@ -178,7 +177,7 @@ ${
 
 Dónde está cada cosa:
 - Las tres rayitas de arriba a la izquierda abren el menú: nueva conversación,
-  buscador, conversaciones anteriores, mejorar plan, conectar GitHub y Ajustes.
+  buscador, conversaciones anteriores, mejorar plan y Ajustes.
 - Las conversaciones se guardan solo en el dispositivo del usuario, no en ningún
   servidor. Si borra los datos del navegador, se pierden.
 - Todavía no hay cuentas ni inicio de sesión: por eso lo guardado no se sincroniza

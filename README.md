@@ -10,8 +10,8 @@
 
 <p align="center">
   Un asistente de IA que responde cualquier pregunta, busca en la web priorizando
-  universidades y publicaciones científicas, lee tus archivos y crea imágenes,
-  vídeo y proyectos de código completos.
+  universidades y publicaciones científicas, lee tus archivos y crea imágenes y
+  vídeo.
 </p>
 
 ---
@@ -27,22 +27,19 @@
   las fuentes ordenadas por fiabilidad, con una etiqueta que dice de qué tipo son.
 - Analizar **imágenes, PDF y archivos de texto o código** que subas.
 - **Crear imágenes** a partir de una descripción.
-- Redactar, resumir, traducir, dar ideas, programar cosas sueltas, razonar.
+- Redactar, resumir, traducir, dar ideas y razonar.
 
 **Plan Pro**
 
 - Todo lo anterior, más:
 - **Generación de vídeo** (Veo).
-- **Modo código**: proyectos completos, con todos los archivos, listos para ejecutar.
-  Se ven en un panel con árbol de archivos, se descargan en ZIP o se suben…
-- **…directamente a GitHub**, creando el repositorio si hace falta.
 - **Modo Profundo** (máximo razonamiento) y **respuestas aceleradas**.
 
 ## Cómo se ve
 
 Interfaz oscura pensada para el móvil. Arriba a la izquierda, el botón de
 las tres rayas abre el menú con las conversaciones anteriores, el buscador,
-el botón de nueva conversación, mejorar plan, GitHub y ajustes.
+el botón de nueva conversación, mejorar plan y ajustes.
 
 Mientras la IA trabaja, el logo del eclipse se anima y al lado se lee qué está
 haciendo exactamente: *Pensando*, *Buscando en la web*, *Leyendo fuentes*,
@@ -141,22 +138,6 @@ npm run dev                  # http://localhost:3000
 
 ---
 
-## Conectar GitHub
-
-Dos formas, la primera funciona sin configurar nada:
-
-1. **Token personal** — en GitHub: Settings → Developer settings → Personal access
-   tokens → *Fine-grained* o *classic* con permiso `repo`. Lo pegas en la app
-   (menú → GitHub). Se guarda en una cookie `HttpOnly` del servidor.
-2. **Entrar con GitHub** — crea una OAuth App con callback
-   `https://TU-DOMINIO/api/github/oauth/callback` y define `GITHUB_CLIENT_ID`
-   y `GITHUB_CLIENT_SECRET`.
-
-Con la cuenta conectada, cualquier proyecto que genere el modo código se sube en
-un solo commit (Git Data API), tanto a un repositorio existente como a uno nuevo.
-
----
-
 ## Cómo está hecho
 
 ```
@@ -166,7 +147,6 @@ src/
     api/
       chat/               Streaming SSE: razonamiento, búsqueda y texto
       image/  video/      Generación de imagen y vídeo
-      github/             Conexión, repositorios y push
       pro/                Activación del plan (cookie firmada con HMAC)
       billing/            Pago con Stripe: checkout, confirmación y portal
       title/              Titula la conversación automáticamente
@@ -178,7 +158,7 @@ src/
     anthropic.ts          Motor de Anthropic: cliente y velocidad → esfuerzo
     sources.ts            Clasificación de fiabilidad de fuentes
     prompts.ts            Instrucciones del sistema por modo
-    project.ts            Extrae los archivos de las respuestas de código
+    project.ts            Archivos de los proyectos guardados de antes
     storage.ts            Historial en el propio dispositivo
 ```
 

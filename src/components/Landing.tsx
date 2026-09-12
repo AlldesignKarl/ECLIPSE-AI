@@ -25,9 +25,9 @@ const CAPABILITIES = [
     text: "Describe lo que tienes en la cabeza y lo dibuja. Para una idea, una portada o una prueba rápida.",
   },
   {
-    icon: Icon.Code,
-    title: "Programa de verdad",
-    text: "Construye el proyecto archivo por archivo, delante de ti. Al terminar te lo entrega listo para abrir, descargar o subir a tu GitHub.",
+    icon: Icon.Sparkle,
+    title: "Escribe contigo",
+    text: "Redacta, resume, traduce, compara y te ayuda a pensar. Desde un correo hasta un trabajo largo, con el tono que le pidas.",
   },
 ];
 
@@ -39,11 +39,11 @@ const CAPABILITIES = [
 const PREGUNTAS = [
   {
     q: "¿Qué es ECLIPSE?",
-    a: "Un asistente de inteligencia artificial al que puedes preguntarle cualquier cosa. Responde, busca en la web cuando hace falta, lee las imágenes y los documentos que le pases, crea imágenes y escribe código.",
+    a: "Un asistente de inteligencia artificial al que puedes preguntarle cualquier cosa. Responde, busca en la web cuando hace falta, lee las imágenes y los documentos que le pases, crea imágenes y te ayuda a escribir.",
   },
   {
     q: "¿Es gratis?",
-    a: "Sí. El plan Gratis no caduca y no pide tarjeta: conversar, buscar con fuentes, analizar archivos y crear imágenes están incluidos. El plan Pro añade vídeo, proyectos de código completos con GitHub y respuestas más rápidas.",
+    a: "Sí. El plan Gratis no caduca y no pide tarjeta: conversar, buscar con fuentes, analizar archivos y crear imágenes están incluidos. El plan Pro añade la generación de vídeo, el modo Profundo y respuestas más rápidas.",
   },
   {
     q: "¿Hay que registrarse?",
@@ -64,7 +64,7 @@ const PREGUNTAS = [
 ];
 
 const FREE = ["Conversación sin límite", "Búsqueda con fuentes", "Imágenes, PDF y archivos", "Crear imágenes"];
-const PRO = ["Todo lo del plan Gratis", "Generación de vídeo", "Modo código con GitHub", "Modo Profundo", "Respuestas aceleradas"];
+const PRO = ["Todo lo del plan Gratis", "Generación de vídeo", "Modo Profundo", "Respuestas aceleradas"];
 
 export default function Landing({ onEnter, price }: Props) {
   return (

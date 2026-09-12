@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Composer from "./Composer";
 import EclipseLogo from "./EclipseLogo";
-import GithubDialog, { type GithubStatus } from "./GithubDialog";
 import * as Icon from "./Icons";
 import MessageItem from "./MessageItem";
 import SettingsDialog, {
@@ -35,7 +34,6 @@ import {
 import type {
   Attachment,
   Conversation,
-  GeneratedFile,
   Message,
   Mode,
   Plan,
@@ -47,7 +45,6 @@ const EMPTY_CAPS: Capabilities = {
   chat: true,
   image: false,
   video: false,
-  github: true,
   proCodeConfigured: false,
 };
 
@@ -83,19 +80,10 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
   const [billing, setBilling] = useState<Billing>({ enabled: false, price: "10,00 €" });
   const [keySources, setKeySources] = useState<KeySources>(EMPTY_KEY_SOURCES);
   const [engine, setEngine] = useState<Engine | null>(null);
-  const [github, setGithub] = useState<GithubStatus>({
-    connected: false,
-    user: null,
-    oauthAvailable: false,
-  });
 
   const [sidebar, setSidebar] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [githubOpen, setGithubOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [pendingPush, setPendingPush] = useState<{ files: GeneratedFile[]; title: string } | null>(
-    null,
-  );
   const [notice, setNotice] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -170,16 +158,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       )
       .catch(() => {});
 
-    void fetch("/api/github")
-      .then((r) => r.json())
-      .then((d: Partial<GithubStatus>) =>
-        setGithub({
-          connected: Boolean(d.connected),
-          user: d.user ?? null,
-          oauthAvailable: Boolean(d.oauthAvailable),
-        }),
-      )
-      .catch(() => {});
 
     const params = new URLSearchParams(window.location.search);
 
@@ -207,15 +185,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
     } else if (paid === "cancelado") {
       window.history.replaceState({}, "", "/");
       setNotice("Has salido del pago. No se ha cobrado nada.");
-    }
-
-    // Vuelta del login de GitHub.
-    if (params.get("github") === "ok") {
-      setNotice("Cuenta de GitHub conectada.");
-      window.history.replaceState({}, "", "/");
-    } else if (params.get("github") === "error") {
-      setNotice(`No se pudo conectar con GitHub: ${params.get("reason") ?? "error desconocido"}`);
-      window.history.replaceState({}, "", "/");
     }
   }, []);
 
@@ -639,15 +608,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
     if (accepted.length) setAttachments((list) => [...list, ...accepted].slice(0, 8));
   };
 
-  const requestPush = (files: GeneratedFile[], title: string) => {
-    if (plan !== "pro") {
-      setUpgradeOpen(true);
-      return;
-    }
-    setPendingPush({ files, title });
-    setGithubOpen(true);
-  };
-
   /* ------------------------------ Render ------------------------------ */
   const streamingMessage: Message | null =
     busy && (stream.text || stream.thinking)
@@ -669,16 +629,11 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         conversations={conversations}
         activeId={activeId}
         plan={plan}
-        githubUser={github.user?.login ?? null}
         onSelect={setActiveId}
         onNew={() => newConversation()}
         onDelete={deleteConversation}
         onRename={(id, title) => upsert(id, (c) => ({ ...c, title }))}
         onUpgrade={() => setUpgradeOpen(true)}
-        onGithub={() => {
-          setPendingPush(null);
-          setGithubOpen(true);
-        }}
         onSettings={() => setSettingsOpen(true)}
         onInicio={() => {
           setSidebar(false);
@@ -762,7 +717,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
                         ? retry
                         : undefined
                     }
-                    onPushProject={requestPush}
                   />
                 ))}
 
@@ -771,7 +725,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
                     message={streamingMessage}
                     streaming
                     showThinking={prefs.showThinking}
-                    onPushProject={requestPush}
                   />
                 )}
 
@@ -821,22 +774,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         proCodeConfigured={caps.proCodeConfigured}
         billing={billing}
         regalado={proRegalado}
-      />
-
-      <GithubDialog
-        open={githubOpen}
-        onClose={() => {
-          setGithubOpen(false);
-          setPendingPush(null);
-        }}
-        status={github}
-        onStatusChange={setGithub}
-        pending={pendingPush}
-        plan={plan}
-        onNeedPro={() => {
-          setGithubOpen(false);
-          setUpgradeOpen(true);
-        }}
       />
 
       <SettingsDialog

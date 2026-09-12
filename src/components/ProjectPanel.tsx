@@ -10,11 +10,16 @@ import type { GeneratedFile } from "@/lib/types";
 interface Props {
   title: string;
   files: GeneratedFile[];
-  onPush: (files: GeneratedFile[], title: string) => void;
 }
 
-/** Los archivos que ha generado la IA: verlos, descargarlos o subirlos a GitHub. */
-export default function ProjectPanel({ title, files, onPush }: Props) {
+/**
+ * Los archivos de un proyecto guardado: verlos y descargarlos.
+ *
+ * El modo código ya no existe, pero las conversaciones antiguas lo tienen
+ * dentro. Borrar esto dejaría un hueco donde antes había algo, así que se
+ * queda para que lo de ayer se siga pudiendo abrir.
+ */
+export default function ProjectPanel({ title, files }: Props) {
   const [selected, setSelected] = useState(0);
   const [zipping, setZipping] = useState(false);
   const [viendo, setViendo] = useState(false);
@@ -87,13 +92,6 @@ export default function ProjectPanel({ title, files, onPush }: Props) {
           >
             <Icon.Download width={13} height={13} />
             {zipping ? "Comprimiendo…" : "ZIP"}
-          </button>
-          <button
-            onClick={() => onPush(files, title)}
-            className="flex items-center gap-1.5 rounded-lg border border-line bg-raised px-2.5 py-1.5 text-[11.5px] text-ink transition hover:border-halo/40"
-          >
-            <Icon.Github width={13} height={13} />
-            GitHub
           </button>
         </div>
 

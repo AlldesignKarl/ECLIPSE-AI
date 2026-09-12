@@ -12,13 +12,11 @@ interface Props {
   conversations: Conversation[];
   activeId: string | null;
   plan: Plan;
-  githubUser: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onUpgrade: () => void;
-  onGithub: () => void;
   onSettings: () => void;
   onInicio: () => void;
   /** Correo de la sesión abierta, si la app lleva cuentas. */
@@ -32,13 +30,11 @@ export default function Sidebar({
   conversations,
   activeId,
   plan,
-  githubUser,
   onSelect,
   onNew,
   onDelete,
   onRename,
   onUpgrade,
-  onGithub,
   onSettings,
   onInicio,
   user = null,
@@ -217,7 +213,7 @@ export default function Sidebar({
               <Icon.Sparkle width={17} height={17} className="text-pro" />
               <span className="flex-1">
                 <span className="block text-[13px] font-medium text-ink">Mejorar plan</span>
-                <span className="block text-[11px] text-muted">Vídeo, código y velocidad</span>
+                <span className="block text-[11px] text-muted">Vídeo, modo Profundo y velocidad</span>
               </span>
             </button>
           ) : (
@@ -226,17 +222,6 @@ export default function Sidebar({
               <span className="text-[13px] font-medium text-ink">Plan Pro activo</span>
             </div>
           )}
-
-          <button
-            onClick={onGithub}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-muted transition hover:bg-panel hover:text-ink"
-          >
-            <Icon.Github width={16} height={16} />
-            <span className="flex-1 truncate text-left">
-              {githubUser ? `GitHub · ${githubUser}` : "Conectar GitHub"}
-            </span>
-            {githubUser && <span className="h-1.5 w-1.5 rounded-full bg-ok" />}
-          </button>
 
           <button
             onClick={onSettings}

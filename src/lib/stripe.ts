@@ -88,7 +88,7 @@ export function lineItem(): Stripe.Checkout.SessionCreateParams.LineItem {
       product_data: {
         name: "ECLIPSE Pro",
         description:
-          "Vídeo, proyectos de código con GitHub, modo Profundo y respuestas aceleradas.",
+          "Generación de vídeo, modo Profundo y respuestas aceleradas.",
       },
     },
   };

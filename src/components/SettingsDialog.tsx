@@ -78,7 +78,6 @@ export interface Capabilities {
   chat: boolean;
   image: boolean;
   video: boolean;
-  github: boolean;
   proCodeConfigured: boolean;
 }
 
