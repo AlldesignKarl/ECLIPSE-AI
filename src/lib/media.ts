@@ -231,9 +231,13 @@ export async function generateImage(prompt: string, anterior?: string): Promise<
 
   const attempts: (() => Promise<ImageResult>)[] = [];
 
+  // Cloudflare primero cuando está configurado. Antes mandaba Google, pero su
+  // capa gratuita casi nunca incluye crear imágenes: la llamada se iba a un
+  // error de cuota y el usuario se comía esa espera antes de que empezara el
+  // motor que sí iba a dibujar.
+  if (cloudflareConfigured()) attempts.push(() => cloudflareImage(encargo));
   if (await resolveGoogleKey()) attempts.push(() => geminiImage(encargo));
   if (process.env.OPENAI_API_KEY) attempts.push(() => openaiImage(encargo));
-  if (cloudflareConfigured()) attempts.push(() => cloudflareImage(encargo));
   attempts.push(() => pollinationsImage(encargo));
 
   let last: unknown;
