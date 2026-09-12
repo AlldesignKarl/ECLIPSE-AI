@@ -133,6 +133,33 @@ export default function Landing({ onEnter, price }: Props) {
         </div>
       </section>
 
+      {/* ---------------------------------------------------- Colaboración */}
+      <section className="mx-auto max-w-5xl px-5 pb-16">
+        <div className="relative overflow-hidden rounded-2xl border border-line-soft bg-panel/25 px-6 py-10 text-center sm:py-12">
+          {/* La misma luz del logo, muy bajita, para que la firma no quede plana */}
+          <div className="marca-luz pointer-events-none absolute inset-0" aria-hidden />
+
+          <div className="relative">
+            <div className="flex items-center justify-center gap-3">
+              <span className="h-px w-8 bg-line-soft sm:w-14" aria-hidden />
+              <span className="text-[10.5px] uppercase tracking-[0.24em] text-faint">
+                En colaboración con
+              </span>
+              <span className="h-px w-8 bg-line-soft sm:w-14" aria-hidden />
+            </div>
+
+            <p className="marca-firma mt-5 font-serif text-[32px] font-medium leading-none tracking-[-0.01em] text-ink sm:text-[44px]">
+              Alldesign<span className="italic">Karl</span>
+            </p>
+
+            <p className="mx-auto mt-4 max-w-md text-[13px] leading-relaxed text-muted">
+              Diseño y dirección de marca. La identidad de ECLIPSE —el eclipse, la tipografía y
+              esta luz— sale de su estudio.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ------------------------------------------------------- Honestidad */}
       <section className="mx-auto max-w-5xl px-5 pb-16">
         <div className="rounded-2xl border border-line-soft bg-panel/40 p-7 sm:p-9">

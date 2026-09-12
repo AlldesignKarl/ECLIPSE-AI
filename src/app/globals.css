@@ -491,6 +491,24 @@ body {
   }
 }
 
+/* ---------- La firma del estudio ---------- */
+.marca-luz {
+  background: radial-gradient(
+    60% 120% at 50% 55%,
+    rgba(176, 158, 255, 0.12),
+    rgba(126, 146, 232, 0.05) 45%,
+    transparent 72%
+  );
+}
+
+/* El nombre en blanco de verdad, con un poco de luz detrás: es una firma, y
+   una firma se ve mejor iluminada que a secas. */
+.marca-firma {
+  text-shadow:
+    0 0 24px rgba(210, 222, 255, 0.35),
+    0 0 60px rgba(150, 170, 240, 0.18);
+}
+
 /* ---------- Portada ---------- */
 .aurora {
   background:
