@@ -167,7 +167,9 @@ async function cloudflareImage(prompt: string): Promise<ImageResult> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
       },
-      body: JSON.stringify({ prompt, steps: 4 }),
+      // Flux-schnell admite hasta 8 pasos y cada paso se nota en el detalle.
+      // Aun a 8, una imagen sale por unas pocas de las 10.000 neuronas diarias.
+      body: JSON.stringify({ prompt, steps: 8 }),
       signal: AbortSignal.timeout(48000),
     },
   );
