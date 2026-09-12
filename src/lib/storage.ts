@@ -1,4 +1,4 @@
-import type { Conversation, Message } from "./types";
+import type { Conversation, Message, Mode } from "./types";
 
 const KEY = "eclipse.conversations.v1";
 const PREFS_KEY = "eclipse.prefs.v1";
@@ -120,4 +120,59 @@ export function groupByDate(list: Conversation[]): { label: string; items: Conve
   }
 
   return buckets.filter((b) => b.items.length > 0);
+}
+
+/* ------------------------- Respuesta a medias ------------------------- */
+
+const DRAFT_KEY = "eclipse.enCurso.v1";
+
+/**
+ * Lo que la IA llevaba escrito cuando se cortó.
+ *
+ * Al cambiar de aplicación, el móvil congela la página y a veces la descarta
+ * entera para liberar memoria. Al volver, la respuesta que iba por la mitad se
+ * había perdido sin dejar rastro. Guardándola según llega, lo escrito hasta
+ * ese momento sigue ahí cuando se vuelve.
+ */
+export interface EnCurso {
+  conversationId: string;
+  content: string;
+  thinking?: string;
+  mode?: Mode;
+  at: number;
+}
+
+export function saveEnCurso(draft: EnCurso): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* sin espacio: se pierde, que es lo que pasaba siempre */
+  }
+}
+
+export function loadEnCurso(): EnCurso | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+
+    const draft = JSON.parse(raw) as EnCurso;
+    if (!draft?.conversationId || !draft.content?.trim()) return null;
+
+    // Más de un día es de otra sesión y ya no le interesa a nadie.
+    if (Date.now() - draft.at > 24 * 60 * 60 * 1000) return null;
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+export function clearEnCurso(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* da igual */
+  }
 }

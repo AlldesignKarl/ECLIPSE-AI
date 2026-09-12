@@ -20,12 +20,15 @@ import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/li
 import { extractFiles, projectName } from "@/lib/project";
 import { readSSE } from "@/lib/sse";
 import {
+  clearEnCurso,
   DEFAULT_PREFS,
   emptyConversation,
   loadConversations,
+  loadEnCurso,
   loadPrefs,
   makeMessage,
   saveConversations,
+  saveEnCurso,
   savePrefs,
   type Prefs,
 } from "@/lib/storage";
@@ -110,6 +113,32 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
   /* --------------------------- Carga inicial --------------------------- */
   useEffect(() => {
     const stored = loadConversations();
+
+    // Una respuesta que se quedó a medias porque el móvil descartó la página:
+    // se recupera y se cuenta lo que pasó, en vez de desaparecer sin más.
+    // No se borra aquí: este efecto puede ejecutarse dos veces, y la segunda
+    // se quedaría sin nada que recuperar. Se borra al empezar la siguiente
+    // respuesta, y mientras tanto volver a aplicarlo no duplica nada.
+    const aMedias = loadEnCurso();
+    if (aMedias) {
+      const destino = stored.find((c) => c.id === aMedias.conversationId);
+      const yaEstaba = destino?.messages.some(
+        (m) => m.role === "assistant" && m.content === aMedias.content,
+      );
+      if (destino && !yaEstaba) {
+        destino.messages = [
+          ...destino.messages,
+          makeMessage("assistant", aMedias.content, {
+            thinking: aMedias.thinking,
+            mode: aMedias.mode,
+            error:
+              "La respuesta se cortó al salir de la aplicación. Esto es lo que había escrito; pulsa Reintentar para pedirla entera.",
+            createdAt: aMedias.at,
+          }),
+        ];
+      }
+    }
+
     setConversations(stored);
     // Al entrar se empieza de cero. Lo anterior sigue guardado y está a un
     // toque en el menú, pero abrir a medias la conversación de ayer obliga a
@@ -250,6 +279,28 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
     });
   };
 
+  /**
+   * Al cambiar de aplicación, el móvil congela la página y a veces la descarta
+   * para liberar memoria: la respuesta a medio llegar se perdía entera. Se va
+   * guardando cada poco —no en cada letra, que sería escribir en disco cien
+   * veces por segundo— para que al volver siga ahí.
+   */
+  const guardadoRef = useRef(0);
+
+  const guardarEnCurso = useCallback(
+    (conversationId: string, currentMode: Mode, forzar = false) => {
+      const ahora = Date.now();
+      if (!forzar && ahora - guardadoRef.current < 1200) return;
+      guardadoRef.current = ahora;
+
+      const { text, thinking } = bufferRef.current;
+      if (!text.trim()) return;
+
+      saveEnCurso({ conversationId, content: text, thinking, mode: currentMode, at: ahora });
+    },
+    [],
+  );
+
   const flushStream = useCallback(() => {
     rafRef.current = null;
     setStream({ ...bufferRef.current });
@@ -286,8 +337,16 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       const controller = new AbortController();
       abortRef.current = controller;
       bufferRef.current = { text: "", thinking: "" };
+      guardadoRef.current = 0;
+      clearEnCurso();
       setStream({ text: "", thinking: "" });
       setStatus("conectando");
+
+      // Irse a otra aplicación es el momento exacto en que se pierde todo.
+      const alOcultarse = () => {
+        if (document.visibilityState === "hidden") guardarEnCurso(conversationId, currentMode, true);
+      };
+      document.addEventListener("visibilitychange", alOcultarse);
 
       let sources: Source[] = [];
       let elapsedMs: number | undefined;
@@ -327,6 +386,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
               case "text":
                 bufferRef.current.text += event.v;
                 scheduleFlush();
+                guardarEnCurso(conversationId, currentMode);
                 break;
               case "thinking":
                 bufferRef.current.thinking += event.v;
@@ -375,6 +435,9 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
             ]
           : undefined,
       });
+
+      document.removeEventListener("visibilitychange", alOcultarse);
+      clearEnCurso();
 
       upsert(conversationId, (c) => ({ ...c, messages: [...c.messages, reply] }));
       setStream({ text: "", thinking: "" });
