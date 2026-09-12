@@ -7,12 +7,16 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
-  const { prompt } = (await req.json().catch(() => ({}))) as { prompt?: string };
+  const { prompt, anterior } = (await req.json().catch(() => ({}))) as {
+    prompt?: string;
+    /** La descripción de la imagen anterior, cuando esto es un retoque. */
+    anterior?: string;
+  };
   if (!prompt?.trim())
     return Response.json({ error: "Describe la imagen que quieres." }, { status: 400 });
 
   try {
-    const result = await generateImage(prompt.trim());
+    const result = await generateImage(prompt.trim(), anterior?.trim() || undefined);
     return Response.json(result);
   } catch (err) {
     const status = err instanceof MediaError ? err.status : 500;

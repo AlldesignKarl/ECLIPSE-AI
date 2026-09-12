@@ -1,4 +1,6 @@
 import { googleKeyFromEnv, resolveGoogleKey } from "./keys";
+import { prepararPrompt } from "./imgprompt";
+import { estamparDataUrl } from "./watermark";
 
 /**
  * Generación de imagen y vídeo. Se apoya en proveedores externos configurables
@@ -20,6 +22,8 @@ export interface ImageResult {
   dataUrl: string;
   provider: string;
   note?: string;
+  /** La descripción con la que se dibujó, para poder partir de ella al retocar. */
+  prompt?: string;
 }
 
 function googleKey() {
@@ -104,7 +108,11 @@ async function pollinationsImage(prompt: string): Promise<ImageResult> {
   url.searchParams.set("width", "1024");
   url.searchParams.set("height", "1024");
   url.searchParams.set("nologo", "true");
+  // Su forma documentada de identificar a quien llama; de ella depende que
+  // acepten el `nologo`. Si aun así estampan el suyo, es cosa de su servicio.
+  url.searchParams.set("referrer", process.env.POLLINATIONS_REFERRER || "eclipse-ia.vercel.app");
   url.searchParams.set("model", process.env.POLLINATIONS_MODEL || "flux");
+  url.searchParams.set("enhance", "true");
   url.searchParams.set("seed", String(Math.floor(Math.random() * 1e9)));
 
   let res: Response;
@@ -214,18 +222,23 @@ export async function imageProviderAvailable(): Promise<boolean> {
  * es el servicio gratuito. Así crear imágenes sigue funcionando aunque la
  * cuenta de Google no tenga ni un hueco libre, que es lo normal.
  */
-export async function generateImage(prompt: string): Promise<ImageResult> {
+export async function generateImage(prompt: string, anterior?: string): Promise<ImageResult> {
+  // Lo que escribió la persona, convertido en una descripción que el modelo de
+  // imagen sepa dibujar, y sin perder de qué se estaba hablando.
+  const encargo = await prepararPrompt(prompt, anterior);
+
   const attempts: (() => Promise<ImageResult>)[] = [];
 
-  if (await resolveGoogleKey()) attempts.push(() => geminiImage(prompt));
-  if (process.env.OPENAI_API_KEY) attempts.push(() => openaiImage(prompt));
-  if (cloudflareConfigured()) attempts.push(() => cloudflareImage(prompt));
-  attempts.push(() => pollinationsImage(prompt));
+  if (await resolveGoogleKey()) attempts.push(() => geminiImage(encargo));
+  if (process.env.OPENAI_API_KEY) attempts.push(() => openaiImage(encargo));
+  if (cloudflareConfigured()) attempts.push(() => cloudflareImage(encargo));
+  attempts.push(() => pollinationsImage(encargo));
 
   let last: unknown;
   for (const attempt of attempts) {
     try {
-      return await attempt();
+      const hecha = await attempt();
+      return { ...hecha, dataUrl: await estamparDataUrl(hecha.dataUrl), prompt: encargo };
     } catch (err) {
       last = err;
       const status = err instanceof MediaError ? err.status : 500;

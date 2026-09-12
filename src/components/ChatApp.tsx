@@ -47,6 +47,15 @@ const EMPTY_CAPS: Capabilities = {
   proCodeConfigured: false,
 };
 
+/** La descripción de la última imagen creada en esta conversación, si la hay. */
+function ultimaImagen(messages: Message[]): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const imagen = messages[i].artifacts?.find((a) => a.type === "image" && a.prompt);
+    if (imagen?.prompt) return imagen.prompt;
+  }
+  return undefined;
+}
+
 interface ChatAppProps {
   /** Correo de quien ha entrado, o null si la app va sin cuentas. */
   user?: string | null;
@@ -416,15 +425,25 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
   );
 
   const runImage = useCallback(
-    async (conversationId: string, prompt: string) => {
+    /**
+     * `anterior` es la descripción de la última imagen de esta conversación. Sin
+     * ella, un «cámbiala, más profesional» llega al modelo de imagen a secas y
+     * dibuja cualquier cosa, porque un modelo de imagen no recuerda nada.
+     */
+    async (conversationId: string, prompt: string, anterior?: string) => {
       setStatus("generando_imagen");
       try {
         const res = await fetch("/api/image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
+          body: JSON.stringify({ prompt, anterior }),
         });
-        const data = (await res.json()) as { dataUrl?: string; note?: string; error?: string };
+        const data = (await res.json()) as {
+          dataUrl?: string;
+          note?: string;
+          error?: string;
+          prompt?: string;
+        };
         if (!res.ok || !data.dataUrl) throw new Error(data.error ?? "No se pudo crear la imagen.");
 
         upsert(conversationId, (c) => ({
@@ -432,7 +451,9 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           messages: [
             ...c.messages,
             makeMessage("assistant", data.note?.trim() || "Aquí tienes la imagen.", {
-              artifacts: [{ type: "image", url: data.dataUrl, prompt }],
+              // Se guarda la descripción con la que se dibujó de verdad, no la
+              // frase original: es la que sirve de punto de partida al retocar.
+              artifacts: [{ type: "image", url: data.dataUrl, prompt: data.prompt || prompt }],
             }),
           ],
         }));
@@ -479,7 +500,8 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
 
       if (conversation.messages.length === 0 && text) nameConversation(id, text);
 
-      if (currentMode === "image") await runImage(id, text);
+      if (currentMode === "image")
+        await runImage(id, text, ultimaImagen(conversation.messages));
       else await runChat(id, history, currentMode);
     },
     [

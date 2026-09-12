@@ -287,6 +287,8 @@ export async function oneShotCompat(
   provider: CompatProvider,
   key: string,
   prompt: string,
+  /** Los títulos caben en cuatro palabras; un prompt de imagen, no. */
+  tope = 48,
 ): Promise<string> {
   const preset = PRESETS[provider];
   const res = await fetch(`${preset.base}/chat/completions`, {
@@ -295,7 +297,7 @@ export async function oneShotCompat(
     body: JSON.stringify({
       model: envModel(provider) || resolved[provider] || preset.model,
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 48,
+      max_tokens: tope,
       temperature: 0.3,
     }),
   });
