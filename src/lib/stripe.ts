@@ -118,9 +118,36 @@ export async function subscriptionActive(subscriptionId: string): Promise<boolea
   }
 }
 
+/**
+ * "La clave no es válida" no dice qué hacer. Casi siempre es una de cuatro
+ * cosas, y las cuatro se distinguen mirando la clave sin enseñarla: qué tipo de
+ * clave es, y si se copió tapada. Decirlo ahorra una tarde.
+ */
+function keyProblem(): string | null {
+  const key = (process.env.STRIPE_SECRET_KEY || "").trim();
+  if (!key) return "Falta STRIPE_SECRET_KEY en las variables del proyecto.";
+
+  if (/[•*·]|\.\.\./.test(key))
+    return "La clave se copió tapada, con los puntitos incluidos. En Stripe hay que pulsar «Revelar» antes de copiarla.";
+
+  if (key.startsWith("rk_"))
+    return "Esa es la clave restringida (empieza por rk_). La que hace falta es la secreta, que empieza por sk_.";
+
+  if (key.startsWith("pk_"))
+    return "Esa es la clave publicable (empieza por pk_). La que hace falta es la secreta, que empieza por sk_.";
+
+  if (!key.startsWith("sk_"))
+    return "Eso no parece una clave secreta de Stripe: tiene que empezar por sk_.";
+
+  return null;
+}
+
 export function humanStripeError(err: unknown): string {
   if (err instanceof Stripe.errors.StripeAuthenticationError)
-    return "La clave de Stripe no es válida. Revisa STRIPE_SECRET_KEY.";
+    return (
+      keyProblem() ??
+      "Stripe rechaza la clave. Puede que se haya copiado a medias, o que se borrara al crear otra: vuelve a copiarla entera desde Desarrolladores → Claves API."
+    );
   if (err instanceof Stripe.errors.StripeInvalidRequestError)
     return `Stripe ha rechazado la petición: ${err.message}`;
   if (
