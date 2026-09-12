@@ -196,3 +196,9 @@ export const Home = (p: P) => (
     <path d="M9.5 20v-5.5h5V20" />
   </svg>
 );
+
+export const Play = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M7.5 5.2v13.6a.6.6 0 0 0 .93.5l10.3-6.8a.6.6 0 0 0 0-1l-10.3-6.8a.6.6 0 0 0-.93.5z" />
+  </svg>
+);
