@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { dictadoDisponible, dictar, type Dictado } from "@/lib/dictado";
 import * as Icon from "./Icons";
 import { humanSize } from "@/lib/files";
 import type { Attachment, Mode, Plan, Speed } from "@/lib/types";
@@ -74,6 +75,52 @@ export default function Composer({
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+
+  /* ---------------------------- Dictado ---------------------------- */
+  const [puedeDictar, setPuedeDictar] = useState(false);
+  const [escuchando, setEscuchando] = useState(false);
+  const [avisoVoz, setAvisoVoz] = useState<string | null>(null);
+  const dictadoRef = useRef<Dictado | null>(null);
+  // Lo que había escrito antes de empezar a hablar: el dictado se añade
+  // detrás en vez de pisarlo.
+  const baseRef = useRef("");
+
+  // El botón solo aparece donde el navegador sabe hacerlo.
+  useEffect(() => setPuedeDictar(dictadoDisponible()), []);
+
+  // Al desmontar, soltar el micrófono.
+  useEffect(() => () => dictadoRef.current?.parar(), []);
+
+  const alternarVoz = () => {
+    if (escuchando) {
+      dictadoRef.current?.parar();
+      dictadoRef.current = null;
+      setEscuchando(false);
+      return;
+    }
+
+    setAvisoVoz(null);
+    baseRef.current = value ? `${value.trimEnd()} ` : "";
+
+    const sesion = dictar({
+      onTexto: ({ firme, parcial }) => {
+        if (firme) baseRef.current += firme;
+        onChange((baseRef.current + parcial).replace(/\s+/g, " ").trimStart());
+      },
+      onFin: () => {
+        dictadoRef.current = null;
+        setEscuchando(false);
+      },
+      onError: (mensaje) => setAvisoVoz(mensaje),
+    });
+
+    if (!sesion) {
+      setAvisoVoz("Este navegador no sabe dictar. Prueba con Chrome.");
+      return;
+    }
+    dictadoRef.current = sesion;
+    setEscuchando(true);
+  };
 
   // La caja crece con el texto, hasta un tope.
   useEffect(() => {
@@ -164,6 +211,19 @@ export default function Composer({
             </div>
           )}
 
+          {avisoVoz && (
+            <div className="flex items-start gap-2 border-b border-line-soft px-3.5 py-2 text-[12px] leading-relaxed text-danger">
+              <span className="flex-1">{avisoVoz}</span>
+              <button
+                onClick={() => setAvisoVoz(null)}
+                className="shrink-0 rounded p-0.5 text-faint transition hover:text-ink"
+                aria-label="Cerrar aviso"
+              >
+                <Icon.Close width={13} height={13} />
+              </button>
+            </div>
+          )}
+
           <textarea
             ref={textarea}
             value={value}
@@ -182,7 +242,7 @@ export default function Composer({
                 onFiles(files);
               }
             }}
-            placeholder={PLACEHOLDERS[mode]}
+            placeholder={escuchando ? "Te escucho… habla y lo escribo" : PLACEHOLDERS[mode]}
             className="scroll-thin max-h-[220px] w-full resize-none bg-transparent px-4 pb-2 pt-3.5 text-[15px] leading-relaxed text-ink outline-none placeholder:text-faint"
           />
 
@@ -227,6 +287,25 @@ export default function Composer({
             >
               <Icon.Camera width={17} height={17} />
             </button>
+
+            {puedeDictar && (
+              <button
+                onClick={alternarVoz}
+                aria-label={escuchando ? "Dejar de dictar" : "Dictar por voz"}
+                aria-pressed={escuchando}
+                title={escuchando ? "Dejar de dictar" : "Dictar por voz"}
+                className={`relative rounded-lg p-2 transition ${
+                  escuchando
+                    ? "bg-danger/15 text-danger"
+                    : "text-muted hover:bg-raised hover:text-ink"
+                }`}
+              >
+                <Icon.Mic width={17} height={17} />
+                {escuchando && (
+                  <span className="mic-latido absolute inset-0 rounded-lg border border-danger/50" />
+                )}
+              </button>
+            )}
 
             {/* Velocidad */}
             <div className="flex items-center rounded-lg border border-line-soft bg-void/40 p-0.5">

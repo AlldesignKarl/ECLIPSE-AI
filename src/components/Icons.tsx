@@ -182,3 +182,10 @@ export const User = (p: P) => (
     <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
   </svg>
 );
+
+export const Mic = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="9" y="2.5" width="6" height="11.5" rx="3" />
+    <path d="M5 11.5a7 7 0 0 0 14 0M12 18.5V21.5M8.5 21.5h7" />
+  </svg>
+);

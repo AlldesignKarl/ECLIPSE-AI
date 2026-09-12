@@ -108,7 +108,10 @@ export default function ChatApp({ user = null, onSignOut }: ChatAppProps) {
   useEffect(() => {
     const stored = loadConversations();
     setConversations(stored);
-    setActiveId(stored[0]?.id ?? null);
+    // Al entrar se empieza de cero. Lo anterior sigue guardado y está a un
+    // toque en el menú, pero abrir a medias la conversación de ayer obliga a
+    // buscar el botón de nueva antes de poder preguntar nada.
+    setActiveId(null);
     setPrefs(loadPrefs());
     setHydrated(true);
 

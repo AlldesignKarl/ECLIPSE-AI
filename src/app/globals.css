@@ -458,3 +458,30 @@ body {
   mask-image: radial-gradient(60% 50% at 50% 30%, #000, transparent 75%);
   -webkit-mask-image: radial-gradient(60% 50% at 50% 30%, #000, transparent 75%);
 }
+
+/* El micrófono late mientras escucha: sin eso no se distingue de un botón
+   pulsado, y el usuario no sabe si le está oyendo. */
+@keyframes mic-latido {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+.mic-latido {
+  animation: mic-latido 1.5s ease-out infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mic-latido {
+    animation: none;
+    opacity: 0.6;
+  }
+}
