@@ -21,9 +21,10 @@ export default function ProjectPanel({ title, files, onPush }: Props) {
   const [pantallaCompleta, setPantallaCompleta] = useState(false);
   const current = files[Math.min(selected, files.length - 1)];
 
-  // Solo se puede ver funcionando lo que abre un HTML. Un proyecto de servidor
-  // o una librería no se ejecutan en el navegador, y prometerlo sería engañar.
-  const pagina = useMemo(() => buildPreview(files), [files]);
+  // Solo se puede ver funcionando lo que abre un HTML y arranca sin compilar.
+  // Ofrecer el botón para un proyecto de React sería enseñar un recuadro gris.
+  const vista = useMemo(() => buildPreview(files), [files]);
+  const pagina = vista?.funciona ? vista : null;
 
   if (files.length === 0) return null;
 
@@ -95,13 +96,22 @@ export default function ProjectPanel({ title, files, onPush }: Props) {
             GitHub
           </button>
         </div>
+
+        {/* Por qué no se puede ver, entero y sin cortar: es lo que explica que
+            no haya botón, y a medias no explica nada. */}
+        {!pagina && vista?.motivo && (
+          <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
+            {vista.motivo} Descárgalo con ZIP, o pídeme la misma página en HTML
+            sencillo para poder verla aquí.
+          </p>
+        )}
       </div>
 
       {viendo && pagina ? (
         <div className="relative">
           <iframe
             title={`Vista previa de ${title}`}
-            srcDoc={pagina}
+            srcDoc={pagina.html}
             /* Sin `allow-same-origin`: el código va en un origen propio y no
                puede tocar ni la página ni las cookies de ECLIPSE. */
             sandbox="allow-scripts allow-forms allow-popups allow-modals"
@@ -153,7 +163,7 @@ export default function ProjectPanel({ title, files, onPush }: Props) {
           </div>
           <iframe
             title={`Vista previa de ${title}`}
-            srcDoc={pagina}
+            srcDoc={pagina.html}
             sandbox="allow-scripts allow-forms allow-popups allow-modals"
             className="flex-1 w-full border-0 bg-white"
           />

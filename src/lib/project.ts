@@ -11,6 +11,25 @@ const LANGUAGES = new Set([
 
 const PATH_LIKE = /^[\w.@-]+(?:\/[\w.@ -]+)*\.[\w]+$|^[\w.-]*Dockerfile$|^Makefile$|^\.[\w.-]+$/;
 
+/**
+ * Cuando el bloque viene sin ruta, el contenido suele decir qué archivo es.
+ * Vale más `index.html` que `archivo-1.html`: con el nombre bueno, la página se
+ * puede abrir y los estilos se encuentran entre sí.
+ */
+function nombrePorContenido(content: string, lang: string): string {
+  const inicio = content.trimStart().slice(0, 400).toLowerCase();
+
+  if (inicio.startsWith("<!doctype html") || inicio.startsWith("<html")) return "index.html";
+  if (/^\{[\s\S]*"name"\s*:/.test(content.trim()) && /"version"\s*:/.test(content))
+    return "package.json";
+  if (inicio.startsWith("# ")) return "README.md";
+
+  if (lang === "css" || lang === "scss") return `styles.${lang}`;
+  if (lang === "js" || lang === "javascript") return "script.js";
+  if (lang === "html") return "index.html";
+  return "";
+}
+
 function extensionFor(lang: string): string {
   const map: Record<string, string> = {
     typescript: "ts", ts: "ts", tsx: "tsx", javascript: "js", js: "js", jsx: "jsx",
@@ -51,6 +70,8 @@ export function extractFiles(markdown: string): GeneratedFile[] {
     }
 
     if (!path) path = pathFromPrecedingLine(markdown, match.index);
+
+    if (!path) path = nombrePorContenido(content, lang);
 
     if (!path) {
       const index = files.length + 1;
