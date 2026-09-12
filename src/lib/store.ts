@@ -17,28 +17,41 @@ interface Conn {
 }
 
 /**
- * Cada proveedor bautiza sus variables a su manera, y Vercel además deja
- * ponerles un prefijo al conectarlas. Así que en vez de exigir un nombre
- * exacto, buscamos la pareja url/token por su forma: cualquier variable que
- * acabe en REST_URL con su correspondiente REST_TOKEN. Un nombre inesperado
- * deja de ser un fallo silencioso que nadie sabe diagnosticar.
+ * Cada proveedor bautiza sus variables a su manera, y Vercel deja además
+ * ponerles un prefijo. Así que la pareja url/token se busca por su forma, no
+ * por un nombre exacto.
+ *
+ * Y se busca *emparejada*: las dos mitades tienen que venir del mismo prefijo.
+ * Si no, basta una variable vieja suelta —la dirección de una base de datos
+ * anterior, por ejemplo— para juntar la url de una con el token de otra, y el
+ * fallo que sale entonces no se parece en nada a su causa.
  */
 function conn(): Conn | null {
-  const exact = (name: string) => process.env[name] || "";
+  const urls = new Map<string, string>();
+  const tokens = new Map<string, string>();
 
-  let url =
-    exact("UPSTASH_REDIS_REST_URL") || exact("KV_REST_API_URL") || exact("REDIS_REST_URL");
-  let token =
-    exact("UPSTASH_REDIS_REST_TOKEN") || exact("KV_REST_API_TOKEN") || exact("REDIS_REST_TOKEN");
+  for (const [name, value] of Object.entries(process.env)) {
+    if (!value) continue;
 
-  if (!url || !token) {
-    for (const [name, value] of Object.entries(process.env)) {
-      if (!value) continue;
-      if (!url && /REST_(API_)?URL$/.test(name) && /^https?:\/\//.test(value)) url = value;
-      if (!token && /REST_(API_)?TOKEN$/.test(name)) token = value;
-    }
+    const asUrl = name.match(/^(.*)REST_(?:API_)?URL$/);
+    if (asUrl && /^https?:\/\//.test(value)) urls.set(asUrl[1], value);
+
+    // `..._READ_ONLY_TOKEN` no encaja aquí, y es justo lo que queremos: con esa
+    // clave se podría leer la cuenta de alguien pero no crearla.
+    const asToken = name.match(/^(.*)REST_(?:API_)?TOKEN$/);
+    if (asToken) tokens.set(asToken[1], value);
   }
 
+  // Los nombres de siempre primero; si no, cualquier pareja completa.
+  const preferred = ["UPSTASH_REDIS_", "KV_", "REDIS_"];
+  const complete = [...urls.keys()].filter((prefix) => tokens.has(prefix));
+  const chosen =
+    preferred.find((prefix) => complete.includes(prefix)) ?? complete[0];
+
+  if (!chosen && chosen !== "") return null;
+
+  const url = urls.get(chosen);
+  const token = tokens.get(chosen);
   return url && token ? { url: url.replace(/\/+$/, ""), token } : null;
 }
 
@@ -59,8 +72,8 @@ export function storeStatus(): { url: boolean; token: boolean } {
 
   for (const [name, value] of Object.entries(process.env)) {
     if (!value) continue;
-    if (/REST_(API_)?URL$/.test(name) && /^https?:\/\//.test(value)) url = true;
-    if (/REST_(API_)?TOKEN$/.test(name)) token = true;
+    if (/^(.*)REST_(?:API_)?URL$/.test(name) && /^https?:\/\//.test(value)) url = true;
+    if (/^(.*)REST_(?:API_)?TOKEN$/.test(name)) token = true;
   }
   return { url, token };
 }
