@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import EclipseLogo from "./EclipseLogo";
 import * as Icon from "./Icons";
 import Markdown from "./Markdown";
+import { proseOnly } from "@/lib/project";
 import ProjectPanel from "./ProjectPanel";
 import Sources from "./Sources";
 import type { GeneratedFile, Message } from "@/lib/types";
@@ -25,6 +26,20 @@ export default function MessageItem({
 }: Props) {
   const [copied, setCopied] = useState(false);
   const [openThinking, setOpenThinking] = useState(false);
+
+  /**
+   * En modo código el texto lleva los archivos dentro. Se enseña solo la
+   * explicación: los archivos ya tienen su panel justo debajo, y así la
+   * conversación se lee de un vistazo en vez de a base de scroll.
+   */
+  const enCodigo = streaming
+    ? message.mode === "code"
+    : Boolean(message.artifacts?.some((a) => a.type === "code" && a.files?.length));
+
+  const texto = useMemo(
+    () => (enCodigo ? proseOnly(message.content) : message.content),
+    [enCodigo, message.content],
+  );
 
   const copy = async () => {
     try {
@@ -98,9 +113,9 @@ export default function MessageItem({
             </div>
           )}
 
-          {message.content ? (
+          {texto ? (
             <div className={streaming ? "stream-caret" : undefined}>
-              <Markdown>{message.content}</Markdown>
+              <Markdown>{texto}</Markdown>
             </div>
           ) : null}
 

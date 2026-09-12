@@ -108,3 +108,41 @@ export function guessLanguage(path: string): string {
   };
   return map[ext] ?? "plaintext";
 }
+
+/**
+ * La explicación sin el código.
+ *
+ * En modo código la respuesta trae los archivos enteros dentro, y volcarlos en
+ * la conversación obliga a desplazarse cientos de líneas para leer las cuatro
+ * frases que los acompañan. Los archivos ya se ven en su panel, con su árbol y
+ * su botón de copiar, así que aquí se quitan y queda lo que sí se lee.
+ */
+export function proseOnly(markdown: string): string {
+  return quitarBloqueSinCerrar(markdown)
+    .replace(FENCE_ANY, "")
+    // La línea que anunciaba el archivo se queda huérfana sin su bloque.
+    .replace(/^[ \t]*(?:\*\*|__)?(?:archivo|file|fichero)\s*:?[^\n]*(?:\*\*|__)?[ \t]*$/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Mientras la respuesta llega, el último bloque puede estar a medio escribir.
+ * Se corta desde su apertura para que el código no asome y desaparezca; el
+ * resto del texto, incluido lo que va después de los bloques ya cerrados, se
+ * queda donde está.
+ */
+function quitarBloqueSinCerrar(markdown: string): string {
+  const aperturas: number[] = [];
+  const marca = /^```/gm;
+
+  let hallazgo: RegExpExecArray | null;
+  while ((hallazgo = marca.exec(markdown)) !== null) aperturas.push(hallazgo.index);
+
+  // Pares completos: todos los bloques están cerrados.
+  if (aperturas.length % 2 === 0) return markdown;
+  return markdown.slice(0, aperturas[aperturas.length - 1]);
+}
+
+/** Como FENCE, pero sin estado: `proseOnly` puede llamarse en cualquier orden. */
+const FENCE_ANY = /^```[^\n`]*\n[\s\S]*?\n?^```[ \t]*$/gm;

@@ -56,6 +56,8 @@ export interface Message {
   createdAt: number;
   /** Milisegundos que tardó la respuesta. */
   elapsedMs?: number;
+  /** En qué modo se pidió. En código, el texto se enseña sin los archivos. */
+  mode?: Mode;
 }
 
 export interface Conversation {

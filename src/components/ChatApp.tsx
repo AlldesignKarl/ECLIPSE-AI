@@ -364,6 +364,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         sources: sources.length ? sources : undefined,
         error: failure,
         elapsedMs,
+        mode: currentMode,
         artifacts: files.length
           ? [
               {
@@ -593,6 +594,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           content: stream.text,
           thinking: stream.thinking || undefined,
           createdAt: Date.now(),
+          mode,
         }
       : null;
 
