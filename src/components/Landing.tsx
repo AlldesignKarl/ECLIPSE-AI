@@ -1,35 +1,12 @@
 "use client";
 
 import EclipseMark from "./EclipseMark";
+import LandingShowcase from "./LandingShowcase";
 import * as Icon from "./Icons";
 
 interface Props {
   onEnter: () => void;
-  price: string;
 }
-
-const CAPABILITIES = [
-  {
-    icon: Icon.Search,
-    title: "Busca y contrasta",
-    text: "Cuando la pregunta depende de datos reales, busca en la web y prioriza universidades, revistas revisadas por pares y organismos oficiales. Cada respuesta enseña de dónde salió.",
-  },
-  {
-    icon: Icon.Paperclip,
-    title: "Lee lo que le des",
-    text: "Imágenes, PDF, hojas de cálculo, código. Se lo adjuntas y lo analiza: resume, extrae, compara o te explica lo que no entiendes.",
-  },
-  {
-    icon: Icon.Image,
-    title: "Crea imágenes",
-    text: "Describe lo que tienes en la cabeza y lo dibuja. Para una idea, una portada o una prueba rápida.",
-  },
-  {
-    icon: Icon.Bot,
-    title: "Construye bots",
-    text: "Le dices qué quieres que haga tu bot de Discord o de Telegram y te lo monta entero, con sus archivos y los pasos para ponerlo en marcha.",
-  },
-];
 
 /**
  * Lo que la gente pregunta antes de probar algo nuevo. Sirve a quien llega y,
@@ -63,10 +40,7 @@ const PREGUNTAS = [
   },
 ];
 
-const FREE = ["Conversación sin límite", "Búsqueda con fuentes", "Imágenes, PDF y archivos", "Crear imágenes"];
-const PRO = ["Todo lo del plan Gratis", "Crear bots de Discord y Telegram", "Modo Profundo", "Respuestas aceleradas"];
-
-export default function Landing({ onEnter, price }: Props) {
+export default function Landing({ onEnter }: Props) {
   return (
     <div className="scroll-thin min-h-dvh overflow-y-auto bg-void">
       {/* ---------------------------------------------------------- Hero */}
@@ -118,20 +92,7 @@ export default function Landing({ onEnter, price }: Props) {
         </div>
       </header>
 
-      {/* -------------------------------------------------- Qué sabe hacer */}
-      <section className="mx-auto max-w-5xl px-5 py-16">
-        <h2 className="text-[13px] uppercase tracking-[0.16em] text-faint">Qué sabe hacer</h2>
-
-        <div className="mt-7 grid gap-px overflow-hidden rounded-2xl border border-line-soft bg-line-soft sm:grid-cols-2">
-          {CAPABILITIES.map((c) => (
-            <article key={c.title} className="bg-void p-6">
-              <c.icon width={19} height={19} className="text-halo" />
-              <h3 className="mt-3.5 text-[15px] font-medium text-ink">{c.title}</h3>
-              <p className="mt-2 text-[13.5px] leading-relaxed text-muted">{c.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <LandingShowcase />
 
       {/* ---------------------------------------------------- Colaboración */}
       <section className="mx-auto max-w-5xl px-5 pb-16">
@@ -191,60 +152,6 @@ export default function Landing({ onEnter, price }: Props) {
               <p className="px-5 pb-5 text-[13.5px] leading-relaxed text-muted">{p.a}</p>
             </details>
           ))}
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------------- Planes */}
-      <section id="planes" className="mx-auto max-w-5xl px-5 pb-16">
-        <h2 className="text-[13px] uppercase tracking-[0.16em] text-faint">Planes</h2>
-
-        <div className="mt-7 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-2xl border border-line-soft bg-panel/30 p-6">
-            <div className="text-[15px] font-medium text-ink">Gratis</div>
-            <div className="mt-1 text-[28px] font-semibold text-ink">0 €</div>
-            <p className="mt-1 text-[12.5px] text-faint">Para siempre</p>
-
-            <ul className="mt-5 space-y-2.5">
-              {FREE.map((f) => (
-                <li key={f} className="flex gap-2.5 text-[13.5px] text-muted">
-                  <Icon.Check width={15} height={15} className="mt-0.5 shrink-0 text-faint" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <button
-              onClick={onEnter}
-              className="mt-6 w-full rounded-xl border border-line py-2.5 text-[13.5px] text-ink transition hover:border-halo/40"
-            >
-              Empezar
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-pro/30 bg-gradient-to-b from-pro/10 to-transparent p-6">
-            <div className="flex items-center gap-2">
-              <span className="text-[15px] font-medium text-ink">Pro</span>
-              <Icon.Sparkle width={15} height={15} className="text-pro" />
-            </div>
-            <div className="mt-1 text-[28px] font-semibold text-ink">{price}</div>
-            <p className="mt-1 text-[12.5px] text-faint">Al mes · cancelas cuando quieras</p>
-
-            <ul className="mt-5 space-y-2.5">
-              {PRO.map((f) => (
-                <li key={f} className="flex gap-2.5 text-[13.5px] text-ink">
-                  <Icon.Check width={15} height={15} className="mt-0.5 shrink-0 text-pro" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <button
-              onClick={onEnter}
-              className="mt-6 w-full rounded-xl bg-ink py-2.5 text-[13.5px] font-medium text-void transition hover:opacity-90"
-            >
-              Empezar y mejorar dentro
-            </button>
-          </div>
         </div>
       </section>
 

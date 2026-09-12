@@ -23,7 +23,6 @@ type View = "portada" | "entrar" | "app";
  */
 export default function Shell() {
   const [view, setView] = useState<View>("portada");
-  const [price, setPrice] = useState("10,00 €");
   const [ready, setReady] = useState(false);
   const [wantsIn, setWantsIn] = useState(false);
   const [auth, setAuth] = useState<{ enabled: boolean; user: string | null }>({
@@ -46,20 +45,13 @@ export default function Shell() {
       /* navegador sin almacenamiento: se queda en la portada */
     }
 
-    void Promise.all([
-      fetch("/api/auth")
-        .then((r) => r.json())
-        .catch(() => ({ enabled: false, user: null })),
-      fetch("/api/pro")
-        .then((r) => r.json())
-        .catch(() => ({})),
-    ]).then(
-      ([a, p]: [{ enabled?: boolean; user?: string | null }, { billing?: { price?: string } }]) => {
+    void fetch("/api/auth")
+      .then((r) => r.json())
+      .catch(() => ({ enabled: false, user: null }))
+      .then((a: { enabled?: boolean; user?: string | null }) => {
         setAuth({ enabled: Boolean(a.enabled), user: a.user ?? null });
-        if (p.billing?.price) setPrice(p.billing.price);
         setReady(true);
-      },
-    );
+      });
   }, []);
 
   // Solo se sale de la portada sabiendo si hay cuentas y si hay sesión: si no,
@@ -72,7 +64,6 @@ export default function Shell() {
   if (view === "portada")
     return (
       <Landing
-        price={price}
         onEnter={() => {
           remember();
           setWantsIn(true);
