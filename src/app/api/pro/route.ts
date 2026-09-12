@@ -3,6 +3,7 @@ import {
   CLEAR_PLAN_COOKIE,
   currentPlan,
   planCookieHeader,
+  proEsRegalado,
   proCodeMatches,
 } from "@/lib/plan-server";
 import { imageProviderAvailable, videoProviderAvailable } from "@/lib/media";
@@ -17,6 +18,7 @@ export async function GET() {
   const provider = await activeProvider();
   return Response.json({
     plan: await currentPlan(),
+    proRegalado: await proEsRegalado(),
     provider,
     providerLabel: providerLabel(provider),
     billing: { enabled: stripeAvailable(), price: await priceLabelLive() },

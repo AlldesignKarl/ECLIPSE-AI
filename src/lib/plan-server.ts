@@ -1,5 +1,6 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { currentUser } from "./auth";
 import { stripeAvailable, subscriptionActive } from "./stripe";
 import type { Plan } from "./types";
 
@@ -69,10 +70,51 @@ export function readProToken(token: string | undefined): TokenInfo {
 }
 
 /**
+ * Cuentas con el plan Pro regalado.
+ *
+ * Van por huella, no en claro: este repositorio es público y no hay ninguna
+ * razón para publicar el correo de nadie. La sal fija impide además buscar la
+ * huella en una lista de correos conocidos.
+ *
+ * Se pueden añadir más con PRO_EMAILS, separados por comas.
+ */
+const PRO_REGALADO = new Set([
+  // El dueño de la aplicación.
+  "7da4a76317ba2e4cf075ecd5514e2f67dd6b1976e6b5927fcf6732804cf7191e",
+]);
+
+function huella(email: string): string {
+  return createHash("sha256")
+    .update(`eclipse:${email.trim().toLowerCase()}`)
+    .digest("hex");
+}
+
+function tieneProRegalado(email: string): boolean {
+  const suya = huella(email);
+  if (PRO_REGALADO.has(suya)) return true;
+
+  return (process.env.PRO_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean)
+    .some((e) => huella(e) === suya);
+}
+
+/** ¿El Pro de quien está entrando es de regalo, y no una suscripción? */
+export async function proEsRegalado(): Promise<boolean> {
+  const email = await currentUser();
+  return Boolean(email && tieneProRegalado(email));
+}
+
+/**
  * Plan real del usuario. Nunca se confía en el cliente: la cookie va firmada
  * y, si viene de una suscripción, se comprueba con Stripe que siga activa.
  */
 export async function currentPlan(): Promise<Plan> {
+  // Quien tiene el Pro regalado lo tiene siempre, haya pagado o no.
+  const email = await currentUser();
+  if (email && tieneProRegalado(email)) return "pro";
+
   const jar = await cookies();
   const info = readProToken(jar.get(PLAN_COOKIE)?.value);
   if (!info.valid) return "free";

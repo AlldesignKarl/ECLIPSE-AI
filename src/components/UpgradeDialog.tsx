@@ -17,6 +17,8 @@ interface Props {
   onPlanChange: (plan: Plan) => void;
   proCodeConfigured: boolean;
   billing: Billing;
+  /** El Pro viene regalado con la cuenta, no de una suscripción. */
+  regalado?: boolean;
 }
 
 const FREE = [
@@ -43,6 +45,7 @@ export default function UpgradeDialog({
   onPlanChange,
   proCodeConfigured,
   billing,
+  regalado = false,
 }: Props) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -222,6 +225,14 @@ export default function UpgradeDialog({
               Tengo un código de acceso
             </button>
           )}
+        </div>
+      ) : regalado ? (
+        <div className="mt-4 rounded-xl border border-pro/25 bg-pro/8 px-4 py-3">
+          <p className="text-[13px] text-ink">Tienes el plan Pro de por vida en esta cuenta.</p>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+            No hay nada que pagar ni que cancelar. Va con tu correo, así que lo tienes en
+            cualquier dispositivo en el que entres.
+          </p>
         </div>
       ) : (
         <div className="mt-4 flex flex-wrap items-center gap-4">

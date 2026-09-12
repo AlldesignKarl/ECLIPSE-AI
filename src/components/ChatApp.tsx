@@ -74,6 +74,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
   });
 
   const [plan, setPlan] = useState<Plan>("free");
+  const [proRegalado, setProRegalado] = useState(false);
   const [caps, setCaps] = useState<Capabilities>(EMPTY_CAPS);
   const [providerLabel, setProviderLabel] = useState("comprobando…");
   const [billing, setBilling] = useState<Billing>({ enabled: false, price: "10,00 €" });
@@ -122,6 +123,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       .then(
         (d: {
           plan?: Plan;
+          proRegalado?: boolean;
           capabilities?: Capabilities;
           providerLabel?: string;
           billing?: Billing;
@@ -129,6 +131,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           engine?: Engine | null;
         }) => {
           if (d.plan) setPlan(d.plan);
+          setProRegalado(Boolean(d.proRegalado));
           if (d.capabilities) setCaps(d.capabilities);
           if (d.providerLabel) setProviderLabel(d.providerLabel);
           if (d.billing) setBilling(d.billing);
@@ -752,6 +755,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         onPlanChange={setPlan}
         proCodeConfigured={caps.proCodeConfigured}
         billing={billing}
+        regalado={proRegalado}
       />
 
       <GithubDialog
