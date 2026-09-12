@@ -386,7 +386,7 @@ body {
     transparent 66%
   );
   filter: blur(22px);
-  animation: luz-vaiven 13s ease-in-out infinite;
+  animation: luz-respira 8s ease-in-out infinite;
 }
 
 .eclipse-rim {
@@ -402,9 +402,9 @@ body {
   /* Muy desenfocado a propósito: si se enfoca se ve un donut gris, y lo que
      queremos es corona, no aro. */
   filter: blur(17px);
-  /* El halo sigue a la luz, pero se mueve la mitad: pegado al anillo, un
-     desplazamiento grande cantaría. */
-  animation: luz-vaiven-corto 13s ease-in-out infinite;
+  /* Al revés que el resplandor grande: cuando uno se abre, el otro se cierra.
+     Es lo que hace que la luz parezca respirar en lugar de inflarse entera. */
+  animation: luz-respira 8s ease-in-out infinite reverse;
 }
 
 .eclipse-streak {
@@ -418,48 +418,33 @@ body {
     transparent 60%
   );
   filter: blur(8px);
-  animation: luz-vaiven-franja 13s ease-in-out infinite;
+  animation: luz-respira-franja 8s ease-in-out infinite;
 }
 
-/* El vaivén: la luz cruza despacio de un lado a otro, como un foco lejano que
-   se mueve. Va y vuelve dentro del mismo ciclo (0 % y 100 % son el mismo sitio)
-   para que no dé un salto al reiniciarse, y `ease-in-out` la frena en los
-   extremos, que es lo que hace que parezca un movimiento y no un rebote.
-   El desplazamiento es en % del propio resplandor, que ya es enorme, así que
-   un 7 % mueve bastante en pantalla. */
-@keyframes luz-vaiven {
+/* La luz se acerca y se aleja, sin moverse de sitio: crece un poco y gana
+   intensidad, y luego se retira. `ease-in-out` la frena en los dos extremos,
+   que es lo que la hace respirar en vez de latir. */
+@keyframes luz-respira {
   0%,
   100% {
-    transform: translateX(-7%) scale(1);
-    opacity: 0.82;
+    transform: scale(0.94);
+    opacity: 0.72;
   }
   50% {
-    transform: translateX(7%) scale(1.04);
+    transform: scale(1.08);
     opacity: 1;
   }
 }
 
-@keyframes luz-vaiven-corto {
+/* La franja se estira a lo ancho, que es por donde sale su luz. */
+@keyframes luz-respira-franja {
   0%,
   100% {
-    transform: translateX(-3.5%);
-    opacity: 0.8;
+    transform: scaleX(0.9);
+    opacity: 0.62;
   }
   50% {
-    transform: translateX(3.5%);
-    opacity: 1;
-  }
-}
-
-/* La franja se estira hacia el lado al que va la luz, como una sombra larga. */
-@keyframes luz-vaiven-franja {
-  0%,
-  100% {
-    transform: translateX(-4%) scaleX(0.94);
-    opacity: 0.7;
-  }
-  50% {
-    transform: translateX(4%) scaleX(1.04);
+    transform: scaleX(1.08);
     opacity: 1;
   }
 }
