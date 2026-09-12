@@ -114,6 +114,8 @@ function productKnowledge(opts: {
   engine: Engine;
   price: string;
   billingEnabled: boolean;
+  /** La clave la pone el servidor, así que el usuario no tiene que hacer nada. */
+  claveEnServidor: boolean;
 }): string {
   return `La aplicación en la que estás:
 
@@ -146,13 +148,21 @@ Los planes:
 
 El motor y sus límites:
 - ${opts.engine ? ENGINE_FACTS[opts.engine] : "Todavía no hay ningún motor configurado."}
-- Los tres motores gratuitos (Groq, Google y OpenRouter) se eligen en las tres
+${
+    opts.claveEnServidor
+      ? `- La clave la pone el dueño de la aplicación en el servidor, así que el usuario
+  no tiene que configurar nada: entra y escribe.
+- El límite diario es del proveedor del motor, no de ECLIPSE, y se reparte entre
+  todo el que use la aplicación. Si se agota, vuelve al día siguiente. Nunca le
+  digas al usuario que ponga una clave: no es cosa suya.`
+      : `- Los tres motores gratuitos (Groq, Google y OpenRouter) se eligen en las tres
   rayitas → Ajustes → Motor de la IA. Son gratis y ninguno pide tarjeta: se saca
   una clave en su web, se pega ahí y listo.
 - El límite diario es del proveedor del motor, no de ECLIPSE. Si se agota, se
   espera al día siguiente o se cambia a otro motor en Ajustes.
 - La clave se guarda en una cookie del navegador de cada persona. No viaja a
-  ningún sitio más y cada usuario gasta de su propio límite.
+  ningún sitio más y cada usuario gasta de su propio límite.`
+  }
 
 Dónde está cada cosa:
 - Las tres rayitas de arriba a la izquierda abren el menú: nueva conversación,
@@ -182,6 +192,8 @@ export function buildSystemPrompt(opts: {
   price?: string;
   /** Si se puede pagar con tarjeta en este servidor. */
   billingEnabled?: boolean;
+  /** Si la clave del motor la pone el servidor y no cada usuario. */
+  claveEnServidor?: boolean;
   now?: Date;
 }): string {
   const now = opts.now ?? new Date();
@@ -200,6 +212,7 @@ export function buildSystemPrompt(opts: {
       engine: opts.engine ?? null,
       price: opts.price ?? "10,00 €",
       billingEnabled: opts.billingEnabled ?? false,
+      claveEnServidor: opts.claveEnServidor ?? false,
     }),
     opts.web === false ? NO_WEB : RIGOR,
     FORMAT,

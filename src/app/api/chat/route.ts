@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { getClient, humanError, MODEL, tuning } from "@/lib/anthropic";
 import { GeminiError, streamChat } from "@/lib/gemini";
-import { resolveKey } from "@/lib/keys";
+import { keySource, resolveKey } from "@/lib/keys";
 import { CompatError, streamCompat, type CompatProvider } from "@/lib/openai-compat";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt } from "@/lib/prompts";
@@ -33,9 +33,17 @@ interface Body {
 
 const PRO_MODES: Mode[] = ["code", "video"];
 
-/** Lo que ECLIPSE tiene que saber de su propia app: precio y forma de pago. */
-async function product() {
-  return { price: await priceLabelLive(), billingEnabled: stripeAvailable() };
+/** Lo que ECLIPSE tiene que saber de su propia app: precio, pago y clave. */
+async function product(provider: Awaited<ReturnType<typeof activeProvider>>) {
+  return {
+    price: await priceLabelLive(),
+    billingEnabled: stripeAvailable(),
+    // Con la clave puesta en el servidor nadie tiene que configurar nada, y
+    // decirle al usuario que la ponga sería mandarle a una tarea inexistente.
+    claveEnServidor:
+      provider === "anthropic" ||
+      (provider !== null && (await keySource(provider)) === "entorno"),
+  };
 }
 const MAX_CONTINUATIONS = 4;
 
@@ -148,7 +156,7 @@ async function runAnthropic(
         {
           type: "text",
           text: buildSystemPrompt({
-            ...(await product()),
+            ...(await product("anthropic")),
             mode: opts.mode,
             plan: opts.plan,
             web: opts.wantsWeb,
@@ -238,7 +246,7 @@ async function runGoogle(
 
   const stream = streamChat({
     system: buildSystemPrompt({
-      ...(await product()),
+      ...(await product("google")),
       mode: opts.mode,
       plan: opts.plan,
       web: opts.wantsWeb,
@@ -289,7 +297,7 @@ async function runCompat(
     key: await resolveKey(opts.provider),
     // Estos motores no navegan: se lo decimos para que no finja que ha buscado.
     system: buildSystemPrompt({
-      ...(await product()),
+      ...(await product(opts.provider)),
       mode: opts.mode,
       plan: opts.plan,
       web: false,
