@@ -1,6 +1,6 @@
 "use client";
 
-import EclipseLogo from "./EclipseLogo";
+import EclipseMark from "./EclipseMark";
 import type { Mode, Plan } from "@/lib/types";
 
 interface Props {
@@ -43,7 +43,7 @@ export default function Welcome({ plan, onPick }: Props) {
   return (
     <div className="flex min-h-full flex-col px-5 py-10">
       <div className="m-auto flex w-full flex-col items-center">
-      <EclipseLogo size={86} />
+      <EclipseMark size={86} />
       <h1 className="mt-6 text-center text-[26px] font-semibold tracking-[0.16em] text-ink">
         ECLIPSE
       </h1>

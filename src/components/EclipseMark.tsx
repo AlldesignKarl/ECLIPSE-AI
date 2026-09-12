@@ -7,7 +7,17 @@
  * una máscara radial: así el brillo viaja por el borde en lugar de girar todo
  * el dibujo, que es lo que hace que parezca luz de verdad y no una rueda.
  */
-export default function EclipseMark({ size = 180 }: { size?: number }) {
+export default function EclipseMark({
+  size = 180,
+  /**
+   * La luz de detrás solo tiene sentido en grande. En el logo de la barra, un
+   * resplandor de dos veces su tamaño no parece luz: parece una mancha.
+   */
+  glow = size >= 80,
+}: {
+  size?: number;
+  glow?: boolean;
+}) {
   const flare =
     "M 2 120 C 44 118.4, 62 114, 70 99 C 75.5 110.5, 75.5 129.5, 70 141 C 62 126, 44 121.6, 2 120 Z";
 
@@ -17,13 +27,21 @@ export default function EclipseMark({ size = 180 }: { size?: number }) {
       style={{ width: size, height: size }}
       aria-hidden
     >
-      {/* Halo ambiental */}
-      <div className="eclipse-halo absolute inset-0 rounded-full" />
+      {/* La luz que sale por detrás */}
+      {glow ? (
+        <>
+          <div className="eclipse-backlight eclipse-bloom rounded-full" />
+          <div className="eclipse-backlight eclipse-streak rounded-full" />
+          <div className="eclipse-backlight eclipse-rim rounded-full" />
+        </>
+      ) : (
+        <div className="eclipse-halo absolute inset-0 rounded-full" />
+      )}
 
       {/* La luz que recorre el anillo */}
       <div className="eclipse-sweep absolute inset-0 rounded-full" />
 
-      <svg viewBox="0 0 240 240" width={size} height={size} className="relative">
+      <svg viewBox="0 0 240 240" width={size} height={size} className="relative z-10">
         <defs>
           <linearGradient id="mark-flare" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#fff" stopOpacity="0" />
