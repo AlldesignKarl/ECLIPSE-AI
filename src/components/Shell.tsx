@@ -7,18 +7,25 @@ import Landing from "./Landing";
 
 const ENTERED = "eclipse.entered";
 
-type View = "cargando" | "portada" | "entrar" | "app";
+type View = "portada" | "entrar" | "app";
 
 /**
  * Quién ve qué.
  *
- * Con las cuentas activadas, a la aplicación se entra con correo y contraseña.
- * Si el servidor todavía no tiene base de datos, no se puede obligar a nadie a
- * registrarse en algo que no existe: entonces se pasa de largo, como antes.
+ * La portada es lo primero que se dibuja, también en el servidor: es lo que
+ * lee Google, y una página que solo se monta en el navegador llega al buscador
+ * en blanco. Quien ya entró alguna vez pasa de largo en cuanto se sabe si hay
+ * sesión abierta.
+ *
+ * Con las cuentas activadas se entra con correo y contraseña. Si el servidor
+ * todavía no tiene base de datos, no se puede obligar a nadie a registrarse en
+ * algo que no existe: entonces se pasa de largo.
  */
 export default function Shell() {
-  const [view, setView] = useState<View>("cargando");
+  const [view, setView] = useState<View>("portada");
   const [price, setPrice] = useState("10,00 €");
+  const [ready, setReady] = useState(false);
+  const [wantsIn, setWantsIn] = useState(false);
   const [auth, setAuth] = useState<{ enabled: boolean; user: string | null }>({
     enabled: false,
     user: null,
@@ -33,11 +40,10 @@ export default function Shell() {
   }, []);
 
   useEffect(() => {
-    let entered = false;
     try {
-      entered = window.localStorage.getItem(ENTERED) === "1";
+      if (window.localStorage.getItem(ENTERED) === "1") setWantsIn(true);
     } catch {
-      /* navegador sin almacenamiento: enseñamos la portada */
+      /* navegador sin almacenamiento: se queda en la portada */
     }
 
     void Promise.all([
@@ -47,20 +53,21 @@ export default function Shell() {
       fetch("/api/pro")
         .then((r) => r.json())
         .catch(() => ({})),
-    ]).then(([a, p]: [{ enabled?: boolean; user?: string | null }, { billing?: { price?: string } }]) => {
-      const enabled = Boolean(a.enabled);
-      const user = a.user ?? null;
-      setAuth({ enabled, user });
-      if (p.billing?.price) setPrice(p.billing.price);
-
-      // Con cuentas activadas y sin sesión, toca identificarse antes de entrar.
-      if (enabled && !user) setView(entered ? "entrar" : "portada");
-      else setView(entered ? "app" : "portada");
-    });
+    ]).then(
+      ([a, p]: [{ enabled?: boolean; user?: string | null }, { billing?: { price?: string } }]) => {
+        setAuth({ enabled: Boolean(a.enabled), user: a.user ?? null });
+        if (p.billing?.price) setPrice(p.billing.price);
+        setReady(true);
+      },
+    );
   }, []);
 
-  // Sin parpadeo: no pintamos nada hasta saber qué toca.
-  if (view === "cargando") return <div className="h-dvh bg-void" />;
+  // Solo se sale de la portada sabiendo si hay cuentas y si hay sesión: si no,
+  // se colaría en el chat quien debería estar identificándose.
+  useEffect(() => {
+    if (!ready || !wantsIn) return;
+    setView(auth.enabled && !auth.user ? "entrar" : "app");
+  }, [ready, wantsIn, auth]);
 
   if (view === "portada")
     return (
@@ -68,7 +75,7 @@ export default function Shell() {
         price={price}
         onEnter={() => {
           remember();
-          setView(auth.enabled && !auth.user ? "entrar" : "app");
+          setWantsIn(true);
         }}
       />
     );
@@ -77,7 +84,10 @@ export default function Shell() {
     return (
       <AuthScreen
         enabled={auth.enabled}
-        onBack={() => setView("portada")}
+        onBack={() => {
+          setWantsIn(false);
+          setView("portada");
+        }}
         onSkip={() => setView("app")}
         onDone={(user) => {
           setAuth((a) => ({ ...a, user }));

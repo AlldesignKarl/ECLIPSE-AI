@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, JetBrains_Mono, Newsreader } from "next/font/google";
+import { SITE_DESCRIPTION as DESCRIPTION, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 /**
@@ -30,13 +31,27 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ECLIPSE · IA",
-  description:
-    "Asistente de IA que responde cualquier pregunta buscando en fuentes fiables: universidades, revistas científicas y organismos oficiales.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "ECLIPSE AI · Pregunta cualquier cosa, con las fuentes delante",
+    template: "%s · ECLIPSE AI",
+  },
+  description: DESCRIPTION,
   applicationName: "ECLIPSE",
-  creator: "Eclipse",
+  creator: "Carlos Lafuente Pueyo",
   publisher: "Eclipse",
   authors: [{ name: "Carlos Lafuente Pueyo" }],
+  keywords: [
+    "ECLIPSE AI",
+    "Eclipse IA",
+    "inteligencia artificial",
+    "asistente de IA",
+    "IA gratis",
+    "chat con IA",
+    "buscar con fuentes",
+    "crear imágenes con IA",
+  ],
+  alternates: { canonical: "/" },
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -46,6 +61,33 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "ECLIPSE", statusBarStyle: "black-translucent" },
+  openGraph: {
+    type: "website",
+    siteName: "ECLIPSE AI",
+    locale: "es_ES",
+    url: "/",
+    title: "ECLIPSE AI · Pregunta cualquier cosa, con las fuentes delante",
+    description: DESCRIPTION,
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "ECLIPSE AI",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ECLIPSE AI",
+    description: DESCRIPTION,
+    images: ["/og.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 };
 
 export const viewport: Viewport = {
@@ -59,7 +101,45 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Le dice a Google qué es esto, quién lo hace y cuál es su logo. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  "@id": `${SITE_URL}#eclipse`,
+                  name: "Eclipse",
+                  url: SITE_URL,
+                  logo: `${SITE_URL}/icon-512.png`,
+                  founder: { "@type": "Person", name: "Carlos Lafuente Pueyo" },
+                },
+                {
+                  "@type": "WebApplication",
+                  name: "ECLIPSE AI",
+                  url: SITE_URL,
+                  applicationCategory: "UtilitiesApplication",
+                  operatingSystem: "Web",
+                  inLanguage: "es-ES",
+                  image: `${SITE_URL}/og.png`,
+                  description: DESCRIPTION,
+                  publisher: { "@id": `${SITE_URL}#eclipse` },
+                  offers: {
+                    "@type": "Offer",
+                    price: "0",
+                    priceCurrency: "EUR",
+                    description: "Plan gratuito, sin tarjeta.",
+                  },
+                },
+              ],
+            }),
+          }}
+        />
+      </body>
     </html>
   );
 }
