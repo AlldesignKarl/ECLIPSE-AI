@@ -260,18 +260,42 @@ body {
   padding: 0;
   font-size: inherit;
 }
-.prose-eclipse table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.86rem;
-  display: block;
+/* Tablas.
+   En móvil una tabla de tres columnas no cabe, y forzarla a caber parte las
+   palabras letra a letra. Preferimos que conserve su ancho natural y se
+   desplace de lado: se lee, aunque haya que arrastrar. */
+.prose-eclipse .table-scroll {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--color-line-soft);
+  border-radius: 10px;
+}
+.prose-eclipse table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  line-height: 1.55;
 }
 .prose-eclipse th,
 .prose-eclipse td {
-  border: 1px solid var(--color-line-soft);
-  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--color-line-soft);
+  border-right: 1px solid var(--color-line-soft);
+  padding: 0.55rem 0.8rem;
   text-align: left;
+  vertical-align: top;
+  /* Ni columnas de una letra ni columnas que se comen la pantalla. */
+  min-width: 7rem;
+  max-width: 14rem;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+.prose-eclipse th:last-child,
+.prose-eclipse td:last-child {
+  border-right: 0;
+}
+.prose-eclipse tbody tr:last-child td {
+  border-bottom: 0;
 }
 .prose-eclipse th {
   background: var(--color-panel);

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useRef, useState, type ReactNode } from "react";
+import { Children, Fragment, memo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
@@ -34,6 +34,32 @@ function CodeBlock({ children }: { children?: ReactNode }) {
   );
 }
 
+/**
+ * Los modelos escriben `<br>` dentro de las celdas de una tabla, que es la
+ * única forma que da Markdown de partir una línea ahí. Como no interpretamos
+ * HTML —y no queremos hacerlo, que viene de un modelo— esas etiquetas salían
+ * escritas tal cual en medio del texto. Aquí las convertimos en saltos de
+ * verdad, tocando solo el texto y sin abrir la puerta a ningún HTML.
+ */
+function withLineBreaks(children: ReactNode): ReactNode {
+  return Children.map(children, (child, index) => {
+    if (typeof child !== "string") return child;
+    if (!/<br\s*\/?>/i.test(child)) return child;
+
+    const pieces = child.split(/<br\s*\/?>/i);
+    return (
+      <Fragment key={index}>
+        {pieces.map((piece, i) => (
+          <Fragment key={i}>
+            {i > 0 && <br />}
+            {piece}
+          </Fragment>
+        ))}
+      </Fragment>
+    );
+  });
+}
+
 function MarkdownInner({ children }: { children: string }) {
   return (
     <div className="prose-eclipse">
@@ -42,6 +68,16 @@ function MarkdownInner({ children }: { children: string }) {
         rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
         components={{
           pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
+          // Las tablas anchas se desplazan de lado en vez de aplastarse.
+          table: ({ children }) => (
+            <div className="table-scroll">
+              <table>{children}</table>
+            </div>
+          ),
+          td: ({ children }) => <td>{withLineBreaks(children)}</td>,
+          th: ({ children }) => <th>{withLineBreaks(children)}</th>,
+          p: ({ children }) => <p>{withLineBreaks(children)}</p>,
+          li: ({ children }) => <li>{withLineBreaks(children)}</li>,
           a: ({ href, children }) => (
             <a href={href} target="_blank" rel="noopener noreferrer">
               {children}
