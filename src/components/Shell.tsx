@@ -76,6 +76,9 @@ export default function Shell() {
         onEnter={() => {
           remember();
           setWantsIn(true);
+          // Quien llega aquí desde dentro de la app ya tenía `wantsIn` puesto,
+          // así que el efecto no se dispararía: hay que mandarle de vuelta.
+          if (ready) setView(auth.enabled && !auth.user ? "entrar" : "app");
         }}
       />
     );
@@ -100,6 +103,7 @@ export default function Shell() {
   return (
     <ChatApp
       user={auth.user}
+      onInicio={() => setView("portada")}
       onSignOut={() => {
         setAuth((a) => ({ ...a, user: null }));
         setView("entrar");

@@ -189,3 +189,10 @@ export const Mic = (p: P) => (
     <path d="M5 11.5a7 7 0 0 0 14 0M12 18.5V21.5M8.5 21.5h7" />
   </svg>
 );
+
+export const Home = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3.5 10.5 12 3.5l8.5 7M5.5 9.5V20h13V9.5" />
+    <path d="M9.5 20v-5.5h5V20" />
+  </svg>
+);

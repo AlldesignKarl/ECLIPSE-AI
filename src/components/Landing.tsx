@@ -31,6 +31,38 @@ const CAPABILITIES = [
   },
 ];
 
+/**
+ * Lo que la gente pregunta antes de probar algo nuevo. Sirve a quien llega y,
+ * de paso, es el único contenido con sustancia que un buscador puede leer:
+ * una portada de cuatro frases no tiene nada que indexar.
+ */
+const PREGUNTAS = [
+  {
+    q: "¿Qué es ECLIPSE?",
+    a: "Un asistente de inteligencia artificial al que puedes preguntarle cualquier cosa. Responde, busca en la web cuando hace falta, lee las imágenes y los documentos que le pases, crea imágenes y escribe código.",
+  },
+  {
+    q: "¿Es gratis?",
+    a: "Sí. El plan Gratis no caduca y no pide tarjeta: conversar, buscar con fuentes, analizar archivos y crear imágenes están incluidos. El plan Pro añade vídeo, proyectos de código completos con GitHub y respuestas más rápidas.",
+  },
+  {
+    q: "¿Hay que registrarse?",
+    a: "Para probarlo no. La cuenta con correo y contraseña sirve para que tu plan te acompañe si entras desde otro dispositivo.",
+  },
+  {
+    q: "¿Qué hace con lo que le escribo?",
+    a: "Las conversaciones se guardan en tu propio dispositivo, no en un servidor. Al servidor solo viaja el mensaje que estás preguntando, para poder responderte.",
+  },
+  {
+    q: "¿En qué se diferencia de otros asistentes?",
+    a: "En que prefiere decir «no lo sé» a quedar bien. Distingue lo que es un hecho contrastado de lo que es una estimación suya, y cuando busca en internet enseña de dónde ha sacado cada cosa, ordenado por fiabilidad.",
+  },
+  {
+    q: "¿Puedo hablarle en vez de escribir?",
+    a: "Sí. El botón del micrófono en la caja de escribir pasa tu voz a texto, lo revisas y lo envías.",
+  },
+];
+
 const FREE = ["Conversación sin límite", "Búsqueda con fuentes", "Imágenes, PDF y archivos", "Crear imágenes"];
 const PRO = ["Todo lo del plan Gratis", "Generación de vídeo", "Modo código con GitHub", "Modo Profundo", "Respuestas aceleradas"];
 
@@ -75,10 +107,10 @@ export default function Landing({ onEnter, price }: Props) {
               Empezar gratis
             </button>
             <a
-              href="#planes"
+              href="#preguntas"
               className="rounded-xl border border-line px-6 py-3 text-[14.5px] text-muted transition hover:border-halo/30 hover:text-ink"
             >
-              Ver los planes
+              Cómo funciona
             </a>
           </div>
 
@@ -113,6 +145,25 @@ export default function Landing({ onEnter, price }: Props) {
             Separa lo que es un hecho contrastado de lo que es consenso mayoritario y de lo que
             es una estimación suya, y cuando algo conviene verificar, te dice dónde hacerlo.
           </p>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------ Preguntas */}
+      <section id="preguntas" className="mx-auto max-w-5xl px-5 pb-16">
+        <h2 className="text-[13px] uppercase tracking-[0.16em] text-faint">Preguntas frecuentes</h2>
+
+        <div className="mt-7 divide-y divide-line-soft overflow-hidden rounded-2xl border border-line-soft">
+          {PREGUNTAS.map((p) => (
+            <details key={p.q} className="group bg-panel/25 open:bg-panel/40">
+              <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 text-[14.5px] font-medium text-ink">
+                <span className="flex-1">{p.q}</span>
+                <span className="text-faint transition group-open:rotate-45" aria-hidden>
+                  <Icon.Plus width={16} height={16} />
+                </span>
+              </summary>
+              <p className="px-5 pb-5 text-[13.5px] leading-relaxed text-muted">{p.a}</p>
+            </details>
+          ))}
         </div>
       </section>
 
@@ -169,6 +220,22 @@ export default function Landing({ onEnter, price }: Props) {
           </div>
         </div>
       </section>
+
+      {/* Las mismas preguntas, en el formato que Google sabe leer. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: PREGUNTAS.map((p) => ({
+              "@type": "Question",
+              name: p.q,
+              acceptedAnswer: { "@type": "Answer", text: p.a },
+            })),
+          }),
+        }}
+      />
 
       {/* ------------------------------------------------------------- Pie */}
       <footer className="border-t border-line-soft">

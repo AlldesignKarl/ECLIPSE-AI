@@ -20,6 +20,7 @@ interface Props {
   onUpgrade: () => void;
   onGithub: () => void;
   onSettings: () => void;
+  onInicio: () => void;
   /** Correo de la sesión abierta, si la app lleva cuentas. */
   user?: string | null;
   onSignOut?: () => void;
@@ -39,6 +40,7 @@ export default function Sidebar({
   onUpgrade,
   onGithub,
   onSettings,
+  onInicio,
   user = null,
   onSignOut,
 }: Props) {
@@ -242,6 +244,14 @@ export default function Sidebar({
           >
             <Icon.Settings width={16} height={16} />
             Ajustes
+          </button>
+
+          <button
+            onClick={onInicio}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-muted transition hover:bg-panel hover:text-ink"
+          >
+            <Icon.Home width={16} height={16} />
+            Qué es ECLIPSE
           </button>
 
           {user && (

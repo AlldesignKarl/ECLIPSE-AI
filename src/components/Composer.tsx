@@ -2,6 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { dictadoDisponible, dictar, type Dictado } from "@/lib/dictado";
+import {
+  grabacionDisponible,
+  grabar,
+  transcribir,
+  transcripcionDisponible,
+  VozError,
+  type Grabacion,
+} from "@/lib/voz";
 import * as Icon from "./Icons";
 import { humanSize } from "@/lib/files";
 import type { Attachment, Mode, Plan, Speed } from "@/lib/types";
@@ -76,29 +84,78 @@ export default function Composer({
   const cameraInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
-  /* ---------------------------- Dictado ---------------------------- */
-  const [puedeDictar, setPuedeDictar] = useState(false);
+  /* ------------------------------ Voz ------------------------------ */
+  /**
+   * Dos caminos. El bueno es grabar y transcribir en el servidor: funciona en
+   * cualquier navegador, también dentro del visor de páginas de otras apps.
+   * El dictado del navegador queda de respaldo para cuando no hay ninguna
+   * clave puesta, porque ese no cuesta nada.
+   */
+  type ModoVoz = "grabar" | "dictar" | "no";
+  const [modoVoz, setModoVoz] = useState<ModoVoz>("no");
   const [escuchando, setEscuchando] = useState(false);
+  const [transcribiendo, setTranscribiendo] = useState(false);
   const [avisoVoz, setAvisoVoz] = useState<string | null>(null);
   const dictadoRef = useRef<Dictado | null>(null);
-  // Lo que había escrito antes de empezar a hablar: el dictado se añade
-  // detrás en vez de pisarlo.
+  const grabacionRef = useRef<Grabacion | null>(null);
+  // Lo que había escrito antes de hablar: lo dicho se añade detrás.
   const baseRef = useRef("");
 
-  // El botón solo aparece donde el navegador sabe hacerlo.
-  useEffect(() => setPuedeDictar(dictadoDisponible()), []);
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      const servidor = grabacionDisponible() && (await transcripcionDisponible());
+      if (!vivo) return;
+      setModoVoz(servidor ? "grabar" : dictadoDisponible() ? "dictar" : "no");
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
-  // Al desmontar, soltar el micrófono.
-  useEffect(() => () => dictadoRef.current?.parar(), []);
-
-  const alternarVoz = () => {
-    if (escuchando) {
+  // Al desmontar, soltar el micrófono pase lo que pase.
+  useEffect(
+    () => () => {
       dictadoRef.current?.parar();
-      dictadoRef.current = null;
-      setEscuchando(false);
-      return;
-    }
+      grabacionRef.current?.cancelar();
+    },
+    [],
+  );
 
+  const añadir = (texto: string) => {
+    const limpio = texto.trim();
+    if (!limpio) return;
+    const previo = value.trimEnd();
+    onChange(previo ? `${previo} ${limpio}` : limpio);
+  };
+
+  const empezarGrabacion = async () => {
+    setAvisoVoz(null);
+    try {
+      grabacionRef.current = await grabar();
+      setEscuchando(true);
+    } catch (err) {
+      setAvisoVoz(err instanceof VozError ? err.message : "No se ha podido abrir el micrófono.");
+    }
+  };
+
+  const terminarGrabacion = async () => {
+    const grabacion = grabacionRef.current;
+    grabacionRef.current = null;
+    setEscuchando(false);
+    if (!grabacion) return;
+
+    setTranscribiendo(true);
+    try {
+      añadir(await transcribir(await grabacion.parar()));
+    } catch (err) {
+      setAvisoVoz(err instanceof VozError ? err.message : "No se ha podido transcribir.");
+    } finally {
+      setTranscribiendo(false);
+    }
+  };
+
+  const empezarDictado = () => {
     setAvisoVoz(null);
     baseRef.current = value ? `${value.trimEnd()} ` : "";
 
@@ -120,6 +177,27 @@ export default function Composer({
     }
     dictadoRef.current = sesion;
     setEscuchando(true);
+  };
+
+  const alternarVoz = () => {
+    if (transcribiendo) return;
+
+    if (escuchando) {
+      if (modoVoz === "grabar") void terminarGrabacion();
+      else {
+        dictadoRef.current?.parar();
+        dictadoRef.current = null;
+        setEscuchando(false);
+      }
+      return;
+    }
+
+    if (modoVoz === "grabar") void empezarGrabacion();
+    else if (modoVoz === "dictar") empezarDictado();
+    else
+      setAvisoVoz(
+        "Para hablar en vez de escribir hace falta una clave de Groq (gratis, sin tarjeta) en Ajustes, o un navegador con dictado.",
+      );
   };
 
   // La caja crece con el texto, hasta un tope.
@@ -242,7 +320,13 @@ export default function Composer({
                 onFiles(files);
               }
             }}
-            placeholder={escuchando ? "Te escucho… habla y lo escribo" : PLACEHOLDERS[mode]}
+            placeholder={
+              escuchando
+                ? "Te escucho… pulsa el micrófono al terminar"
+                : transcribiendo
+                  ? "Pasando tu voz a texto…"
+                  : PLACEHOLDERS[mode]
+            }
             className="scroll-thin max-h-[220px] w-full resize-none bg-transparent px-4 pb-2 pt-3.5 text-[15px] leading-relaxed text-ink outline-none placeholder:text-faint"
           />
 
@@ -288,24 +372,33 @@ export default function Composer({
               <Icon.Camera width={17} height={17} />
             </button>
 
-            {puedeDictar && (
-              <button
-                onClick={alternarVoz}
-                aria-label={escuchando ? "Dejar de dictar" : "Dictar por voz"}
-                aria-pressed={escuchando}
-                title={escuchando ? "Dejar de dictar" : "Dictar por voz"}
-                className={`relative rounded-lg p-2 transition ${
-                  escuchando
-                    ? "bg-danger/15 text-danger"
+            <button
+              onClick={alternarVoz}
+              disabled={transcribiendo}
+              aria-label={
+                transcribiendo ? "Transcribiendo" : escuchando ? "Parar y transcribir" : "Hablar"
+              }
+              aria-pressed={escuchando}
+              title={
+                transcribiendo
+                  ? "Pasando tu voz a texto…"
+                  : escuchando
+                    ? "Parar y pasar a texto"
+                    : "Hablar en vez de escribir"
+              }
+              className={`relative rounded-lg p-2 transition ${
+                escuchando
+                  ? "bg-danger/15 text-danger"
+                  : transcribiendo
+                    ? "text-halo"
                     : "text-muted hover:bg-raised hover:text-ink"
-                }`}
-              >
-                <Icon.Mic width={17} height={17} />
-                {escuchando && (
-                  <span className="mic-latido absolute inset-0 rounded-lg border border-danger/50" />
-                )}
-              </button>
-            )}
+              }`}
+            >
+              <Icon.Mic width={17} height={17} className={transcribiendo ? "animate-pulse" : ""} />
+              {escuchando && (
+                <span className="mic-latido absolute inset-0 rounded-lg border border-danger/50" />
+              )}
+            </button>
 
             {/* Velocidad */}
             <div className="flex items-center rounded-lg border border-line-soft bg-void/40 p-0.5">

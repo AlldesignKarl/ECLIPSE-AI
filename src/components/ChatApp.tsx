@@ -52,9 +52,11 @@ interface ChatAppProps {
   /** Correo de quien ha entrado, o null si la app va sin cuentas. */
   user?: string | null;
   onSignOut?: () => void;
+  /** Volver a la portada, la que explica qué es la aplicación. */
+  onInicio?: () => void;
 }
 
-export default function ChatApp({ user = null, onSignOut }: ChatAppProps) {
+export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppProps) {
   /* ------------------------------ Estado ------------------------------ */
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -610,6 +612,10 @@ export default function ChatApp({ user = null, onSignOut }: ChatAppProps) {
           setGithubOpen(true);
         }}
         onSettings={() => setSettingsOpen(true)}
+        onInicio={() => {
+          setSidebar(false);
+          onInicio?.();
+        }}
         user={user}
         onSignOut={async () => {
           await fetch("/api/auth", { method: "DELETE" }).catch(() => {});
