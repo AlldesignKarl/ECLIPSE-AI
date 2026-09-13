@@ -338,17 +338,7 @@ export async function* streamCompat(opts: {
       503,
     );
 
-  const body = (model: string) =>
-    JSON.stringify({
-      model,
-      messages: toMessages(opts.system, opts.turns, preset.vision.test(model), opts.extra ?? []),
-      max_tokens: maxTokens(opts.speed, opts.modo),
-      temperature: 0.7,
-      stream: true,
-      ...(opts.tools?.length ? { tools: opts.tools, tool_choice: "auto" } : {}),
-    });
-
-  const open = (model: string) =>
+  const open = (model: string, tope: number, nombreNuevo = false) =>
     fetch(`${preset.base}/chat/completions`, {
       method: "POST",
       headers: {
@@ -359,8 +349,49 @@ export async function* streamCompat(opts: {
         "X-Title": "ECLIPSE",
       },
       signal: opts.signal,
-      body: body(model),
+      body: JSON.stringify({
+        model,
+        messages: toMessages(opts.system, opts.turns, preset.vision.test(model), opts.extra ?? []),
+        // Los modelos nuevos piden `max_completion_tokens`; los de siempre,
+        // `max_tokens`. Mandar el que no toca es un 400 que no habla del modelo.
+        ...(nombreNuevo ? { max_completion_tokens: tope } : { max_tokens: tope }),
+        temperature: 0.7,
+        stream: true,
+        ...(opts.tools?.length ? { tools: opts.tools, tool_choice: "auto" } : {}),
+      }),
     });
+
+  /**
+   * Pide la respuesta y, si el 400 va del tamaño y no del modelo, insiste.
+   *
+   * Aquí se juntaban dos cosas que no tienen nada que ver. En modo código se
+   * piden 16.384 tokens de respuesta, y hay modelos que no llegan a tanto o que
+   * ya no aceptan ese nombre de parámetro: contestan 400. El código de antes
+   * leía ese 400 como "este modelo no existe", cambiaba de modelo, y el
+   * siguiente fallaba igual por lo mismo, y el siguiente, hasta quedarse sin
+   * ninguno y decir que el proveedor había retirado todos sus modelos. No era
+   * verdad: estaban todos ahí y lo que sobraba era el tamaño que se pedía.
+   *
+   * Así que ante un 400 se mira de qué habla: si habla de tokens, se reintenta
+   * con el otro nombre del parámetro y bajando el tope a la mitad. Solo si el
+   * error no va de eso se da el modelo por perdido.
+   */
+  const pedir = async (model: string) => {
+    let tope = maxTokens(opts.speed, opts.modo);
+    let nombreNuevo = false;
+    let res = await open(model, tope, nombreNuevo);
+
+    for (let intento = 0; intento < 3 && res.status === 400; intento++) {
+      const detalle = await res.clone().text().catch(() => "");
+      if (!/token/i.test(detalle)) break;
+
+      if (!nombreNuevo) nombreNuevo = true;
+      else tope = Math.max(2048, Math.floor(tope / 2));
+
+      res = await open(model, tope, nombreNuevo);
+    }
+    return res;
+  };
 
   // Si en la conversación hay alguna imagen, el modelo tiene que saber mirarla.
   const hayImagenes = opts.turns.some((t) => t.attachments?.some((a) => a.kind === "image" && a.data));
@@ -371,7 +402,7 @@ export async function* streamCompat(opts: {
     opts.modo ?? "chat",
     hayImagenes,
   );
-  let res = await open(wanted);
+  let res = await pedir(wanted);
 
   // Modelo desconocido o retirado: buscamos uno disponible en la cuenta.
   // El elegido ya no sirve (retirado, o sin acceso con esta clave): se olvida,
@@ -384,7 +415,7 @@ export async function* streamCompat(opts: {
 
     for (const candidate of (await modelosDeLaCuenta(opts.provider, preset, opts.key)).slice(0, 8)) {
       if (candidate === wanted) continue;
-      res = await open(candidate);
+      res = await pedir(candidate);
       if (res.ok) {
         if (opts.modo === "code") resueltoCodigo[opts.provider] = candidate;
         else resolved[opts.provider] = candidate;
@@ -399,7 +430,7 @@ export async function* streamCompat(opts: {
   if (res.status === 429 && opts.modo === "code" && wanted !== preset.model) {
     delete resueltoCodigo[opts.provider];
     const otro = resolved[opts.provider] || preset.model;
-    if (otro !== wanted) res = await open(otro);
+    if (otro !== wanted) res = await pedir(otro);
   }
 
   // Cuando ni con los respaldos hay modelo, el volcado del proveedor no ayuda a
