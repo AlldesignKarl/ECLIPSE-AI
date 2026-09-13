@@ -492,8 +492,18 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           controller.signal,
         );
       } catch (err) {
-        if ((err as Error).name !== "AbortError")
-          failure = err instanceof Error ? err.message : "Error inesperado.";
+        if ((err as Error).name !== "AbortError") {
+          const crudo = err instanceof Error ? err.message : "";
+          /*
+            Lo que dice el navegador cuando se corta la conexión no le sirve a
+            nadie: "network error" o "Failed to fetch", y en inglés. Suele pasar
+            al cambiar de wifi a datos, al bloquearse el móvil un rato o cuando
+            una respuesta muy larga tarda más de lo que el servidor aguanta.
+          */
+          failure = /network|failed to fetch|load failed|networkerror/i.test(crudo)
+            ? "Se ha cortado la conexión antes de terminar la respuesta. Suele pasar al cambiar de wifi a datos o con respuestas muy largas. Dale a Reintentar."
+            : crudo || "Error inesperado.";
+        }
       }
 
       if (rafRef.current !== null) {

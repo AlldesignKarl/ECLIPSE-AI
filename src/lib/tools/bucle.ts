@@ -37,6 +37,8 @@ export interface EventoBucle {
   imagen?: { url: string; prompt: string };
   /** El modelo que está respondiendo. */
   modelo?: string;
+  /** Su deliberación, para el panel de razonamiento. */
+  pensando?: string;
 }
 
 /** Cuántas rondas de herramientas se permiten según lo que pida el usuario. */
@@ -80,6 +82,7 @@ export async function* conversarConHerramientas(opts: {
   if (herramientas.length === 0) {
     for await (const e of streamCompat({ ...opts, modo: opts.mode })) {
       if (e.text) yield { texto: e.text };
+      if (e.pensando) yield { pensando: e.pensando };
       if (e.modelo) yield { modelo: e.modelo };
     }
     return;
@@ -117,6 +120,7 @@ export async function* conversarConHerramientas(opts: {
           escritoAlgo = true;
           yield { texto: e.text };
         }
+        if (e.pensando) yield { pensando: e.pensando };
         if (e.modelo && vuelta === 0) yield { modelo: e.modelo };
         if (e.llamadas) llamadas = e.llamadas;
       }

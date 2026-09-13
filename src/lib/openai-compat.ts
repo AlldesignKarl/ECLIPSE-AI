@@ -1,3 +1,4 @@
+import { crearSeparador } from "./pensamiento";
 import type { Attachment, Mode, Speed } from "./types";
 
 /**
@@ -307,6 +308,8 @@ function envModel(provider: CompatProvider): string {
 
 export interface CompatEvent {
   text?: string;
+  /** Su deliberación, que va a otro sitio y no a la respuesta. */
+  pensando?: string;
   /** Qué modelo acabó respondiendo. Se manda una vez, al abrir. */
   modelo?: string;
   /** El modelo ha pedido usar herramientas y ha dejado de escribir. */
@@ -437,6 +440,8 @@ export async function* streamCompat(opts: {
    * veinte. Se arman por su índice y no se entregan hasta que el flujo acaba.
    */
   const enObra = new Map<number, LlamadaCruda>();
+  // Los modelos de razonamiento escriben su borrador entre <think> y </think>.
+  const separador = crearSeparador();
 
   while (true) {
     const { done, value } = await reader.read();
@@ -469,7 +474,11 @@ export async function* streamCompat(opts: {
         if (chunk.error?.message) throw new CompatError(chunk.error.message);
 
         const delta = chunk.choices?.[0]?.delta;
-        if (delta?.content) yield { text: delta.content };
+        if (delta?.content) {
+          const { texto, pensando } = separador.trozo(delta.content);
+          if (pensando) yield { pensando };
+          if (texto) yield { text: texto };
+        }
 
         for (const trozo of delta?.tool_calls ?? []) {
           const i = trozo.index ?? 0;
@@ -489,6 +498,10 @@ export async function* streamCompat(opts: {
       }
     }
   }
+
+  const final = separador.cerrar();
+  if (final.pensando) yield { pensando: final.pensando };
+  if (final.texto) yield { text: final.texto };
 
   const llamadas = [...enObra.values()].filter((l) => l.function.name);
   if (llamadas.length) {

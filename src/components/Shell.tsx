@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AuthScreen from "./AuthScreen";
 import ChatApp from "./ChatApp";
 import InstalarApp from "./InstalarApp";
+import Novedades from "./Novedades";
 import Landing from "./Landing";
 
 const ENTERED = "eclipse.entered";
@@ -103,6 +104,7 @@ export default function Shell() {
   return (
     <>
       {pantalla}
+      <Novedades />
       <InstalarApp />
     </>
   );
