@@ -77,9 +77,16 @@ function porQueNoSeVe(html: string, files: GeneratedFile[]): string | null {
   if (pendientes.length)
     return "Falta algún archivo que la página necesita para abrirse.";
 
-  // Importaciones de paquetes: `import React from "react"` no resuelve aquí.
+  /*
+    Importaciones de paquetes: `import React from "react"` no resuelve aquí.
+
+    Pero `import * as THREE from "https://cdn…/three.module.js"` SÍ resuelve: es
+    una dirección completa y el navegador la descarga igual que cualquier
+    script. Sin esta distinción, una escena 3D perfectamente visible se
+    rechazaba por parecerse a un proyecto sin compilar.
+  */
   const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
-  const paquete = /^\s*import\s[^;]*?\sfrom\s+["'](?![./])([^"']+)["']/m;
+  const paquete = /^\s*import\s[^;]*?\sfrom\s+["'](?![./]|https?:|data:)([^"']+)["']/m;
   if (scripts.some((codigo) => paquete.test(codigo)))
     return "Este proyecto usa librerías que hay que instalar antes de verlo.";
 

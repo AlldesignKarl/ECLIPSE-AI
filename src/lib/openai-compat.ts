@@ -201,7 +201,23 @@ async function listModels(preset: Preset, key: string): Promise<string[]> {
  * vez por arranque del servidor y no en cada mensaje.
  */
 
-/** Para código se busca el más capaz; para charlar, el más equilibrado. */
+/**
+ * Qué modelo se prefiere para cada cosa, por patrones de nombre.
+ *
+ * Antes, cuando el de siempre no estaba en la cuenta, se cogía "el primero de
+ * la lista". Y el primero resultó ser uno pequeño: de ahí salían las páginas
+ * pobres y el "no puedo ver la imagen". Un modelo pequeño no es un modelo
+ * grande con menos ganas; hay cosas que directamente no sabe hacer.
+ */
+const PREFERENCIA_CHAT: RegExp[] = [
+  /llama-4|maverick|scout/i,
+  /kimi|k2/i,
+  /70b|72b/i,
+  /gpt-oss.*120/i,
+  /qwen.*3/i,
+  /versatile/i,
+];
+
 const PREFERENCIA_CODIGO: RegExp[] = [
   /kimi|k2/i,
   /deepseek/i,
@@ -214,6 +230,7 @@ const PREFERENCIA_CODIGO: RegExp[] = [
 
 const resolved: Partial<Record<CompatProvider, string>> = {};
 const resueltoCodigo: Partial<Record<CompatProvider, string>> = {};
+const resueltoVista: Partial<Record<CompatProvider, string>> = {};
 /** El catálogo de la cuenta, para no pedirlo en cada mensaje. */
 const catalogo: Partial<Record<CompatProvider, string[]>> = {};
 
@@ -234,12 +251,11 @@ async function elegirModelo(
   preset: Preset,
   key: string,
   modo: Mode,
+  /** Hay imágenes en la conversación: hace falta uno que sepa mirarlas. */
+  conVista = false,
 ): Promise<string> {
   const fijado = envModel(provider) || (modo === "code" ? process.env.CODE_MODEL || "" : "");
   if (fijado) return fijado;
-
-  const guardado = modo === "code" ? resueltoCodigo[provider] : resolved[provider];
-  if (guardado) return guardado;
 
   const disponibles = await modelosDeLaCuenta(provider, preset, key);
 
@@ -247,15 +263,28 @@ async function elegirModelo(
   // de siempre: peor que elegir bien, mejor que no intentarlo.
   if (disponibles.length === 0) return preset.model;
 
-  if (modo === "code") {
-    for (const patron of PREFERENCIA_CODIGO) {
-      const encontrado = disponibles.find((id) => patron.test(id));
-      if (encontrado) return (resueltoCodigo[provider] = encontrado);
+  // Con una imagen delante manda ver por encima de todo lo demás: el mejor
+  // modelo del mundo que no mire imágenes, aquí no sirve para nada.
+  if (conVista) {
+    const conOjos = disponibles.filter((id) => preset.vision.test(id));
+    if (conOjos.length) return resueltoVista[provider] ?? (resueltoVista[provider] = conOjos[0]);
+  }
+
+  const guardado = modo === "code" ? resueltoCodigo[provider] : resolved[provider];
+  if (guardado) return guardado;
+
+  const preferencias = modo === "code" ? PREFERENCIA_CODIGO : PREFERENCIA_CHAT;
+  for (const patron of preferencias) {
+    const encontrado = disponibles.find((id) => patron.test(id));
+    if (encontrado) {
+      if (modo === "code") resueltoCodigo[provider] = encontrado;
+      else resolved[provider] = encontrado;
+      return encontrado;
     }
   }
 
-  // Para conversar, el de siempre si la cuenta lo tiene; si lo han retirado,
-  // el primero de la lista, que `listModels` ya devuelve ordenada por buenos.
+  // Ninguno encaja con lo que se busca: el de siempre si está, y si no, el
+  // primero que haya, que es mejor que no responder.
   const elegido = disponibles.includes(preset.model) ? preset.model : disponibles[0];
   if (modo === "code") resueltoCodigo[provider] = elegido;
   else resolved[provider] = elegido;
@@ -266,6 +295,7 @@ async function elegirModelo(
 function olvidarModelo(provider: CompatProvider, modelo: string) {
   if (resolved[provider] === modelo) delete resolved[provider];
   if (resueltoCodigo[provider] === modelo) delete resueltoCodigo[provider];
+  if (resueltoVista[provider] === modelo) delete resueltoVista[provider];
 }
 
 /** Permite fijar el modelo desde el hosting, sin tocar el código. */
@@ -329,7 +359,15 @@ export async function* streamCompat(opts: {
       body: body(model),
     });
 
-  const wanted = await elegirModelo(opts.provider, preset, opts.key, opts.modo ?? "chat");
+  // Si en la conversación hay alguna imagen, el modelo tiene que saber mirarla.
+  const hayImagenes = opts.turns.some((t) => t.attachments?.some((a) => a.kind === "image" && a.data));
+  const wanted = await elegirModelo(
+    opts.provider,
+    preset,
+    opts.key,
+    opts.modo ?? "chat",
+    hayImagenes,
+  );
   let res = await open(wanted);
 
   // Modelo desconocido o retirado: buscamos uno disponible en la cuenta.
