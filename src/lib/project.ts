@@ -363,24 +363,33 @@ export function archivosEjecutables(markdown: string): GeneratedFile[] {
 export function aligerarHistorial<T extends { role: string; content: string }>(
   mensajes: T[],
 ): T[] {
-  const ultimoConCodigo = mensajes.reduce(
-    (ultimo, m, i) => (m.role === "assistant" && m.content.includes("\u0060\u0060\u0060") ? i : ultimo),
-    -1,
-  );
+  /*
+    Se conservan las DOS últimas versiones con código, no solo la última.
+
+    Empezó guardándose una sola porque el cupo por minuto no daba para más.
+    Con un motor con margen sí da, y tener la anterior a mano importa: al pedir
+    un cambio, ver de dónde viene el archivo es la diferencia entre corregirlo y
+    rehacerlo. Del resto se deja constancia de que existieron, que es lo único
+    que hace falta para no perder el hilo.
+  */
+  const conCodigo = mensajes
+    .map((m, i) => (m.role === "assistant" && m.content.includes("```") ? i : -1))
+    .filter((i) => i !== -1);
+  const guardados = new Set(conCodigo.slice(-2));
 
   return mensajes.map((m, i) => {
-    if (m.role !== "assistant" || i === ultimoConCodigo) return m;
-    if (!m.content.includes("\u0060\u0060\u0060")) return m;
-
+    if (m.role !== "assistant" || guardados.has(i)) return m;
+    if (!m.content.includes("```")) return m;
     return {
       ...m,
       content: m.content.replace(
-        /^\u0060\u0060\u0060[^\n]*\n[\s\S]*?\n?^\u0060\u0060\u0060[ \t]*$/gm,
+        /^```[^\n]*\n[\s\S]*?\n?^```[ \t]*$/gm,
         "[código de una versión anterior, omitido para no repetirlo]",
       ),
     };
   });
 }
+
 
 /**
  * El trozo de código donde está el error, con sus vecinos alrededor.

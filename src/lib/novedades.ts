@@ -27,6 +27,18 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.20",
+    // Afinar: el instrumento ya está, ahora suena como debe.
+    nombre: "Afinado",
+    titulo: "Todo apuntando al motor nuevo",
+    entrada:
+      "Con Mistral puesto, el resto se ajusta para aprovecharlo: mejor modelo para programar y más memoria de lo que llevas hecho.",
+    puntos: [
+      "Para escribir archivos ECLIPSE CODE usa Devstral, que está hecho para eso. Codestral, que es para completar líneas sueltas en un editor, se queda de recambio.",
+      "Y ahora recuerda las dos últimas versiones de lo que te ha hecho, no solo la última. Al pedir un cambio ve de dónde viene el archivo, y eso es la diferencia entre corregirlo y rehacerlo entero.",
+    ],
+  },
+  {
     version: "2.19",
     // El mistral: el viento que despeja el cielo del todo.
     nombre: "Mistral",

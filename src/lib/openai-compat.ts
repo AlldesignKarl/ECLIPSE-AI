@@ -54,7 +54,7 @@ export const PRESETS: Record<CompatProvider, Preset> = {
     label: "Mistral · gratis, medio millón de tokens por minuto",
     base: "https://api.mistral.ai/v1",
     model: "mistral-large-latest",
-    prefer: /codestral|devstral|mistral-large|magistral|mistral-medium/i,
+    prefer: /devstral|mistral-large|magistral|mistral-medium|codestral/i,
     vision: OJOS,
     keyUrl: "https://console.mistral.ai/api-keys",
   },
@@ -347,14 +347,20 @@ const PREFERENCIA_CHAT: RegExp[] = [
 ];
 
 const PREFERENCIA_CODIGO: RegExp[] = [
-  /devstral|codestral/i,
+  // Devstral está hecho para escribir archivos enteros y coordinar varios; es
+  // lo que se pide aquí. Codestral, en cambio, está afinado para completar
+  // código dentro de un editor: rápido, pero se pierde en un archivo largo.
+  // Por eso van separados y no juntos, que era como estaban.
+  /devstral/i,
   /kimi|k2/i,
   /qwen.*coder/i,
   /deepseek/i,
+  /mistral-large|magistral|mistral-medium/i,
   /llama.*(405|90)b/i,
   /gpt-oss.*120/i,
   /maverick/i,
   /70b|72b/i,
+  /codestral/i,
   /qwen.*3/i,
   /qwen/i,
 ];
