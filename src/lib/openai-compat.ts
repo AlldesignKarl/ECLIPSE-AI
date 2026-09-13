@@ -186,6 +186,55 @@ async function listModels(preset: Preset, key: string): Promise<string[]> {
   }
 }
 
+/**
+ * Para código, el modelo más capaz que tenga la cuenta.
+ *
+ * El de charla responde rápido y corto, que es lo que quieres conversando y lo
+ * que menos sirve escribiendo un proyecto: entrega ciento y pico líneas y se
+ * queda tan ancho. Aquí se busca uno mayor.
+ *
+ * Se elige de la lista REAL de la cuenta, nunca de una lista escrita a mano:
+ * los proveedores gratuitos retiran modelos cada pocas semanas, y un
+ * identificador inventado o caducado es un error 404 delante del usuario. Se
+ * ordena por patrones de nombre —familias conocidas por programar bien, y el
+ * tamaño en miles de millones de parámetros— y se coge el primero que exista.
+ */
+const PREFERENCIA_CODIGO: RegExp[] = [
+  /kimi|k2/i,
+  /deepseek/i,
+  /qwen.*(coder|3)/i,
+  /qwen/i,
+  /llama.*(405|90)b/i,
+  /70b|72b/i,
+];
+
+const resueltoCodigo: Partial<Record<CompatProvider, string>> = {};
+
+async function modeloParaCodigo(
+  provider: CompatProvider,
+  preset: Preset,
+  key: string,
+): Promise<string | null> {
+  if (resueltoCodigo[provider]) return resueltoCodigo[provider]!;
+
+  // Si el hosting fija uno, manda ese y no se busca nada.
+  const fijado = process.env.CODE_MODEL;
+  if (fijado) {
+    resueltoCodigo[provider] = fijado;
+    return fijado;
+  }
+
+  const disponibles = await listModels(preset, key);
+  for (const patron of PREFERENCIA_CODIGO) {
+    const encontrado = disponibles.find((id) => patron.test(id));
+    if (encontrado) {
+      resueltoCodigo[provider] = encontrado;
+      return encontrado;
+    }
+  }
+  return null;
+}
+
 const resolved: Partial<Record<CompatProvider, string>> = {};
 
 /** Permite fijar el modelo desde el hosting, sin tocar el código. */
@@ -247,11 +296,18 @@ export async function* streamCompat(opts: {
       body: body(model),
     });
 
-  const wanted = envModel(opts.provider) || resolved[opts.provider] || preset.model;
+  const wanted =
+    envModel(opts.provider) ||
+    (opts.modo === "code"
+      ? await modeloParaCodigo(opts.provider, preset, opts.key)
+      : null) ||
+    resolved[opts.provider] ||
+    preset.model;
   let res = await open(wanted);
 
   // Modelo desconocido o retirado: buscamos uno disponible en la cuenta.
   if (res.status === 404 || res.status === 400) {
+    if (resueltoCodigo[opts.provider] === wanted) delete resueltoCodigo[opts.provider];
     for (const candidate of (await listModels(preset, opts.key)).slice(0, 4)) {
       if (candidate === wanted) continue;
       res = await open(candidate);
@@ -260,6 +316,15 @@ export async function* streamCompat(opts: {
         break;
       }
     }
+  }
+
+  // El modelo bueno para código suele tener un límite gratuito más apretado.
+  // Si está saturado, se responde con el de siempre en vez de dejar al usuario
+  // sin nada: un proyecto algo más flojo es mejor que ninguno.
+  if (res.status === 429 && opts.modo === "code" && wanted !== preset.model) {
+    delete resueltoCodigo[opts.provider];
+    const otro = resolved[opts.provider] || preset.model;
+    if (otro !== wanted) res = await open(otro);
   }
 
   if (!res.ok) {
