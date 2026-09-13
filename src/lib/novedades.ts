@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.25",
+    // El método, no la receta.
+    nombre: "Método",
+    titulo: "Cualquier cosa en 3D, no solo lo que ya sabía",
+    entrada:
+      "Hasta ahora sabía hacer bien lo que se le había explicado pieza a pieza. Ahora tiene el método para construir lo que sea.",
+    puntos: [
+      "Cuatro pasos que valen igual para una vaca, una catedral, un satélite o un pulpo: averigua cómo es, despiézalo, constrúyelo con piezas agrupadas y dale superficie y luz.",
+      "Si lo que pides existe de verdad, lo busca antes de empezar: proporciones, materiales, colores. Y ya no busca a medias: con el motor nuevo hay sitio de sobra para enterarse bien.",
+      "Con nueve formas básicas se hace cualquier objeto, y las tiene todas a mano: cápsulas, esferas deformadas, cajas redondeadas, cilindros, conos, roscas, piezas de torno, siluetas con grosor y terreno irregular.",
+    ],
+  },
+  {
     version: "2.24",
     // La superficie: lo que separa una bola gris de una luna.
     nombre: "Superficie",

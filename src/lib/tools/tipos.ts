@@ -32,6 +32,8 @@ export interface Contexto {
    * que luego faltan para terminar el archivo.
    */
   modo?: Mode;
+  /** El motor tiene margen de sobra: no hace falta racionar lo que se le da. */
+  margenAmplio?: boolean;
   /** Para cortar si el usuario se cansa de esperar. */
   signal?: AbortSignal;
   /** Cuenta lo que va pasando, para poder enseñarlo en pantalla. */

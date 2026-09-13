@@ -1,4 +1,5 @@
 import {
+  margenDeSobra,
   streamCompat,
   type CompatProvider,
   type LlamadaCruda,
@@ -156,6 +157,7 @@ export async function* conversarConHerramientas(opts: {
       const resultado = await ejecutarHerramienta(llamada.function.name, args, {
         plan: opts.plan,
         modo: opts.mode,
+        margenAmplio: margenDeSobra(opts.provider),
         signal: opts.signal,
       });
 

@@ -585,23 +585,47 @@ estropea el resultado entero:
 5. Piezas que cambian de sitio: vuelven con attach, nunca con add.`;
 
 /** Cómo se hace una figura que no es un cubo. Solo cuando hay que modelar algo. */
-const MODELAR_3D = `MODELAR ALGO QUE NO ES UN CUBO: un animal, una persona, un coche, un edificio.
+const MODELAR_3D = `CÓMO SE MODELA CUALQUIER COSA. Esto no es una lista de recetas: es el método, y
+sirve igual para una vaca, una catedral, un satélite, una silla o un pulpo.
+Cuatro pasos, en este orden, y ninguno se salta.
 
-Aquí está el fallo que más se comete, y no es técnico: entregar una caja con una
-esfera encima y llamarlo vaca. Una figura reconocible necesita MUCHAS piezas, y
-cada una colocada donde toca. Una vaca son, por lo menos: el cuerpo, el cuello,
-la cabeza, el morro, dos orejas, dos cuernos, cuatro patas de dos tramos cada
-una, cuatro pezuñas, la cola con su borla, la ubre y las manchas. Eso son más de
-veinte piezas. Si has usado menos de diez para un ser vivo, no has terminado.
+1. AVERIGUA CÓMO ES. Si existe de verdad y no lo dominas, búscalo con
+   buscar_web antes de escribir una línea: proporciones, medidas, de qué está
+   hecho, qué forma tienen sus partes, de qué color es cada una. Treinta
+   segundos de búsqueda cambian por completo lo que hay que escribir. Y si no
+   existe —algo inventado—, decídelo tú y escríbelo antes de empezar, aunque
+   sea en un comentario: altura, anchura, cuántas partes, de qué material.
 
-Y si lo que te piden EXISTE de verdad —un monumento, un edificio, un animal
-concreto, un coche, una bandera—, búscalo antes de modelarlo con buscar_web.
-Una búsqueda corta y concreta: proporciones, medidas, de qué está hecho, qué
-forma tienen sus partes. No es distraerse, es no inventarse el encargo. Una
-pirámide de Guiza, por ejemplo, no es un triángulo: base cuadrada de 230 metros,
-139 de alto, cuatro caras a 51,8 grados, y piedra en hiladas que se van metiendo
-hacia dentro —escalones, no ladrillos de pared—. Eso cambia por completo lo que
-hay que escribir, y son treinta segundos de búsqueda.
+2. DESPIÉZALO. Enumera de qué partes se compone antes de tocar el código. Una
+   vaca: cuerpo, cuello, cabeza, morro, orejas, cuernos, cuatro patas de dos
+   tramos, pezuñas, cola con borla, ubre, manchas. Más de veinte piezas. Si
+   para un ser vivo o un vehículo has usado menos de diez, no has terminado: te
+   has quedado en el boceto.
+
+3. CONSTRÚYELO CON PRIMITIVAS AGRUPADAS. No hace falta nada más que estas, y
+   con ellas se hace cualquier cosa:
+   - Capsule para cuerpos, patas, brazos, troncos, tuberías.
+   - Sphere escalada con scale.set() para cabezas, vientres, frutas, planetas.
+   - RoundedBox para lo recto que en la vida real no tiene aristas vivas.
+   - Cylinder y Cone para ruedas, torres, cuellos, picos, tejados.
+   - Torus para asas, anillos, ruedas, bocas.
+   - Lathe para todo lo que tiene simetría de giro: jarrones, columnas,
+     cuernos, copas, campanas, peonzas.
+   - Extrude a partir de una Shape para cualquier silueta que puedas dibujar
+     en plano y luego darle grosor: letras, logotipos, hojas, plantas de
+     edificio, piezas de máquina.
+   - Y para el terreno o cualquier superficie irregular: un PlaneGeometry con
+     muchos segmentos, moviéndole los vértices a mano.
+   Cada parte, su THREE.Group; luego colocas y giras el grupo entero. Así se
+   repite fácil (cuatro patas son el mismo grupo cuatro veces) y se anima solo.
+
+4. DALE SUPERFICIE Y LUZ. Es lo que separa un montón de primitivas de algo que
+   parece de verdad, y va explicado justo debajo.
+
+Buscar no es distraerse, es no inventarse el encargo. Una pirámide de Guiza no
+es un triángulo: base cuadrada de 230 metros, 139 de alto, caras a 51,8 grados y
+piedra en hiladas que se meten hacia dentro —escalones, no ladrillos de pared—.
+Eso no se adivina, se mira.
 
 Cómo se hace que parezca de verdad:
 - Formas redondeadas, que en la naturaleza no hay aristas: CapsuleGeometry para

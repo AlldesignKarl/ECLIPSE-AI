@@ -243,6 +243,23 @@ function anotarCupo(provider: CompatProvider, modelo: string, res: Response) {
   if (Number.isFinite(n) && n > 0) cupoPorMinuto[claveCupo(provider, modelo)] = n;
 }
 
+/**
+ * ¿Este motor tiene margen de sobra por minuto?
+ *
+ * Sirve para decidir cuánto se le puede dar de comer sin quitarle sitio para
+ * escribir. Con ocho mil tokens por minuto hay que racionar hasta los
+ * resultados de una búsqueda; con medio millón, racionar es tonto y además
+ * hace daño: una búsqueda recortada es la diferencia entre saber cómo es una
+ * catedral y tener que imaginársela.
+ */
+export function margenDeSobra(provider: CompatProvider): boolean {
+  const suyos = Object.entries(cupoPorMinuto)
+    .filter(([clave]) => clave.startsWith(`${provider}:`))
+    .map(([, n]) => n);
+
+  return suyos.length > 0 && Math.max(...suyos) >= 50_000;
+}
+
 /** Lo que sabemos del cupo de un modelo, si ya se ha usado alguna vez. */
 export function cupoDe(provider: CompatProvider, modelo: string): number | undefined {
   return cupoPorMinuto[claveCupo(provider, modelo)];

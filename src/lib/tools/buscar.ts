@@ -205,12 +205,15 @@ ahí eres más rápido y mejor tú solo.`,
     if (!consulta) return { texto: "", error: "No has dicho qué buscar." };
 
     ctx.avisar?.(`Buscando: ${consulta}`);
-    const enCodigo = ctx.modo === "code";
+    // Se racionaba en modo código porque el cupo por minuto no daba para más.
+    // Con un motor que tiene margen, racionar es quitarle justo lo que ha ido a
+    // buscar: cómo es de verdad lo que le han pedido que construya.
+    const racionar = ctx.modo === "code" && !ctx.margenAmplio;
     return buscarEnLaWeb(
       consulta,
-      Number(args.cuantos) || (enCodigo ? 3 : 6),
+      Number(args.cuantos) || (racionar ? 3 : 6),
       ctx.signal,
-      enCodigo,
+      racionar,
     );
   },
 };
