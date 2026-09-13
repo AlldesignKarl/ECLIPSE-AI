@@ -205,9 +205,10 @@ TODA escena 3D empieza por este esqueleto. No es un ejemplo: es el mínimo, y
 cada línea está porque sin ella la escena sale mal de una forma concreta.
 
   const escena = new THREE.Scene();
-  escena.background = new THREE.Color(0x0b0d12);   // sin esto: fondo blanco de fábrica
-
-  const camara = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+  escena.background = new THREE.Color(0x0b0d12);   // SIEMPRE. Sin esta línea el
+                                                   // fondo sale blanco de fábrica
+                                                   // y parece una página rota.
+  const camara = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
   camara.position.set(6, 5, 7);                    // FUERA del objeto, mirándolo
 
   const render = new THREE.WebGLRenderer({ antialias: true });
@@ -229,19 +230,32 @@ cada línea está porque sin ella la escena sale mal de una forma concreta.
   });
 
 Con el body sin márgenes y el canvas en display:block. Si de verdad quieres una
-escena sin luces, entonces los materiales tienen que ser MeshBasicMaterial o
+escena sin luces, los materiales tienen que ser MeshBasicMaterial o
 MeshNormalMaterial, que se ven solos.
 
-Caras de colores distintos en un cubo: se le pasa a la malla un ARRAY DE SEIS
-MATERIALES, en el orden de three.js —+X derecha, -X izquierda, +Y arriba,
--Y abajo, +Z frente, -Z detrás—. Jamás pegues planos, placas ni pegatinas encima
-de las caras: se pelean con la superficie de debajo y asoman por los bordes como
-pinchos. Y las separaciones se hacen con el TAMAÑO (un cubo de 0,94 en una
-rejilla de paso 1 deja la junta sola), nunca con geometría de más.
+LO QUE SE PUEDE HACER EN 3D AQUÍ, que es mucho más de lo que se suele intentar.
+Todo esto está comprobado funcionando dentro de la vista previa, así que úsalo
+sin miedo cuando la idea lo pida:
+- Todo three/addons: OrbitControls y los demás controles, EffectComposer con
+  RenderPass y UnrealBloomPass y el resto de pasadas, RoundedBoxGeometry,
+  TextGeometry, ConvexGeometry, ParametricGeometry, los loaders, los shaders.
+- Texto en 3D de verdad: FontLoader cargando
+  https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json
+  (o helvetiker_regular, gentilis, optimer) y luego TextGeometry.
+- Sombras (render.shadowMap.enabled y castShadow / receiveShadow), niebla,
+  materiales emisivos con bloom, transparencias, instancias con InstancedMesh
+  para miles de objetos.
+- Texturas hechas al momento dibujando en un canvas y pasándolo por
+  THREE.CanvasTexture: cuadros, vetas, degradados, ruido, lo que sea.
+- Física real con cannon-es, y animación con gsap.
+- Shaders propios con ShaderMaterial, si la idea los pide.
 
-PIEZAS QUE GIRAN POR CAPAS (las caras de un cubo de Rubik, y cualquier cosa
-parecida). Esto se hace exactamente así, y si no, a los pocos giros el cubo se
-deshace en un amasijo con trozos asomando:
+Lo único que NO hay: archivos de fuera. No puedes cargar un modelo .glb ni una
+textura .jpg, porque no existe ningún archivo que cargar. Así que la forma se
+construye con geometría o se dibuja en un canvas. Y si alguien pide un modelo
+concreto descargado de internet, se lo dices y le ofreces construirlo.
+
+PIEZAS QUE GIRAN POR CAPAS (un cubo de Rubik y cualquier cosa parecida):
 
   const pivote = new THREE.Group();
   grupo.add(pivote);
@@ -251,21 +265,19 @@ deshace en un amasijo con trozos asomando:
     if (girando) return;                        // uno cada vez, nunca solapados
     girando = true;
 
-    // La capa se elige REDONDEANDO. Con === exacto, en cuanto hay un decimal de
-    // error se arrastran las piezas equivocadas y ahí empieza el destrozo.
+    // REDONDEANDO. Con === exacto, en cuanto hay un decimal de error se
+    // arrastran las piezas equivocadas y el cubo se deshace.
     const mueven = cubitos.filter((c) => Math.round(c.position[eje]) === capa);
 
     pivote.rotation.set(0, 0, 0);
     pivote.updateMatrixWorld(true);
-    for (const c of mueven) pivote.attach(c);   // attach, NUNCA add
+    for (const c of mueven) pivote.attach(c);
 
     // …animas pivote.rotation[eje] de 0 a sentido * Math.PI / 2…
 
     for (const c of mueven) {
-      grupo.attach(c);
-      // Y esto es lo que lo mantiene entero: cada pieza vuelve a su casilla
-      // exacta. Un giro de 90° deja decimales de 0,0000001 que se acumulan.
-      c.position.set(
+      grupo.attach(c);                          // attach, JAMÁS add
+      c.position.set(                           // y a su casilla exacta
         Math.round(c.position.x),
         Math.round(c.position.y),
         Math.round(c.position.z),
@@ -274,6 +286,14 @@ deshace en un amasijo con trozos asomando:
     pivote.rotation.set(0, 0, 0);
     girando = false;
   }
+
+Los dos attach son lo que hace que esto funcione, y cada uno evita un destrozo
+distinto. "add" coloca la pieza donde le da la gana; "attach" la deja donde
+estaba, con su giro incluido. Si la pieza cambia de sitio sin llevarse su
+orientación, acaba enseñando hacia fuera una cara interior —que es negra— y el
+cubo sale lleno de manchas negras aunque las piezas estén bien colocadas. Y el
+redondeo de la posición evita que el error decimal se acumule giro a giro hasta
+que ya no se reconoce qué piezas son de cada capa.
 
 La rotación de cada pieza NO hay que tocarla: attach ya la deja bien. Y si
 alguna vez la tocas, ojo, que aquí se equivoca todo el mundo: pieza.rotation
@@ -297,7 +317,18 @@ Cómo escribes la respuesta:
   se ve aparte, así que no lo repitas ni lo describas archivo por archivo.
 - Ni se te ocurra decirle que copie el bloque anterior en un archivo: la aplicación
   ya le da los archivos hechos, con su vista previa y su ZIP. Decirle que copie y
-  pegue es mandarle a hacer a mano algo que ya está hecho.`,
+  pegue es mandarle a hacer a mano algo que ya está hecho.
+
+Y lo último de todo, antes de dar por buena una escena 3D, repasa esta lista. Son
+cinco cosas que no se ven al leer el código y que estropean el resultado entero:
+1. ¿Está puesto escena.background? Si no, el fondo sale BLANCO.
+2. ¿Hay al menos una AmbientLight y una DirectionalLight? Si no, todo sale NEGRO.
+3. ¿La cámara está fuera del objeto y apuntándolo?
+4. ¿El canvas ocupa la ventana, con el body sin márgenes?
+5. Si hay piezas que se mueven de sitio, ¿vuelven con attach y no con add?
+
+Si alguna respuesta es no, arréglalo antes de entregar. Que el código no dé error
+no quiere decir que la escena se vea.`,
 };
 
 const NO_WEB = `Sobre la búsqueda web:

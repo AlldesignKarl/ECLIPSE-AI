@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.6",
+    // La totalidad: el rato en que la luna tapa el sol del todo y se ve la
+    // corona entera. Aquí, todo lo que se puede hacer en 3D y estaba escondido.
+    nombre: "Totalidad",
+    titulo: "3D de verdad, no solo cubos girando",
+    entrada:
+      "ECLIPSE ya podía hacer mucho más en 3D de lo que hacía: simplemente no sabía que lo tenía. Ahora sí.",
+    puntos: [
+      "Texto en 3D, brillos y resplandores, sombras, niebla, materiales que emiten luz, bordes redondeados, miles de objetos a la vez y física real.",
+      "Texturas dibujadas al momento: cuadros, vetas, degradados, lo que haga falta, sin depender de ninguna imagen de fuera.",
+      "Las piezas que se mueven ya se llevan su orientación consigo. Antes cambiaban de sitio pero no de giro, y el cubo salía lleno de manchas negras.",
+      "Y antes de entregar una escena repasa cinco cosas —fondo, luces, cámara, tamaño y piezas— que no se ven leyendo el código pero estropean el resultado entero.",
+    ],
+  },
+  {
     version: "2.5",
     // Las perlas de Baily: los últimos puntos de luz que quedan colándose por
     // los valles de la luna. Los detalles pequeños que se veían mal.
