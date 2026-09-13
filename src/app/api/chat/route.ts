@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { getClient, humanError, MODEL, tuning } from "@/lib/anthropic";
 import { GeminiError, streamChat } from "@/lib/gemini";
 import { keySource, resolveKey } from "@/lib/keys";
+import { gastar } from "@/lib/limites";
 import { CompatError, streamCompat, type CompatProvider } from "@/lib/openai-compat";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt } from "@/lib/prompts";
@@ -357,6 +358,14 @@ export async function POST(req: NextRequest) {
   }
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
     return Response.json({ error: "No hay mensajes que responder." }, { status: 400 });
+  }
+
+  // Antes de gastar clave del servidor, comprobar que a esta persona le queda
+  // cupo. Es lo único que impide que un bucle de alguien deje sin aplicación a
+  // todos los demás.
+  const cupo = await gastar("chat", plan);
+  if (!cupo.permitido) {
+    return Response.json({ error: cupo.mensaje, code: "sin_cupo" }, { status: 429 });
   }
 
   const provider = await activeProvider();

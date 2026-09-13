@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { keyAvailable, resolveKey } from "@/lib/keys";
+import { gastar } from "@/lib/limites";
+import { currentPlan } from "@/lib/plan-server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -119,6 +121,10 @@ export async function POST(req: NextRequest) {
       { error: "La grabación es demasiado larga. Prueba con algo más corto." },
       { status: 413 },
     );
+
+  const cupo = await gastar("voz", await currentPlan());
+  if (!cupo.permitido)
+    return Response.json({ error: cupo.mensaje, code: "sin_cupo" }, { status: 429 });
 
   const groq = await resolveKey("groq");
   const google = await resolveKey("google");

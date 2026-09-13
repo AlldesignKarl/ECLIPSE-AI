@@ -390,6 +390,9 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
           if (data.code === "pro_required") setUpgradeOpen(true);
           if (data.code === "no_key") setSettingsOpen(true);
+          // Sin cupo en el plan Gratis, la salida es mejorar de plan: se le
+          // enseña delante en vez de dejarle el aviso y que lo busque.
+          if (data.code === "sin_cupo" && plan === "free") setUpgradeOpen(true);
           throw new Error(data.error ?? `Error ${res.status}`);
         }
 
@@ -470,7 +473,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       setStatus("idle");
       abortRef.current = null;
     },
-    [prefs.speed, prefs.deepSearch, retocar, scheduleFlush, upsert],
+    [plan, prefs.speed, prefs.deepSearch, retocar, scheduleFlush, upsert],
   );
 
   const runImage = useCallback(

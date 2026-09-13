@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
+import { gastar } from "@/lib/limites";
 import { editImage, MediaError } from "@/lib/media";
+import { currentPlan } from "@/lib/plan-server";
 import { estamparDataUrl } from "@/lib/watermark";
 
 export const runtime = "nodejs";
@@ -21,6 +23,10 @@ export async function POST(req: NextRequest) {
   if (!imagen) return Response.json({ error: "Falta la imagen." }, { status: 400 });
   if (!prompt?.trim())
     return Response.json({ error: "Falta qué hay que cambiar." }, { status: 400 });
+
+  const cupo = await gastar("imagen", await currentPlan());
+  if (!cupo.permitido)
+    return Response.json({ error: cupo.mensaje, code: "sin_cupo" }, { status: 429 });
 
   // Se acepta tanto el base64 pelado como un data URL entero.
   const coma = imagen.indexOf(",");

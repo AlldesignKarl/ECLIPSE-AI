@@ -104,6 +104,45 @@ async function command<T>(...args: (string | number)[]): Promise<T> {
   return json.result as T;
 }
 
+/**
+ * Varios comandos en una sola ida y vuelta.
+ *
+ * Upstash acepta un array de arrays en `/pipeline` y responde en el mismo
+ * orden. Importa de verdad en las funciones sin servidor: cada comando suelto
+ * es una petición HTTP entera, y el contador de límites necesita dos por cada
+ * mensaje que alguien manda.
+ */
+export async function pipeline<T extends unknown[]>(
+  comandos: (string | number)[][],
+): Promise<T> {
+  const c = conn();
+  if (!c) throw new StoreError("No hay base de datos configurada.");
+
+  let res: Response;
+  try {
+    res = await fetch(`${c.url}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${c.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(comandos.map((cmd) => cmd.map(String))),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    throw new StoreError("La base de datos no responde. Inténtalo de nuevo en un momento.");
+  }
+
+  if (!res.ok) throw new StoreError(`La base de datos ha respondido ${res.status}.`);
+
+  const json = (await res.json()) as ({ result?: unknown; error?: string } | unknown)[];
+  if (!Array.isArray(json)) throw new StoreError("Respuesta inesperada de la base de datos.");
+
+  return json.map((fila) => {
+    const r = fila as { result?: unknown; error?: string };
+    if (r?.error) throw new StoreError(r.error);
+    return r?.result;
+  }) as T;
+}
+
 export async function get(key: string): Promise<string | null> {
   return (await command<string | null>("GET", key)) ?? null;
 }

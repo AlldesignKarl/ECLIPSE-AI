@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, JetBrains_Mono, Newsreader } from "next/font/google";
 import { SITE_DESCRIPTION as DESCRIPTION, SITE_URL } from "@/lib/site";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 
 /**
  * La letra de ECLIPSE.
@@ -98,11 +99,17 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+/**
+ * La analítica de Vercel: cuántas visitas y de dónde llegan, sin cookies y sin
+ * identificar a nadie. Hasta ahora no había forma de saber si alguien usaba
+ * esto, y no se puede mejorar lo que no se mide.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
       <body>
         {children}
+        <Analytics />
         {/* Le dice a Google qué es esto, quién lo hace y cuál es su logo. */}
         <script
           type="application/ld+json"

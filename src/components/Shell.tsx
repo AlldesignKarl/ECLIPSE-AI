@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AuthScreen from "./AuthScreen";
 import ChatApp from "./ChatApp";
+import InstalarApp from "./InstalarApp";
 import Landing from "./Landing";
 
 const ENTERED = "eclipse.entered";
@@ -61,8 +62,8 @@ export default function Shell() {
     setView(auth.enabled && !auth.user ? "entrar" : "app");
   }, [ready, wantsIn, auth]);
 
-  if (view === "portada")
-    return (
+  const pantalla =
+    view === "portada" ? (
       <Landing
         onEnter={() => {
           remember();
@@ -72,10 +73,7 @@ export default function Shell() {
           if (ready) setView(auth.enabled && !auth.user ? "entrar" : "app");
         }}
       />
-    );
-
-  if (view === "entrar")
-    return (
+    ) : view === "entrar" ? (
       <AuthScreen
         enabled={auth.enabled}
         onBack={() => {
@@ -89,16 +87,23 @@ export default function Shell() {
           setView("app");
         }}
       />
+    ) : (
+      <ChatApp
+        user={auth.user}
+        onInicio={() => setView("portada")}
+        onSignOut={() => {
+          setAuth((a) => ({ ...a, user: null }));
+          setView("entrar");
+        }}
+      />
     );
 
+  // El aviso de instalar vive fuera de las tres pantallas: se cuenta su espera
+  // una sola vez, y no se reinicia cada vez que alguien entra o sale del chat.
   return (
-    <ChatApp
-      user={auth.user}
-      onInicio={() => setView("portada")}
-      onSignOut={() => {
-        setAuth((a) => ({ ...a, user: null }));
-        setView("entrar");
-      }}
-    />
+    <>
+      {pantalla}
+      <InstalarApp />
+    </>
   );
 }
