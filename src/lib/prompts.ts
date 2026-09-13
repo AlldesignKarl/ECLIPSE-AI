@@ -3,7 +3,7 @@ import type { Mode, Plan } from "./types";
 import { textoTopes } from "./limites-tabla";
 import { REGLA_CONTENIDO_EXTERNO } from "./tools/ajeno";
 
-export type Engine = "groq" | "google" | "openrouter" | "anthropic" | null;
+export type Engine = "groq" | "google" | "openrouter" | "mistral" | "anthropic" | null;
 
 /**
  * Los topes, escritos para leerlos. Salen del mismo sitio que los aplica: si
@@ -188,6 +188,9 @@ sepa hacerlo, que es lo normal. Buscar en internet, no; leer PDF, tampoco.`,
 pero es el único que busca en la web con fuentes y el que lee imágenes y PDF.`,
   openrouter: `OpenRouter. Unos 50 mensajes gratis al día, con modelos abiertos
 variados. Mira imágenes cuando toca uno que sepa. Buscar en internet, no.`,
+  mistral: `Mistral. Gratis y con muchísimo margen por minuto, así que es el que
+mejor aguanta escribir archivos largos de una sola vez. Trae Codestral y
+Devstral, que están hechos para programar. Buscar en internet, no.`,
   anthropic: `Un motor de pago por uso que ha configurado el dueño de la app. No
 tiene límite diario fijo: gasta del saldo de quien lo puso.`,
 };

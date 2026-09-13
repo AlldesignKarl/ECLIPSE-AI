@@ -12,7 +12,7 @@ import { cookies } from "next/headers";
  * La variable de entorno siempre manda sobre la cookie.
  */
 
-export type KeyProvider = "google" | "groq" | "openrouter";
+export type KeyProvider = "google" | "groq" | "openrouter" | "mistral";
 export type KeySource = "entorno" | "dispositivo" | "ninguna";
 
 interface Slot {
@@ -24,6 +24,7 @@ const SLOTS: Record<KeyProvider, Slot> = {
   google: { cookie: "eclipse_gkey", env: ["GOOGLE_API_KEY", "GEMINI_API_KEY"] },
   groq: { cookie: "eclipse_groqkey", env: ["GROQ_API_KEY"] },
   openrouter: { cookie: "eclipse_orkey", env: ["OPENROUTER_API_KEY"] },
+  mistral: { cookie: "eclipse_mkey", env: ["MISTRAL_API_KEY"] },
 };
 
 export const KEY_PROVIDERS = Object.keys(SLOTS) as KeyProvider[];

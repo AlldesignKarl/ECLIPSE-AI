@@ -27,6 +27,20 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.19",
+    // El mistral: el viento que despeja el cielo del todo.
+    nombre: "Mistral",
+    titulo: "Un motor nuevo, hecho para programar",
+    entrada:
+      "Buscando cuál da más margen gratis, gana uno por goleada: Mistral. Sesenta veces más sitio por minuto que el de ahora, y con modelos hechos para programar.",
+    puntos: [
+      "Medio millón de tokens por minuto frente a los ocho mil de Groq. Ese número es el techo de lo largo que puede salir un archivo, así que se acabaron los cortes.",
+      "Trae Codestral y Devstral, que están hechos para escribir código, y ECLIPSE CODE los elige solo.",
+      "Es gratis y no pide tarjeta: solo verificar un teléfono. Lo pones en Ajustes como cualquier otra clave.",
+      "Y también ve imágenes, con Pixtral, por si algún día quieres usarlo para todo.",
+    ],
+  },
+  {
     version: "2.18",
     // Dos soles: uno para conversar y otro para programar.
     nombre: "Dos soles",

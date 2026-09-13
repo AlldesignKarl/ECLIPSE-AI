@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ title: clean(await oneShot(`${TITLE_PROMPT}\n\n${snippet}`, key)) });
     }
 
-    if (provider === "groq" || provider === "openrouter") {
+    if (provider === "groq" || provider === "openrouter" || provider === "mistral") {
       const key = await resolveKey(provider);
       const title = await oneShotCompat(provider, key, `${TITLE_PROMPT}\n\n${snippet}`);
       return Response.json({ title: clean(title) });

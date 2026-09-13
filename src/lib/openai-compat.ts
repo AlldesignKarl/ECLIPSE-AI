@@ -12,7 +12,7 @@ import type { Attachment, Mode, Speed } from "./types";
  * Gemini o Claude, pero conversan, escriben y programan con soltura.
  */
 
-export type CompatProvider = "groq" | "openrouter";
+export type CompatProvider = "groq" | "openrouter" | "mistral";
 
 interface Preset {
   label: string;
@@ -46,6 +46,17 @@ export const PRESETS: Record<CompatProvider, Preset> = {
     prefer: /llama.*70b|llama.*versatile|gpt-oss/i,
     vision: OJOS,
     keyUrl: "https://console.groq.com/keys",
+  },
+  mistral: {
+    // El de más margen con diferencia: medio millón de tokens por minuto
+    // frente a los ocho mil de Groq. Para escribir archivos largos, que es
+    // donde todo se atascaba, no hay color.
+    label: "Mistral · gratis, medio millón de tokens por minuto",
+    base: "https://api.mistral.ai/v1",
+    model: "mistral-large-latest",
+    prefer: /codestral|devstral|mistral-large|magistral|mistral-medium/i,
+    vision: OJOS,
+    keyUrl: "https://console.mistral.ai/api-keys",
   },
   openrouter: {
     label: "OpenRouter · modelos gratuitos",
@@ -336,6 +347,7 @@ const PREFERENCIA_CHAT: RegExp[] = [
 ];
 
 const PREFERENCIA_CODIGO: RegExp[] = [
+  /devstral|codestral/i,
   /kimi|k2/i,
   /qwen.*coder/i,
   /deepseek/i,
@@ -440,9 +452,12 @@ function olvidarModelo(provider: CompatProvider, modelo: string) {
 
 /** Permite fijar el modelo desde el hosting, sin tocar el código. */
 function envModel(provider: CompatProvider): string {
-  return (
-    (provider === "groq" ? process.env.GROQ_MODEL : process.env.OPENROUTER_MODEL) || ""
-  );
+  const porMotor: Record<CompatProvider, string | undefined> = {
+    groq: process.env.GROQ_MODEL,
+    openrouter: process.env.OPENROUTER_MODEL,
+    mistral: process.env.MISTRAL_MODEL,
+  };
+  return porMotor[provider] || "";
 }
 
 export interface CompatEvent {

@@ -3,7 +3,7 @@ import { keyAvailable, preferredCodeEngine, preferredEngine, type KeyProvider } 
 export type Provider = KeyProvider | "anthropic";
 
 /** Motores con capa gratuita de verdad, en el orden en que se prueban. */
-const FREE_ORDER: KeyProvider[] = ["groq", "google", "openrouter"];
+const FREE_ORDER: KeyProvider[] = ["groq", "google", "mistral", "openrouter"];
 
 /**
  * Qué motor usa el chat.
@@ -30,6 +30,7 @@ export async function activeProvider(): Promise<Provider | null> {
 export function providerLabel(p: Provider | null): string {
   if (p === "groq") return "Groq · gratis";
   if (p === "google") return "Google · capa gratuita";
+  if (p === "mistral") return "Mistral · gratis";
   if (p === "openrouter") return "OpenRouter · modelos gratuitos";
   if (p === "anthropic") return "Anthropic · de pago por uso";
   return "sin configurar";

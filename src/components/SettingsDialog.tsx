@@ -6,12 +6,13 @@ import * as Icon from "./Icons";
 import type { Plan } from "@/lib/types";
 
 export type KeySource = "entorno" | "dispositivo" | "ninguna";
-export type Engine = "groq" | "google" | "openrouter";
+export type Engine = "groq" | "google" | "openrouter" | "mistral";
 export type KeySources = Record<Engine, KeySource>;
 
 export const EMPTY_KEY_SOURCES: KeySources = {
   groq: "ninguna",
   google: "ninguna",
+  mistral: "ninguna",
   openrouter: "ninguna",
 };
 
@@ -47,6 +48,16 @@ const ENGINES: {
     keyHost: "aistudio.google.com/apikey",
     placeholder: "AIza…",
     note: "El único que busca en la web y lee imágenes y PDF. A cambio, el límite gratuito es corto.",
+  },
+  {
+    id: "mistral",
+    name: "Mistral",
+    tag: "para programar",
+    limit: "medio millón de tokens por minuto",
+    keyUrl: "https://console.mistral.ai/api-keys",
+    keyHost: "console.mistral.ai/api-keys",
+    placeholder: "…",
+    note: "El de más margen con diferencia, y trae Codestral y Devstral, hechos para programar. Es el que hay que poner si los archivos largos se cortan. Pide verificar un teléfono, no tarjeta.",
   },
   {
     id: "openrouter",
