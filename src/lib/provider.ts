@@ -94,3 +94,19 @@ export async function providerForTurn(
 
   return (await keyAvailable("google")) ? "google" : base;
 }
+
+/**
+ * El siguiente motor con clave, para cuando al de turno se le acaba el cupo.
+ *
+ * Hace falta desde que la clave puede estar puesta en el servidor y vale para
+ * todo el que entre: ahí el cupo no lo gasta una persona, lo gasta todo el
+ * mundo a la vez, y el día que se acabe no puede caerse la aplicación entera.
+ * Con esto, se pasa al siguiente que tenga clave y la conversación sigue.
+ */
+export async function siguienteMotor(agotado: Provider | null): Promise<Provider | null> {
+  for (const p of FREE_ORDER) {
+    if (p === agotado) continue;
+    if (await keyAvailable(p)) return p;
+  }
+  return agotado !== "anthropic" && process.env.ANTHROPIC_API_KEY ? "anthropic" : null;
+}

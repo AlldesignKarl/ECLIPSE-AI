@@ -9,7 +9,7 @@ import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { herramientasPara } from "@/lib/tools/registro";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt, partes3D, SEGUIR } from "@/lib/prompts";
-import { activeProvider, providerForTurn, providerSearches } from "@/lib/provider";
+import { activeProvider, providerForTurn, providerSearches, siguienteMotor } from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
 import { priceLabelLive, stripeAvailable } from "@/lib/stripe";
 import { SSE_HEADERS, sseChunk, type StreamEvent } from "@/lib/sse";
@@ -537,15 +537,44 @@ export async function POST(req: NextRequest) {
           hará lo que pueda: intentarlo, y si el modelo la rechaza, decirlo.
           Una respuesta imperfecta es mejor que ninguna.
         */
+        /*
+          Al motor de turno se le ha acabado el cupo: se pasa al siguiente.
+
+          Esto importa mucho más desde que la clave puede estar puesta en el
+          servidor: ahí el cupo no lo gasta una persona, lo gastan todas a la
+          vez, y el día que se agote no puede quedarse la aplicación muerta
+          para todo el mundo. Se prueba el que tocaba antes de desviar por la
+          foto, y si ese tampoco, el siguiente que tenga clave.
+        */
+        const seAgoto = (err: unknown) =>
+          (err instanceof GeminiError || err instanceof CompatError) &&
+          (err.status === 429 || err.status === 413 || /cuota|quota|l[íi]mite|rate/i.test(err.message));
+
         let result;
         try {
           result = await correr(provider);
         } catch (err) {
-          const sinCuota =
-            err instanceof GeminiError && (err.status === 429 || /cuota|quota|rate/i.test(err.message));
-          if (!provider || provider === deVuelta || !sinCuota || !deVuelta) throw err;
-          send({ t: "status", v: "pensando" });
-          result = await correr(deVuelta);
+          if (!provider || !seAgoto(err)) throw err;
+
+          const recambios = [deVuelta, await siguienteMotor(provider)].filter(
+            (p, i, todos): p is NonNullable<typeof p> =>
+              Boolean(p) && p !== provider && todos.indexOf(p) === i,
+          );
+          if (recambios.length === 0) throw err;
+
+          let ultimo = err;
+          let hecho = null as Awaited<ReturnType<typeof correr>> | null;
+          for (const recambio of recambios) {
+            try {
+              send({ t: "status", v: "pensando" });
+              hecho = await correr(recambio);
+              break;
+            } catch (otro) {
+              ultimo = otro;
+            }
+          }
+          if (!hecho) throw ultimo;
+          result = hecho;
         }
 
         /*

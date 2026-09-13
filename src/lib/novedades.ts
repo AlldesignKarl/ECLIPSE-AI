@@ -37,7 +37,8 @@ export const NOVEDADES: Novedad[] = [
       "Medio millón de tokens por minuto frente a los ocho mil de Groq. Ese número es el techo de lo largo que puede salir un archivo, así que se acabaron los cortes.",
       "Trae Codestral y Devstral, que están hechos para escribir código, y ECLIPSE CODE los elige solo.",
       "Es gratis y no pide tarjeta: solo verificar un teléfono. Lo pones en Ajustes como cualquier otra clave.",
-      "Y también ve imágenes, con Pixtral, así que sirve para todo: en cuanto pegues su clave pasa a ser el motor de la casa, sin tener que elegir nada.",
+      "Y también ve imágenes, con Pixtral, así que sirve para todo: en cuanto haya clave suya pasa a ser el motor de la casa, sin tener que elegir nada.",
+      "Y si algún día se agota el cupo de un motor, ECLIPSE se pasa solo al siguiente que tenga clave en vez de quedarse parado.",
     ],
   },
   {
