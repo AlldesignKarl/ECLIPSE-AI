@@ -2,8 +2,15 @@ import { keyAvailable, preferredCodeEngine, preferredEngine, type KeyProvider } 
 
 export type Provider = KeyProvider | "anthropic";
 
-/** Motores con capa gratuita de verdad, en el orden en que se prueban. */
-const FREE_ORDER: KeyProvider[] = ["groq", "google", "mistral", "openrouter"];
+/*
+  Motores con capa gratuita de verdad, en el orden en que se prueban.
+
+  Mistral va primero porque es el que más margen deja con diferencia —medio
+  millón de tokens por minuto frente a los ocho mil de Groq—, y ese margen es
+  justo lo que decide si un archivo largo sale entero o se corta. Además trae
+  modelos para programar y uno que mira imágenes, así que sirve para todo.
+*/
+const FREE_ORDER: KeyProvider[] = ["mistral", "groq", "google", "openrouter"];
 
 /**
  * Qué motor usa el chat.
@@ -70,10 +77,17 @@ export async function providerForTurn(
   if (programando) {
     const paraCodigo = await preferredCodeEngine();
     if (paraCodigo && (await keyAvailable(paraCodigo))) return paraCodigo;
+
+    // Sin elección explícita, programa Mistral si hay clave suya: es donde el
+    // archivo largo cabe entero.
+    if (base !== "mistral" && (await keyAvailable("mistral"))) return "mistral";
   }
 
   if (!hayImagenes || base === null) return base;
-  if (base === "google" || base === "anthropic") return base;
+
+  // Estos ya miran imágenes por su cuenta: desviarlos a Google sería cambiar
+  // de motor sin ganar nada, y encima gastar la cuota corta de Google.
+  if (base === "google" || base === "anthropic" || base === "mistral") return base;
 
   // Solo se cambia si el propio hosting no ha fijado un motor a la fuerza.
   if ((process.env.AI_PROVIDER || "").toLowerCase()) return base;

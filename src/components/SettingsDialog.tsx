@@ -31,9 +31,19 @@ const ENGINES: {
   note: string;
 }[] = [
   {
+    id: "mistral",
+    name: "Mistral",
+    tag: "recomendado",
+    limit: "medio millón de tokens por minuto",
+    keyUrl: "https://console.mistral.ai/api-keys",
+    keyHost: "console.mistral.ai/api-keys",
+    placeholder: "…",
+    note: "El de más margen con diferencia, y trae Codestral y Devstral, hechos para programar. Es el que hay que poner si los archivos largos se cortan. Pide verificar un teléfono, no tarjeta.",
+  },
+  {
     id: "groq",
     name: "Groq",
-    tag: "recomendado",
+    tag: "el más rápido",
     limit: "1.000 mensajes al día",
     keyUrl: "https://console.groq.com/keys",
     keyHost: "console.groq.com/keys",
@@ -48,16 +58,6 @@ const ENGINES: {
     keyHost: "aistudio.google.com/apikey",
     placeholder: "AIza…",
     note: "El único que busca en la web y lee imágenes y PDF. A cambio, el límite gratuito es corto.",
-  },
-  {
-    id: "mistral",
-    name: "Mistral",
-    tag: "para programar",
-    limit: "medio millón de tokens por minuto",
-    keyUrl: "https://console.mistral.ai/api-keys",
-    keyHost: "console.mistral.ai/api-keys",
-    placeholder: "…",
-    note: "El de más margen con diferencia, y trae Codestral y Devstral, hechos para programar. Es el que hay que poner si los archivos largos se cortan. Pide verificar un teléfono, no tarjeta.",
   },
   {
     id: "openrouter",
