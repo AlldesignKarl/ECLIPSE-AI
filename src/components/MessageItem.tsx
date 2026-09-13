@@ -243,6 +243,7 @@ export default function MessageItem({
                   title={art.title ?? "proyecto"}
                   files={art.files}
                   onArreglar={onArreglar}
+                  aMedias={!streaming && message.cortado}
                 />
               );
 

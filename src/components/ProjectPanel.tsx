@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Icon from "./Icons";
 import Markdown from "./Markdown";
-import { guessLanguage } from "@/lib/project";
+import { guessLanguage, trozoDelError } from "@/lib/project";
 import { buildPreview } from "@/lib/preview";
 import type { GeneratedFile } from "@/lib/types";
 
@@ -12,6 +12,8 @@ interface Props {
   files: GeneratedFile[];
   /** Pedirle a ECLIPSE que arregle lo que ha fallado al verlo. */
   onArreglar?: (fallo: string) => void;
+  /** La respuesta se quedó a medias: este archivo está incompleto. */
+  aMedias?: boolean;
 }
 
 /**
@@ -21,7 +23,7 @@ interface Props {
  * dentro. Borrar esto dejaría un hueco donde antes había algo, así que se
  * queda para que lo de ayer se siga pudiendo abrir.
  */
-export default function ProjectPanel({ title, files, onArreglar }: Props) {
+export default function ProjectPanel({ title, files, onArreglar, aMedias }: Props) {
   /**
    * Lo que ha fallado al abrir la vista previa, si ha fallado algo.
    *
@@ -78,7 +80,16 @@ export default function ProjectPanel({ title, files, onArreglar }: Props) {
   // Solo se puede ver funcionando lo que abre un HTML y arranca sin compilar.
   // Ofrecer el botón para un proyecto de React sería enseñar un recuadro gris.
   const vista = useMemo(() => buildPreview(files), [files]);
-  const pagina = vista?.funciona ? vista : null;
+  /*
+    Un archivo que se cortó a medias no se ofrece para ver.
+
+    Lo que pasaba si no: el archivo acaba en mitad de una línea, la vista previa
+    da un error de sintaxis en la última línea escrita, el usuario da a
+    "arréglalo" creyendo que hay un fallo que corregir, y ECLIPSE reescribe el
+    archivo entero y se vuelve a cortar por el mismo sitio. Un bucle que no
+    lleva a ninguna parte, porque no hay nada roto: falta el final.
+  */
+  const pagina = vista?.funciona && !aMedias ? vista : null;
 
   if (files.length === 0) return null;
 
@@ -156,7 +167,7 @@ export default function ProjectPanel({ title, files, onArreglar }: Props) {
             <p className="text-[12px] leading-snug text-danger">{fallo}</p>
             <button
               onClick={() => {
-                onArreglar(fallo);
+                onArreglar(fallo + trozoDelError(files, fallo));
                 setFallo(null);
               }}
               className="mt-2.5 flex items-center gap-1.5 rounded-lg border border-danger/40 px-2.5 py-1.5 text-[12px] text-ink transition hover:bg-danger/15"
@@ -167,9 +178,17 @@ export default function ProjectPanel({ title, files, onArreglar }: Props) {
           </div>
         )}
 
+        {aMedias && (
+          <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
+            Este archivo está incompleto: la respuesta se cortó antes de
+            terminarlo. No se puede ver hasta que esté entero — dale a «Que siga
+            desde donde lo dejó», aquí debajo.
+          </p>
+        )}
+
         {/* Por qué no se puede ver, entero y sin cortar: es lo que explica que
             no haya botón, y a medias no explica nada. */}
-        {!pagina && vista?.motivo && (
+        {!pagina && !aMedias && vista?.motivo && (
           <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
             {vista.motivo} Descárgalo con ZIP, o pídeme la misma página en HTML
             sencillo para poder verla aquí.

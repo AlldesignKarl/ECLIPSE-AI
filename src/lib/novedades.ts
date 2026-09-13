@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.7",
+    // El primer contacto: el instante en que la luna toca el sol y empieza el
+    // eclipse. Aquí, que ECLIPSE CODE deje de quedarse a medias.
+    nombre: "Contacto",
+    titulo: "Se acabó el bucle de errores",
+    entrada:
+      "El error en una línea que no existe, el botón de arreglar que no arreglaba nunca y el archivo que se cortaba: eran todo lo mismo, y ya está resuelto.",
+    puntos: [
+      "ECLIPSE tiene ahora el doble de espacio para escribir. Las instrucciones que no hacen falta para lo que le pides ya no viajan: una escena 3D no carga las reglas de diseño web, y una página web no carga el manual de 3D.",
+      "Un archivo que se cortó a medias ya no se ofrece para verlo. Antes daba un error de sintaxis en la última línea escrita, pulsabas arreglar, se volvía a cortar por el mismo sitio, y así sin fin.",
+      "Y cuando sí hay un error de verdad, el botón le manda las líneas de código donde está, no solo el número. Va directo en vez de buscar a ciegas.",
+      "Las figuras en 3D dejan de ser una caja con una esfera encima: hay reglas de cómo se modela un animal o un coche de verdad, con sus piezas, sus proporciones y su luz.",
+    ],
+  },
+  {
     version: "2.6",
     // La totalidad: el rato en que la luna tapa el sol del todo y se ve la
     // corona entera. Aquí, todo lo que se puede hacer en 3D y estaba escondido.

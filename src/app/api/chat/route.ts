@@ -8,7 +8,7 @@ import { CompatError, type CompatProvider } from "@/lib/openai-compat";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { herramientasPara } from "@/lib/tools/registro";
 import { currentPlan } from "@/lib/plan-server";
-import { buildSystemPrompt } from "@/lib/prompts";
+import { buildSystemPrompt, partes3D } from "@/lib/prompts";
 import { activeProvider, providerSearches } from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
 import { priceLabelLive, stripeAvailable } from "@/lib/stripe";
@@ -177,6 +177,7 @@ async function runAnthropic(
             web: opts.wantsWeb,
             engine: "anthropic",
             conImagen: ultimaConImagen(opts.body.messages),
+            tres3D: partes3D(opts.body.messages),
           }),
           cache_control: { type: "ephemeral" },
         },
@@ -268,6 +269,7 @@ async function runGoogle(
       web: opts.wantsWeb,
       engine: "google",
       conImagen: ultimaConImagen(opts.body.messages),
+      tres3D: partes3D(opts.body.messages),
     }),
     turns: opts.body.messages,
     speed: opts.speed,
@@ -326,6 +328,7 @@ async function runCompat(
       web: puedeBuscar,
       engine: opts.provider,
       conImagen: ultimaConImagen(opts.body.messages),
+      tres3D: partes3D(opts.body.messages),
       conHerramientas: herramientas.map((h) => h.nombre),
     }),
     turns: opts.body.messages,

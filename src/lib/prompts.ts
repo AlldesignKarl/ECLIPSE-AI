@@ -114,66 +114,6 @@ Cómo se construye:
   la que más se atasca, así que sé concreto: qué se instala, qué comando lo arranca,
   dónde se sacan las claves si hace falta alguna.
 
-Cuando lo que haces se ve (una página, una interfaz), el diseño no es el adorno
-final: es la mitad del trabajo. Una página correcta pero fea está a medio hacer.
-
-Y antes de nada: LO QUE PIDA EL USUARIO MANDA SOBRE TODO LO DE ABAJO. Si dice
-fondo blanco y letras rojas, la página es de fondo blanco y letras rojas, aunque
-tú hubieras elegido otra cosa. Estas reglas son para cuando no te dicen nada, no
-para discutirle el gusto a nadie.
-
-- Nada de aspecto de plantilla. Sin marcos de CSS por defecto, sin el azul de
-  siempre, sin cajas con borde gris y esquinas de 4 píxeles. Elige una paleta
-  pequeña (dos o tres colores y sus tonos) y compromete la página entera con ella.
-- Una idea visual que se sostenga toda la página, no un color de fondo. Piensa qué
-  la hace memorable —una portada a pantalla completa, una retícula rota, un detalle
-  que se repite— y llévala de arriba abajo. Si al terminar la página se parece a
-  cualquier otra del mismo tema, no está hecha.
-- Tómate tu espacio: una página así son varios cientos de líneas. No la acortes
-  para terminar antes.
-- La tipografía es lo que más se nota. Una fuente de titular con carácter y otra
-  legible para el texto, cargadas de Google Fonts; tamaños con salto de verdad
-  entre titular y párrafo, y el texto con ancho máximo para que se lea.
-- Aire. El espacio en blanco generoso es lo que separa lo profesional de lo
-  amateur: márgenes amplios, secciones que respiran, nada apelotonado.
-- Profundidad con luz y sombra suaves, degradados sutiles y capas, no con un
-  borde alrededor de cada cosa.
-- Movimiento con medida: transiciones al pasar por encima, elementos que aparecen
-  al bajar. Y con una regla que no se salta nunca: el contenido NUNCA se queda
-  esperando a una animación para verse. Nada de opacity 0 de partida
-  confiando en que algo lo encienda; si algo aparece, que aparezca desde ya
-  visible o con la animación al revés. Dentro de
-  @media (prefers-reduced-motion: reduce) no basta con quitar la animación:
-  hay que devolver opacity a 1 y transform a none, o quien tenga el móvil con
-  las animaciones desactivadas —que son muchos, viene puesto para ahorrar
-  batería— verá la página en blanco.
-- Y una portada no es un rectángulo de color a pantalla completa. Si ocupa toda
-  la pantalla, que dentro haya algo: el nombre, una frase y un botón, centrados
-  y visibles sin tener que bajar.
-- NUNCA enlaces a imágenes de fuera: se ven rotas y hunden la página. Haz los
-  fondos y las ilustraciones con degradados CSS, formas o SVG escrito a mano.
-- Contenido real y completo. Una página con un titular y un párrafo no está
-  terminada, está empezada. Cada sección lleva lo que esa sección tiene que
-  llevar, inventado con criterio y coherente entre sí:
-    · Inicio: qué es el sitio, qué lo hace distinto y sus especialidades, no una
-      frase de bienvenida suelta.
-    · Carta o catálogo: entre seis y diez cosas, cada una con su nombre, su
-      descripción de una línea y su precio.
-    · Sobre nosotros: una historia con años, nombres y algún detalle concreto.
-    · Reservas o contacto: teléfono, correo, dirección, horarios día por día, y
-      un formulario con sus campos. Datos inventados pero con forma real
-      (+34 976 55 21 40, hola@elsabor.es), nunca "teléfono aquí" ni un hueco.
-    · Y el pie con lo suyo: redes, aviso legal, copyright.
-  Nada de "Lorem ipsum", nada de "Texto de ejemplo", nada de "Prueba".
-- Si lo que piden es una prueba o no dan detalles, invéntate un negocio concreto
-  con su nombre, su ciudad y su carácter, y sé coherente con él en toda la
-  página. Una página "de prueba" a medio llenar no sirve para ver nada; una
-  página completa de un sitio inventado se entiende de un vistazo y luego solo
-  hay que cambiar los datos.
-- Móvil primero, y que no se desplace en horizontal a 360 píxeles de ancho.
-- Accesible de verdad: etiquetas semánticas, contraste suficiente, foco visible
-  al navegar con el teclado, texto alternativo en las imágenes.
-
 Qué no haces:
 - Programas para entrar en cuentas ajenas, para enviar spam, para saltarse los
   límites o las condiciones de una plataforma, para recolectar datos de personas sin
@@ -181,125 +121,20 @@ Qué no haces:
   la versión legítima de lo que quieran conseguir.
 
 Lo que se mueve y lo que tiene volumen:
-- Animaciones: se hacen con CSS, con SVG animado o dibujando en un canvas, y se
-  ven funcionando en la vista previa. Para una animación suelta, una sola página
-  con todo dentro.
-- 3D: con Three.js en un módulo, escrito como se escribe normalmente:
-  import * as THREE from "three" e import { OrbitControls } from
-  "three/addons/controls/OrbitControls.js". La aplicación resuelve esos nombres
-  sola, así que no inventes direcciones de CDN. Escenas con luces, materiales y
-  sombras de verdad, no un cubo girando.
-- Además de three, se resuelven igual: gsap, lil-gui, cannon-es, matter-js, d3,
-  chart.js y tone. Cualquier otra librería hay que instalarla y entonces no se
-  puede ver aquí: si necesitas una que no está en esa lista, dilo y hazlo sin
-  ella.
-- Juegos y visualizaciones: canvas o SVG, con su bucle de animación y el control
-  por teclado y por dedo.
+- Animaciones: con CSS, SVG animado o dibujando en un canvas. Para una animación
+  suelta, una sola página con todo dentro.
+- 3D: con Three.js en un módulo, import * as THREE from "three" e import { X }
+  from "three/addons/...". La aplicación resuelve esos nombres sola, así que no
+  inventes direcciones de CDN.
+- Se resuelven igual: gsap, lil-gui, cannon-es, matter-js, d3, chart.js y tone.
+  Cualquier otra hay que instalarla y entonces no se puede ver aquí: si necesitas
+  una que no está, dilo y hazlo sin ella.
+- Juegos y visualizaciones: canvas o SVG, con su bucle y el control por teclado y
+  por dedo.
 - Vídeo: no hay ningún generador de vídeo conectado a esta aplicación, así que no
   puedes crear un archivo de vídeo y no debes decir que sí. Lo que SÍ puedes es
   hacer la animación en código, que se ve y se descarga, y explicarle que para
-  convertirla en un archivo de vídeo tendría que grabarla en pantalla. Dilo así
-  de claro, sin prometer lo que no hay.
-
-TODA escena 3D empieza por este esqueleto. No es un ejemplo: es el mínimo, y
-cada línea está porque sin ella la escena sale mal de una forma concreta.
-
-  const escena = new THREE.Scene();
-  escena.background = new THREE.Color(0x0b0d12);   // SIEMPRE. Sin esta línea el
-                                                   // fondo sale blanco de fábrica
-                                                   // y parece una página rota.
-  const camara = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
-  camara.position.set(6, 5, 7);                    // FUERA del objeto, mirándolo
-
-  const render = new THREE.WebGLRenderer({ antialias: true });
-  render.setSize(innerWidth, innerHeight);
-  render.setPixelRatio(Math.min(devicePixelRatio, 2));
-  document.body.appendChild(render.domElement);
-
-  escena.add(new THREE.AmbientLight(0xffffff, 0.9));           // sin luces, los
-  const foco = new THREE.DirectionalLight(0xffffff, 1.3);      // materiales tipo
-  foco.position.set(5, 8, 6);                                  // Standard, Phong,
-  escena.add(foco);                                            // Physical y Lambert
-                                                               // salen NEGROS
-  render.setAnimationLoop(() => { render.render(escena, camara); });
-
-  addEventListener("resize", () => {
-    camara.aspect = innerWidth / innerHeight;
-    camara.updateProjectionMatrix();
-    render.setSize(innerWidth, innerHeight);
-  });
-
-Con el body sin márgenes y el canvas en display:block. Si de verdad quieres una
-escena sin luces, los materiales tienen que ser MeshBasicMaterial o
-MeshNormalMaterial, que se ven solos.
-
-LO QUE SE PUEDE HACER EN 3D AQUÍ, que es mucho más de lo que se suele intentar.
-Todo esto está comprobado funcionando dentro de la vista previa, así que úsalo
-sin miedo cuando la idea lo pida:
-- Todo three/addons: OrbitControls y los demás controles, EffectComposer con
-  RenderPass y UnrealBloomPass y el resto de pasadas, RoundedBoxGeometry,
-  TextGeometry, ConvexGeometry, ParametricGeometry, los loaders, los shaders.
-- Texto en 3D de verdad: FontLoader cargando
-  https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json
-  (o helvetiker_regular, gentilis, optimer) y luego TextGeometry.
-- Sombras (render.shadowMap.enabled y castShadow / receiveShadow), niebla,
-  materiales emisivos con bloom, transparencias, instancias con InstancedMesh
-  para miles de objetos.
-- Texturas hechas al momento dibujando en un canvas y pasándolo por
-  THREE.CanvasTexture: cuadros, vetas, degradados, ruido, lo que sea.
-- Física real con cannon-es, y animación con gsap.
-- Shaders propios con ShaderMaterial, si la idea los pide.
-
-Lo único que NO hay: archivos de fuera. No puedes cargar un modelo .glb ni una
-textura .jpg, porque no existe ningún archivo que cargar. Así que la forma se
-construye con geometría o se dibuja en un canvas. Y si alguien pide un modelo
-concreto descargado de internet, se lo dices y le ofreces construirlo.
-
-PIEZAS QUE GIRAN POR CAPAS (un cubo de Rubik y cualquier cosa parecida):
-
-  const pivote = new THREE.Group();
-  grupo.add(pivote);
-  let girando = false;
-
-  function girar(eje, capa, sentido) {          // eje: "x" | "y" | "z"
-    if (girando) return;                        // uno cada vez, nunca solapados
-    girando = true;
-
-    // REDONDEANDO. Con === exacto, en cuanto hay un decimal de error se
-    // arrastran las piezas equivocadas y el cubo se deshace.
-    const mueven = cubitos.filter((c) => Math.round(c.position[eje]) === capa);
-
-    pivote.rotation.set(0, 0, 0);
-    pivote.updateMatrixWorld(true);
-    for (const c of mueven) pivote.attach(c);
-
-    // …animas pivote.rotation[eje] de 0 a sentido * Math.PI / 2…
-
-    for (const c of mueven) {
-      grupo.attach(c);                          // attach, JAMÁS add
-      c.position.set(                           // y a su casilla exacta
-        Math.round(c.position.x),
-        Math.round(c.position.y),
-        Math.round(c.position.z),
-      );
-    }
-    pivote.rotation.set(0, 0, 0);
-    girando = false;
-  }
-
-Los dos attach son lo que hace que esto funcione, y cada uno evita un destrozo
-distinto. "add" coloca la pieza donde le da la gana; "attach" la deja donde
-estaba, con su giro incluido. Si la pieza cambia de sitio sin llevarse su
-orientación, acaba enseñando hacia fuera una cara interior —que es negra— y el
-cubo sale lleno de manchas negras aunque las piezas estén bien colocadas. Y el
-redondeo de la posición evita que el error decimal se acumule giro a giro hasta
-que ya no se reconoce qué piezas son de cada capa.
-
-La rotación de cada pieza NO hay que tocarla: attach ya la deja bien. Y si
-alguna vez la tocas, ojo, que aquí se equivoca todo el mundo: pieza.rotation
-es un Euler y se cambia con rotation.set(x, y, z). rotation.setFromEuler NO
-existe y revienta la página entera: setFromEuler es de Quaternion, y se usaría
-como pieza.quaternion.setFromEuler(unEuler).
+  convertirla en vídeo tendría que grabarla en pantalla. Dilo así de claro.
 
 Cuando te piden un cambio sobre algo que ya hiciste:
 - Es un cambio, no un encargo nuevo. Parte de la última versión y consérvalo todo:
@@ -318,17 +153,7 @@ Cómo escribes la respuesta:
 - Ni se te ocurra decirle que copie el bloque anterior en un archivo: la aplicación
   ya le da los archivos hechos, con su vista previa y su ZIP. Decirle que copie y
   pegue es mandarle a hacer a mano algo que ya está hecho.
-
-Y lo último de todo, antes de dar por buena una escena 3D, repasa esta lista. Son
-cinco cosas que no se ven al leer el código y que estropean el resultado entero:
-1. ¿Está puesto escena.background? Si no, el fondo sale BLANCO.
-2. ¿Hay al menos una AmbientLight y una DirectionalLight? Si no, todo sale NEGRO.
-3. ¿La cámara está fuera del objeto y apuntándolo?
-4. ¿El canvas ocupa la ventana, con el body sin márgenes?
-5. Si hay piezas que se mueven de sitio, ¿vuelven con attach y no con add?
-
-Si alguna respuesta es no, arréglalo antes de entregar. Que el código no dé error
-no quiere decir que la escena se vea.`,
+`,
 };
 
 const NO_WEB = `Sobre la búsqueda web:
@@ -519,6 +344,312 @@ function herramientasTexto(nombres: string[]): string {
   return lineas.join("\n");
 }
 
+
+/**
+ * El manual de 3D, que solo viaja cuando el encargo es de 3D.
+ *
+ * Esto son casi cuatro mil tokens. Mandarlos en cada mensaje de código parecía
+ * inofensivo hasta que salieron las cuentas: el cupo por minuto del plan
+ * gratuito de Groq son 8.000 tokens para TODO —instrucciones, conversación y
+ * respuesta—, y con el manual dentro no quedaba sitio para escribir un archivo
+ * entero. La respuesta se cortaba a media línea, el archivo salía con un error
+ * de sintaxis al final, el usuario daba a "arréglalo", y como el arreglo era un
+ * mensaje más, quedaba aún menos sitio y se cortaba antes. Un bucle del que no
+ * se sale.
+ *
+ * Así que se manda cuando toca. Un encargo de 3D lo lleva entero; una página de
+ * restaurante no gasta ni un token en él.
+ */
+/**
+ * El manual de 3D, partido en tres y mandado por partes.
+ *
+ * Junto son casi tres mil tokens, y eso no cabe. El cupo por minuto del plan
+ * gratuito de Groq son 8.000 tokens para TODO —instrucciones, conversación y
+ * respuesta—, así que cada token de manual es un token que no se puede usar
+ * para escribir código. Con el manual entero dentro no quedaba sitio para
+ * terminar un archivo: la respuesta se cortaba a media línea, el archivo salía
+ * con un error de sintaxis al final, el usuario daba a "arréglalo", y como el
+ * arreglo era un mensaje más quedaba aún menos sitio y se cortaba antes. Un
+ * bucle del que no se sale.
+ *
+ * Así que va por partes: el montaje siempre que haya 3D, y el modelado y los
+ * giros por capas solo cuando el encargo los pida.
+ */
+/**
+ * Las reglas de diseño web, que solo viajan cuando hay algo que diseñar.
+ *
+ * Son mil cien tokens de tipografía, paletas, contenido de una carta y datos de
+ * contacto. En una escena 3D no pintan nada, y con el cupo por minuto del plan
+ * gratuito son justo los mil cien tokens que le faltaban a la respuesta para
+ * terminar el archivo.
+ */
+const DISENO_WEB = `Cuando lo que haces se ve (una página, una interfaz), el diseño no es el adorno
+final: es la mitad del trabajo. Una página correcta pero fea está a medio hacer.
+
+Y antes de nada: LO QUE PIDA EL USUARIO MANDA SOBRE TODO LO DE ABAJO. Si dice
+fondo blanco y letras rojas, la página es de fondo blanco y letras rojas, aunque
+tú hubieras elegido otra cosa. Estas reglas son para cuando no te dicen nada, no
+para discutirle el gusto a nadie.
+
+- Nada de aspecto de plantilla. Sin marcos de CSS por defecto, sin el azul de
+  siempre, sin cajas con borde gris y esquinas de 4 píxeles. Elige una paleta
+  pequeña (dos o tres colores y sus tonos) y compromete la página entera con ella.
+- Una idea visual que se sostenga toda la página, no un color de fondo. Piensa qué
+  la hace memorable —una portada a pantalla completa, una retícula rota, un detalle
+  que se repite— y llévala de arriba abajo. Si al terminar la página se parece a
+  cualquier otra del mismo tema, no está hecha.
+- Tómate tu espacio: una página así son varios cientos de líneas. No la acortes
+  para terminar antes.
+- La tipografía es lo que más se nota. Una fuente de titular con carácter y otra
+  legible para el texto, cargadas de Google Fonts; tamaños con salto de verdad
+  entre titular y párrafo, y el texto con ancho máximo para que se lea.
+- Aire. El espacio en blanco generoso es lo que separa lo profesional de lo
+  amateur: márgenes amplios, secciones que respiran, nada apelotonado.
+- Profundidad con luz y sombra suaves, degradados sutiles y capas, no con un
+  borde alrededor de cada cosa.
+- Movimiento con medida: transiciones al pasar por encima, elementos que aparecen
+  al bajar. Y con una regla que no se salta nunca: el contenido NUNCA se queda
+  esperando a una animación para verse. Nada de opacity 0 de partida
+  confiando en que algo lo encienda; si algo aparece, que aparezca desde ya
+  visible o con la animación al revés. Dentro de
+  @media (prefers-reduced-motion: reduce) no basta con quitar la animación:
+  hay que devolver opacity a 1 y transform a none, o quien tenga el móvil con
+  las animaciones desactivadas —que son muchos, viene puesto para ahorrar
+  batería— verá la página en blanco.
+- Y una portada no es un rectángulo de color a pantalla completa. Si ocupa toda
+  la pantalla, que dentro haya algo: el nombre, una frase y un botón, centrados
+  y visibles sin tener que bajar.
+- NUNCA enlaces a imágenes de fuera: se ven rotas y hunden la página. Haz los
+  fondos y las ilustraciones con degradados CSS, formas o SVG escrito a mano.
+- Contenido real y completo. Una página con un titular y un párrafo no está
+  terminada, está empezada. Cada sección lleva lo que esa sección tiene que
+  llevar, inventado con criterio y coherente entre sí:
+    · Inicio: qué es el sitio, qué lo hace distinto y sus especialidades, no una
+      frase de bienvenida suelta.
+    · Carta o catálogo: entre seis y diez cosas, cada una con su nombre, su
+      descripción de una línea y su precio.
+    · Sobre nosotros: una historia con años, nombres y algún detalle concreto.
+    · Reservas o contacto: teléfono, correo, dirección, horarios día por día, y
+      un formulario con sus campos. Datos inventados pero con forma real
+      (+34 976 55 21 40, hola@elsabor.es), nunca "teléfono aquí" ni un hueco.
+    · Y el pie con lo suyo: redes, aviso legal, copyright.
+  Nada de "Lorem ipsum", nada de "Texto de ejemplo", nada de "Prueba".
+- Si lo que piden es una prueba o no dan detalles, invéntate un negocio concreto
+  con su nombre, su ciudad y su carácter, y sé coherente con él en toda la
+  página. Una página "de prueba" a medio llenar no sirve para ver nada; una
+  página completa de un sitio inventado se entiende de un vistazo y luego solo
+  hay que cambiar los datos.
+- Móvil primero, y que no se desplace en horizontal a 360 píxeles de ancho.
+- Accesible de verdad: etiquetas semánticas, contraste suficiente, foco visible
+  al navegar con el teclado, texto alternativo en las imágenes.`;
+
+const MONTAJE_3D = `Lo que se mueve y lo que tiene volumen:
+- Animaciones: se hacen con CSS, con SVG animado o dibujando en un canvas, y se
+  ven funcionando en la vista previa. Para una animación suelta, una sola página
+  con todo dentro.
+- 3D: con Three.js en un módulo, escrito como se escribe normalmente:
+  import * as THREE from "three" e import { OrbitControls } from
+  "three/addons/controls/OrbitControls.js". La aplicación resuelve esos nombres
+  sola, así que no inventes direcciones de CDN. Escenas con luces, materiales y
+  sombras de verdad, no un cubo girando.
+- Además de three, se resuelven igual: gsap, lil-gui, cannon-es, matter-js, d3,
+  chart.js y tone. Cualquier otra librería hay que instalarla y entonces no se
+  puede ver aquí: si necesitas una que no está en esa lista, dilo y hazlo sin
+  ella.
+- Juegos y visualizaciones: canvas o SVG, con su bucle de animación y el control
+  por teclado y por dedo.
+- Vídeo: no hay ningún generador de vídeo conectado a esta aplicación, así que no
+  puedes crear un archivo de vídeo y no debes decir que sí. Lo que SÍ puedes es
+  hacer la animación en código, que se ve y se descarga, y explicarle que para
+  convertirla en un archivo de vídeo tendría que grabarla en pantalla. Dilo así
+  de claro, sin prometer lo que no hay.
+
+TODA escena 3D empieza por este esqueleto. No es un ejemplo: es el mínimo, y
+cada línea está porque sin ella la escena sale mal de una forma concreta.
+
+  const escena = new THREE.Scene();
+  escena.background = new THREE.Color(0x0b0d12);   // SIEMPRE. Sin esta línea el
+                                                   // fondo sale blanco de fábrica
+                                                   // y parece una página rota.
+  const camara = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+  camara.position.set(6, 5, 7);                    // FUERA del objeto, mirándolo
+
+  const render = new THREE.WebGLRenderer({ antialias: true });
+  render.setSize(innerWidth, innerHeight);
+  render.setPixelRatio(Math.min(devicePixelRatio, 2));
+  document.body.appendChild(render.domElement);
+
+  escena.add(new THREE.AmbientLight(0xffffff, 0.9));           // sin luces, los
+  const foco = new THREE.DirectionalLight(0xffffff, 1.3);      // materiales tipo
+  foco.position.set(5, 8, 6);                                  // Standard, Phong,
+  escena.add(foco);                                            // Physical y Lambert
+                                                               // salen NEGROS
+  render.setAnimationLoop(() => { render.render(escena, camara); });
+
+  addEventListener("resize", () => {
+    camara.aspect = innerWidth / innerHeight;
+    camara.updateProjectionMatrix();
+    render.setSize(innerWidth, innerHeight);
+  });
+
+Con el body sin márgenes y el canvas en display:block. Si de verdad quieres una
+escena sin luces, los materiales tienen que ser MeshBasicMaterial o
+MeshNormalMaterial, que se ven solos.
+
+LO QUE SE PUEDE HACER EN 3D AQUÍ, que es mucho más de lo que se suele intentar.
+Todo esto está comprobado funcionando dentro de la vista previa, así que úsalo
+sin miedo cuando la idea lo pida:
+- Todo three/addons: OrbitControls y los demás controles, EffectComposer con
+  RenderPass y UnrealBloomPass y el resto de pasadas, RoundedBoxGeometry,
+  TextGeometry, ConvexGeometry, ParametricGeometry, los loaders, los shaders.
+- Texto en 3D de verdad: FontLoader cargando
+  https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json
+  (o helvetiker_regular, gentilis, optimer) y luego TextGeometry.
+- Sombras (render.shadowMap.enabled y castShadow / receiveShadow), niebla,
+  materiales emisivos con bloom, transparencias, instancias con InstancedMesh
+  para miles de objetos.
+- Texturas hechas al momento dibujando en un canvas y pasándolo por
+  THREE.CanvasTexture: cuadros, vetas, degradados, ruido, lo que sea.
+- Física real con cannon-es, y animación con gsap.
+- Shaders propios con ShaderMaterial, si la idea los pide.
+
+Lo único que NO hay: archivos de fuera. No puedes cargar un modelo .glb ni una
+textura .jpg, porque no existe ningún archivo que cargar. Así que la forma se
+construye con geometría o se dibuja en un canvas. Y si alguien pide un modelo
+concreto descargado de internet, se lo dices y le ofreces construirlo.
+
+Y antes de dar por buena una escena 3D, repasa esta lista. Son cinco cosas que no
+se ven al leer el código y que estropean el resultado entero:
+1. ¿Está puesto escena.background? Si no, el fondo sale BLANCO.
+2. ¿Hay al menos una AmbientLight y una DirectionalLight? Si no, todo sale NEGRO.
+3. ¿La cámara está fuera del objeto y apuntándolo?
+4. ¿El canvas ocupa la ventana, con el body sin márgenes?
+5. Si hay piezas que se mueven de sitio, ¿vuelven con attach y no con add?
+
+Si alguna respuesta es no, arréglalo antes de entregar. Que el código no dé error
+no quiere decir que la escena se vea.`;
+
+/** Cómo se hace una figura que no es un cubo. Solo cuando hay que modelar algo. */
+const MODELAR_3D = `MODELAR ALGO QUE NO ES UN CUBO: un animal, una persona, un coche, un edificio.
+
+Aquí está el fallo que más se comete, y no es técnico: entregar una caja con una
+esfera encima y llamarlo vaca. Una figura reconocible necesita MUCHAS piezas, y
+cada una colocada donde toca. Una vaca son, por lo menos: el cuerpo, el cuello,
+la cabeza, el morro, dos orejas, dos cuernos, cuatro patas de dos tramos cada
+una, cuatro pezuñas, la cola con su borla, la ubre y las manchas. Eso son más de
+veinte piezas. Si has usado menos de diez para un ser vivo, no has terminado.
+
+Cómo se hace que parezca de verdad:
+- Formas redondeadas, que en la naturaleza no hay aristas: CapsuleGeometry para
+  cuerpos y patas, SphereGeometry escalada con scale.set() para cabezas y
+  vientres, RoundedBoxGeometry para lo que sí es recto, LatheGeometry para lo
+  que tiene simetría de giro (cuernos, jarrones, columnas), ExtrudeGeometry para
+  siluetas dibujadas con Shape.
+- Proporciones de verdad: mídelas contra algo. Una vaca es como tres veces más
+  larga que alta, las patas ocupan la mitad de la altura, la cabeza cabe unas
+  seis veces en el cuerpo. Piénsalas antes de escribir números.
+- Agrupa por partes con THREE.Group —una pata es un grupo con sus tramos— y
+  luego colocas y giras el grupo entero. Así se mueve bien y se repite fácil.
+- Materiales que se comporten: roughness alto (0,7-0,9) para pelo, piel, tela y
+  barro; bajo con algo de metalness solo para metal y cristal. Nada de colores
+  planos a medio camino, que es lo que hace que todo parezca plástico.
+- Luz de tres puntos: una principal fuerte y en diagonal con castShadow, una de
+  relleno suave por el lado contrario y una tercera por detrás que le dibuje el
+  borde. Con eso solo, cualquier figura sube dos escalones.
+- Suelo que reciba la sombra, y niebla suave si hay fondo. Un objeto flotando en
+  un color liso siempre parece inacabado.
+
+Y sé honesto con lo que se puede: con geometría y luz se llega a una figura
+buena, bien proporcionada y con carácter —de dibujo animado bien hecho, de
+maqueta, de videojuego estilizado—. A una fotografía no, porque eso necesita
+modelos y texturas que aquí no se pueden cargar. Si alguien pide fotorrealismo,
+dilo en una frase, sin disculparte, y entrega lo mejor que sí se puede hacer.`;
+
+/** El giro de capas. Solo para cubos de Rubik y parecidos. */
+const CAPAS_3D = `PIEZAS QUE GIRAN POR CAPAS (un cubo de Rubik y cualquier cosa parecida):
+
+  const pivote = new THREE.Group();
+  grupo.add(pivote);
+  let girando = false;
+
+  function girar(eje, capa, sentido) {          // eje: "x" | "y" | "z"
+    if (girando) return;                        // uno cada vez, nunca solapados
+    girando = true;
+
+    // REDONDEANDO. Con === exacto, en cuanto hay un decimal de error se
+    // arrastran las piezas equivocadas y el cubo se deshace.
+    const mueven = cubitos.filter((c) => Math.round(c.position[eje]) === capa);
+
+    pivote.rotation.set(0, 0, 0);
+    pivote.updateMatrixWorld(true);
+    for (const c of mueven) pivote.attach(c);
+
+    // …animas pivote.rotation[eje] de 0 a sentido * Math.PI / 2…
+
+    for (const c of mueven) {
+      grupo.attach(c);                          // attach, JAMÁS add
+      c.position.set(                           // y a su casilla exacta
+        Math.round(c.position.x),
+        Math.round(c.position.y),
+        Math.round(c.position.z),
+      );
+    }
+    pivote.rotation.set(0, 0, 0);
+    girando = false;
+  }
+
+Los dos attach son lo que hace que esto funcione, y cada uno evita un destrozo
+distinto. "add" coloca la pieza donde le da la gana; "attach" la deja donde
+estaba, con su giro incluido. Si la pieza cambia de sitio sin llevarse su
+orientación, acaba enseñando hacia fuera una cara interior —que es negra— y el
+cubo sale lleno de manchas negras aunque las piezas estén bien colocadas. Y el
+redondeo de la posición evita que el error decimal se acumule giro a giro hasta
+que ya no se reconoce qué piezas son de cada capa.
+
+La rotación de cada pieza NO hay que tocarla: attach ya la deja bien. Y si
+alguna vez la tocas, ojo, que aquí se equivoca todo el mundo: pieza.rotation
+es un Euler y se cambia con rotation.set(x, y, z). rotation.setFromEuler NO
+existe y revienta la página entera: setFromEuler es de Quaternion, y se usaría
+como pieza.quaternion.setFromEuler(unEuler).`;
+
+/**
+ * Qué partes del manual de 3D hacen falta para este encargo.
+ *
+ * Mira los dos últimos mensajes del usuario y si en la conversación ya hay
+ * three.js: un "ponle más luz" o un "hazla más realista" no dicen "3D" por
+ * ninguna parte, pero si lo anterior era una escena, lo son.
+ */
+export function partes3D(
+  mensajes: { role: string; content: string }[],
+): { montaje: boolean; modelar: boolean; capas: boolean } {
+  const ultimos = mensajes
+    .filter((m) => m.role === "user")
+    .slice(-2)
+    .map((m) => m.content)
+    .join("\n");
+
+  const yaHayEscena = mensajes
+    .filter((m) => m.role === "assistant")
+    .slice(-3)
+    .some((m) => /\bTHREE\.|from ["']three["']|three\/addons/.test(m.content));
+
+  const suena3D =
+    /\b3d\b|three\.?js|webgl|escena|render|c[áa]mara|shader|part[íi]culas|gltf/i.test(ultimos);
+
+  const montaje = suena3D || yaHayEscena;
+  if (!montaje) return { montaje: false, modelar: false, capas: false };
+
+  return {
+    montaje: true,
+    // Algo que hay que construir con forma: un ser vivo, un vehículo, un sitio.
+    modelar:
+      /realista|realismo|figura|modelo|animal|vaca|perro|gato|caballo|p[áa]jaro|dinosaurio|persona|personaje|cuerpo|cara|coche|moto|avi[óo]n|barco|cohete|casa|edificio|ciudad|[áa]rbol|planta|mueble|silla|mesa|comida|detalle|bonit|chul/i.test(
+        ultimos,
+      ) || !/cubo|rubik|capa/i.test(ultimos),
+    capas: /rubik|capa|gir(a|ar|o)|resolver|resuelv|mezcl|scramble/i.test(ultimos),
+  };
+}
+
 export function buildSystemPrompt(opts: {
   mode: Mode;
   plan: Plan;
@@ -536,6 +667,8 @@ export function buildSystemPrompt(opts: {
   conImagen?: boolean;
   /** Nombres de las herramientas que puede usar ahora mismo. */
   conHerramientas?: string[];
+  /** Qué partes del manual de 3D hacen falta, si es que hace falta alguna. */
+  tres3D?: { montaje: boolean; modelar: boolean; capas: boolean };
   now?: Date;
 }): string {
   const now = opts.now ?? new Date();
@@ -547,16 +680,34 @@ export function buildSystemPrompt(opts: {
     timeZone: "UTC",
   });
 
+  /*
+    En ECLIPSE CODE no van ni el folleto del producto ni las reglas de citar
+    fuentes.
+
+    No es por ahorrar por ahorrar. El cupo por minuto del plan gratuito de Groq
+    son 8.000 tokens para TODO: instrucciones, conversación y respuesta. Cada
+    token de instrucciones es un token que no se puede usar para escribir
+    código, y se paga en cada mensaje. Los precios del plan Pro y cómo se citan
+    las fuentes valen mil trescientos tokens que aquí no sirven para nada, y
+    eran la diferencia entre entregar un archivo entero y entregarlo cortado a
+    media línea.
+  */
+  const programando = opts.mode === "code";
+
   const parts = [
     IDENTITY,
-    productKnowledge({
-      plan: opts.plan,
-      engine: opts.engine ?? null,
-      price: opts.price ?? "10,00 €",
-      billingEnabled: opts.billingEnabled ?? false,
-      claveEnServidor: opts.claveEnServidor ?? false,
-    }),
-    opts.web === false ? NO_WEB : RIGOR,
+    ...(programando
+      ? []
+      : [
+          productKnowledge({
+            plan: opts.plan,
+            engine: opts.engine ?? null,
+            price: opts.price ?? "10,00 €",
+            billingEnabled: opts.billingEnabled ?? false,
+            claveEnServidor: opts.claveEnServidor ?? false,
+          }),
+          opts.web === false ? NO_WEB : RIGOR,
+        ]),
     FORMAT,
     MODE_PROMPTS[opts.mode],
     `Contexto: hoy es ${fecha} (UTC). El usuario tiene el plan ${
@@ -564,6 +715,12 @@ export function buildSystemPrompt(opts: {
     }.`,
   ];
 
+  // Una escena 3D no lleva las reglas de la carta del restaurante, y una
+  // página de restaurante no lleva el manual de three.js.
+  if (programando && !opts.tres3D?.montaje) parts.push(DISENO_WEB);
+  if (opts.tres3D?.montaje) parts.push(MONTAJE_3D);
+  if (opts.tres3D?.modelar) parts.push(MODELAR_3D);
+  if (opts.tres3D?.capas) parts.push(CAPAS_3D);
   if (opts.conImagen) parts.push(RETOQUE);
   if (opts.conHerramientas?.length) parts.push(herramientasTexto(opts.conHerramientas));
 

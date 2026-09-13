@@ -1,3 +1,4 @@
+import { entryHtml } from "./preview";
 import type { GeneratedFile } from "./types";
 
 const FENCE = /^```([^\n`]*)\n([\s\S]*?)\n?^```[ \t]*$/gm;
@@ -261,4 +262,31 @@ export function aligerarHistorial<T extends { role: string; content: string }>(
       ),
     };
   });
+}
+
+/**
+ * El trozo de código donde está el error, con sus vecinos alrededor.
+ *
+ * Mandar "error en la línea 175" y nada más es pedirle a ECLIPSE que vuelva a
+ * leerse el archivo entero para encontrarlo, y a veces se equivoca de sitio y
+ * devuelve lo mismo roto otra vez. Con las líneas delante, va directo.
+ */
+export function trozoDelError(files: GeneratedFile[], fallo: string): string {
+  const n = Number(/l[íi]nea\s+(\d+)/i.exec(fallo)?.[1]);
+  if (!Number.isFinite(n) || n < 1) return "";
+
+  const entrada = entryHtml(files) ?? files[0];
+  if (!entrada) return "";
+
+  const lineas = entrada.content.split("\n");
+  if (n > lineas.length) return "";
+
+  const desde = Math.max(0, n - 5);
+  const hasta = Math.min(lineas.length, n + 4);
+  const trozo = lineas
+    .slice(desde, hasta)
+    .map((l, i) => `${desde + i + 1}${desde + i + 1 === n ? " >>" : "  "} ${l}`)
+    .join("\n");
+
+  return `\n\nEstas son las líneas de ${entrada.path} alrededor del error, con la del error marcada:\n\n\`\`\`\n${trozo}\n\`\`\``;
 }
