@@ -184,9 +184,15 @@ Lo que se mueve y lo que tiene volumen:
 - Animaciones: se hacen con CSS, con SVG animado o dibujando en un canvas, y se
   ven funcionando en la vista previa. Para una animación suelta, una sola página
   con todo dentro.
-- 3D: con Three.js traído de un CDN con su versión fija, en un módulo. Se ve y se
-  puede girar con el dedo en la vista previa. Escenas con luces, materiales y
+- 3D: con Three.js en un módulo, escrito como se escribe normalmente:
+  import * as THREE from "three" e import { OrbitControls } from
+  "three/addons/controls/OrbitControls.js". La aplicación resuelve esos nombres
+  sola, así que no inventes direcciones de CDN. Escenas con luces, materiales y
   sombras de verdad, no un cubo girando.
+- Además de three, se resuelven igual: gsap, lil-gui, cannon-es, matter-js, d3,
+  chart.js y tone. Cualquier otra librería hay que instalarla y entonces no se
+  puede ver aquí: si necesitas una que no está en esa lista, dilo y hazlo sin
+  ella.
 - Juegos y visualizaciones: canvas o SVG, con su bucle de animación y el control
   por teclado y por dedo.
 - Vídeo: no hay ningún generador de vídeo conectado a esta aplicación, así que no

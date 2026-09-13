@@ -59,6 +59,53 @@ function seguro(texto: string): string {
 }
 
 /**
+ * Librerías que un navegador puede traerse solo.
+ *
+ * Cuando el modelo escribe `import * as THREE from "three"` no está haciendo
+ * nada raro: es como se escribe hoy en día. Lo que pasa es que ese nombre a
+ * secas solo lo entiende un empaquetador, y en un navegador da el error de
+ * "no se puede resolver el módulo three".
+ *
+ * Un mapa de importaciones es justo la pieza que falta: le dice al navegador
+ * que "three" significa esta dirección. Con él, el código idiomático funciona
+ * tal cual está escrito, sin instalar nada y sin pedirle al modelo que escriba
+ * de una forma rara.
+ *
+ * Las versiones van fijas a propósito: "la última" cambia sin avisar y rompe
+ * páginas que funcionaban.
+ */
+const LIBRERIAS: Record<string, string> = {
+  three: "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/": "https://cdn.jsdelivr.net/npm/three@0.160.0/",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  gsap: "https://cdn.jsdelivr.net/npm/gsap@3.12.5/index.js",
+  "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.19.2/dist/lil-gui.esm.js",
+  "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
+  "matter-js": "https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js",
+  d3: "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm",
+  "chart.js": "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/+esm",
+  "chart.js/auto": "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/auto/+esm",
+  tone: "https://cdn.jsdelivr.net/npm/tone@14.7.77/build/esm/index.js",
+};
+
+/** ¿Sabemos de dónde sacar esta librería sin instalar nada? */
+function resoluble(nombre: string): boolean {
+  return Object.keys(LIBRERIAS).some((clave) =>
+    clave.endsWith("/") ? nombre.startsWith(clave) : nombre === clave,
+  );
+}
+
+/**
+ * El mapa va antes que cualquier módulo: el navegador lo lee una sola vez y
+ * al empezar. Puesto después, ya se ha intentado resolver la importación y ha
+ * fallado.
+ */
+function mapaDeImportaciones(): string {
+  return `<script type="importmap">${JSON.stringify({ imports: LIBRERIAS })}<\/script>`;
+}
+
+/**
  * ¿Puede este HTML abrirse tal cual?
  *
  * Un proyecto de React o Vue no se ejecuta en el navegador sin compilar: su
@@ -87,7 +134,15 @@ function porQueNoSeVe(html: string, files: GeneratedFile[]): string | null {
   */
   const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
   const paquete = /^\s*import\s[^;]*?\sfrom\s+["'](?![./]|https?:|data:)([^"']+)["']/m;
-  if (scripts.some((codigo) => paquete.test(codigo)))
+  const sinResolver = scripts
+    .flatMap((codigo) => [...codigo.matchAll(/from\s+["'](?![./]|https?:|data:)([^"']+)["']/g)])
+    .map((m) => m[1])
+    .filter((nombre) => !resoluble(nombre));
+
+  if (sinResolver.length)
+    return `Este proyecto usa ${sinResolver[0]}, que hay que instalar antes de verlo.`;
+
+  if (scripts.some((codigo) => paquete.test(codigo)) && sinResolver.length)
     return "Este proyecto usa librerías que hay que instalar antes de verlo.";
 
   if (files.some((f) => /package\.json$/i.test(f.path)) && !html.trim())
@@ -190,9 +245,11 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
 })();
 <\/script>`;
 
+  // El mapa primero, y el vigilante justo detrás: los dos antes que nada.
+  const cabecera = mapaDeImportaciones() + vigilante;
   const conVigilante = /<head[^>]*>/i.test(html)
-    ? html.replace(/<head[^>]*>/i, (etiqueta) => etiqueta + vigilante)
-    : vigilante + html;
+    ? html.replace(/<head[^>]*>/i, (etiqueta) => etiqueta + cabecera)
+    : cabecera + html;
 
   /*
     Navegación dentro de la vista previa.
