@@ -360,14 +360,6 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "No hay mensajes que responder." }, { status: 400 });
   }
 
-  // Antes de gastar clave del servidor, comprobar que a esta persona le queda
-  // cupo. Es lo único que impide que un bucle de alguien deje sin aplicación a
-  // todos los demás.
-  const cupo = await gastar("chat", plan);
-  if (!cupo.permitido) {
-    return Response.json({ error: cupo.mensaje, code: "sin_cupo" }, { status: 429 });
-  }
-
   const provider = await activeProvider();
   if (!provider) {
     return Response.json(
@@ -378,6 +370,14 @@ export async function POST(req: NextRequest) {
       },
       { status: 503 },
     );
+  }
+
+  // El cupo se gasta después de saber que hay motor, y no antes: comprobar el
+  // motor no cuesta nada —es mirar variables de entorno— y cobrarle a alguien
+  // un mensaje por una petición que el servidor no podía atender es injusto.
+  const cupo = await gastar("chat", plan);
+  if (!cupo.permitido) {
+    return Response.json({ error: cupo.mensaje, code: "sin_cupo" }, { status: 429 });
   }
 
   const wantsWeb =
@@ -441,5 +441,10 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return new Response(stream, { headers: SSE_HEADERS });
+  // Cuántas le quedan hoy, para poder avisar antes de que se acaben en vez de
+  // cortarle en seco. Viaja en una cabecera porque el cuerpo es un flujo que
+  // empieza a salir mucho antes de que nadie lo termine de leer.
+  return new Response(stream, {
+    headers: { ...SSE_HEADERS, "X-Eclipse-Restantes": String(cupo.restantes) },
+  });
 }

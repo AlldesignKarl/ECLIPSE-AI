@@ -31,6 +31,8 @@ interface Props {
   onFiles: (files: FileList | null) => void;
   onRemoveAttachment: (id: string) => void;
   onProNeeded: () => void;
+  /** Cuántas peticiones le quedan hoy, o null mientras no se sepa. */
+  restantes?: number | null;
 }
 
 const MODES: {
@@ -76,6 +78,7 @@ export default function Composer({
   onFiles,
   onRemoveAttachment,
   onProNeeded,
+  restantes = null,
 }: Props) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -505,6 +508,24 @@ export default function Composer({
             )}
           </div>
         </div>
+
+        {/*
+          El aviso solo aparece cuando queda poco. Enseñar el contador todo el
+          rato convierte una conversación en un parquímetro; callarse hasta que
+          se acaba es peor, porque se corta en mitad de algo.
+        */}
+        {restantes !== null && restantes <= 5 && (
+          <p className="mt-2 text-center text-[11px] text-muted">
+            {restantes > 0
+              ? `Te ${restantes === 1 ? "queda 1 mensaje" : `quedan ${restantes} mensajes`} hoy.`
+              : "Has gastado el cupo de hoy."}{" "}
+            {plan === "free" && (
+              <button onClick={onProNeeded} className="underline underline-offset-2 hover:text-ink">
+                Con Pro tienes diez veces más
+              </button>
+            )}
+          </p>
+        )}
 
         <p className="mt-2 text-center text-[11px] text-faint">
           ECLIPSE puede equivocarse. Comprueba los datos importantes en las fuentes.

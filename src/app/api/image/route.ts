@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await generateImage(prompt.trim(), anterior?.trim() || undefined);
-    return Response.json(result);
+    return Response.json({ ...result, restantes: cupo.restantes });
   } catch (err) {
     const status = err instanceof MediaError ? err.status : 500;
     const message = err instanceof Error ? err.message : "Error generando la imagen.";

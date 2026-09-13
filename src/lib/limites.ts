@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { currentUser } from "./auth";
+import { NOMBRE, TOPES, type Recurso } from "./limites-tabla";
 import { storeAvailable, StoreError } from "./store";
 import type { Plan } from "./types";
 
@@ -17,19 +18,7 @@ import type { Plan } from "./types";
  * de las cuentas y caduca solo al acabar el día.
  */
 
-export type Recurso = "chat" | "imagen" | "voz";
-
-/** Al día y por persona. Las imágenes van más cortas: son las que más cuestan. */
-const TOPES: Record<Plan, Record<Recurso, number>> = {
-  free: { chat: 60, imagen: 12, voz: 40 },
-  pro: { chat: 600, imagen: 120, voz: 400 },
-};
-
-const NOMBRE: Record<Recurso, string> = {
-  chat: "mensajes",
-  imagen: "imágenes",
-  voz: "notas de voz",
-};
+export type { Recurso };
 
 export function topeDiario(plan: Plan, recurso: Recurso): number {
   return TOPES[plan][recurso];

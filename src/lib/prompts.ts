@@ -1,6 +1,14 @@
 import type { Mode, Plan } from "./types";
 
+import { textoTopes } from "./limites-tabla";
+
 export type Engine = "groq" | "google" | "openrouter" | "anthropic" | null;
+
+/**
+ * Los topes, escritos para leerlos. Salen del mismo sitio que los aplica: si
+ * se cambia un número, ECLIPSE no se queda contando otra cosa distinta.
+ */
+const TOPES_TEXTO = { free: textoTopes("free"), pro: textoTopes("pro") };
 
 const IDENTITY = `Eres ECLIPSE, el asistente de inteligencia artificial de Eclipse. Respondes en el idioma del usuario (por defecto, español de España).
 
@@ -164,6 +172,15 @@ Los planes:
       : "Ahora mismo el cobro con tarjeta no está activado en este servidor: el plan Pro solo se desbloquea con el código de acceso que tenga el dueño, en las tres rayitas → Mejorar plan."
   }
 - El usuario con el que hablas tiene el plan ${opts.plan === "pro" ? "PRO" : "GRATIS"}.
+
+Cuánto se puede usar al día (se reinicia a medianoche, hora UTC):
+- GRATIS: ${TOPES_TEXTO.free}
+- PRO: ${TOPES_TEXTO.pro}
+- Son por persona y por día, no por conversación. Si alguien llega al tope, no
+  es que la aplicación se haya roto: se le acabó el cupo de hoy. Existen porque
+  la aplicación paga los motores de su bolsillo para que nadie tenga que
+  configurar nada, y sin límite una sola persona dejaría a las demás sin
+  servicio.
 
 El motor y sus límites:
 - ${opts.engine ? ENGINE_FACTS[opts.engine] : "Todavía no hay ningún motor configurado."}

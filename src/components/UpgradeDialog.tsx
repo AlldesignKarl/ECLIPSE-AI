@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import * as Icon from "./Icons";
+import { TOPES } from "@/lib/limites-tabla";
 import type { Plan } from "@/lib/types";
 
 export interface Billing {
@@ -22,18 +23,21 @@ interface Props {
 }
 
 const FREE = [
-  "Conversación ilimitada con razonamiento",
+  `${TOPES.free.chat} mensajes al día`,
+  `${TOPES.free.imagen} imágenes al día`,
   "Búsqueda web con prioridad a fuentes académicas",
   "Analizar imágenes, PDF y archivos de texto",
-  "Crear imágenes",
-  "Redactar, resumir, traducir y dar ideas",
+  "Retocar una foto y decirte qué mejorarías",
+  `${TOPES.free.voz} notas de voz al día`,
 ];
 
 const PRO = [
-  "Todo lo del plan Gratis",
+  `${TOPES.pro.chat} mensajes al día (diez veces más)`,
+  `${TOPES.pro.imagen} imágenes al día`,
   "Crear bots de Discord, Telegram y otros, listos para arrancar",
   "Modo Profundo con el máximo razonamiento",
   "Respuestas aceleradas (modo rápido)",
+  "Todo lo demás del plan Gratis",
 ];
 
 export default function UpgradeDialog({

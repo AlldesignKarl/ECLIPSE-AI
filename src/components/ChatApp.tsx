@@ -91,6 +91,11 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
 
   const [sidebar, setSidebar] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  /**
+   * Cuántas peticiones le quedan hoy, según lo último que dijo el servidor.
+   * `null` mientras no se sepa: no se avisa de lo que no se ha medido.
+   */
+  const [restantes, setRestantes] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -396,6 +401,9 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           throw new Error(data.error ?? `Error ${res.status}`);
         }
 
+        const queda = res.headers.get("X-Eclipse-Restantes");
+        if (queda !== null) setRestantes(Number(queda));
+
         await readSSE(
           res,
           (event) => {
@@ -495,7 +503,9 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           note?: string;
           error?: string;
           prompt?: string;
+          restantes?: number;
         };
+        if (typeof data.restantes === "number") setRestantes(data.restantes);
         if (!res.ok || !data.dataUrl) throw new Error(data.error ?? "No se pudo crear la imagen.");
 
         upsert(conversationId, (c) => ({
@@ -766,6 +776,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           onFiles={(files) => void addFiles(files)}
           onRemoveAttachment={(id) => setAttachments((list) => list.filter((a) => a.id !== id))}
           onProNeeded={() => setUpgradeOpen(true)}
+          restantes={restantes}
         />
       </div>
 
