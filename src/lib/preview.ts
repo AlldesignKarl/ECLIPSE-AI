@@ -307,6 +307,25 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
 
   window.__eclipseAvisar = avisar;
   window.__eclipseAvisado = function () { return avisado; };
+
+  /*
+    Para poder mirar despues lo que la escena 3D ha pintado de verdad.
+
+    Un canvas de WebGL se borra en cuanto termina de dibujarse, asi que leerlo
+    devuelve negro aunque en pantalla se vea perfecto. Con preserveDrawingBuffer
+    se conserva, y entonces si se puede comprobar si la escena salio en negro.
+    Se pide aqui porque esto corre antes que el codigo del usuario: una vez
+    creado el contexto, la opcion ya no se puede cambiar.
+  */
+  try {
+    var original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (tipo, opciones) {
+      if (/webgl/i.test(String(tipo))) {
+        opciones = Object.assign({}, opciones || {}, { preserveDrawingBuffer: true });
+      }
+      return original.call(this, tipo, opciones);
+    };
+  } catch (e) {}
 })();
 <\/script>`;
 
@@ -391,10 +410,68 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
         );
     }
 
+    /*
+      Una escena 3D que sale de un solo color.
+
+      Es el fallo mas habitual y el mas dificil de ver desde fuera: el codigo no
+      da ningun error, el canvas esta ahi, pero lo que se ve es un rectangulo
+      negro entero. Casi siempre es lo mismo —materiales que necesitan luz y una
+      escena sin ninguna luz— y a veces la camara dentro del propio objeto. Sin
+      este aviso, el usuario solo ve un cuadro negro y no sabe ni que preguntar.
+
+      Se mira dos veces separadas en el tiempo: la primera pasada puede caer
+      antes del primer fotograma, y avisar de eso seria mentir.
+    */
+    function escenaPlana() {
+      var lienzo = document.querySelector("canvas");
+      if (!lienzo || !lienzo.width || !lienzo.height) return false;
+
+      var chico = document.createElement("canvas");
+      chico.width = 48;
+      chico.height = 48;
+      var ctx = chico.getContext("2d");
+      if (!ctx) return false;
+
+      try {
+        ctx.drawImage(lienzo, 0, 0, 48, 48);
+        var datos = ctx.getImageData(0, 0, 48, 48).data;
+        var r0 = datos[0], g0 = datos[1], b0 = datos[2];
+        var distintos = 0;
+        for (var i = 0; i < datos.length; i += 4) {
+          if (
+            Math.abs(datos[i] - r0) > 12 ||
+            Math.abs(datos[i + 1] - g0) > 12 ||
+            Math.abs(datos[i + 2] - b0) > 12
+          )
+            distintos++;
+        }
+        // Con menos de un 1% de pixeles distintos, ahi no hay nada dibujado.
+        return distintos / (datos.length / 4) < 0.01;
+      } catch (e) {
+        // Una textura de otro dominio ensucia el canvas y no deja leerlo. No es
+        // un fallo de la escena, asi que no se avisa de nada.
+        return false;
+      }
+    }
+
+    function vigilarEscena() {
+      if (!escenaPlana()) return;
+      setTimeout(function () {
+        if (!escenaPlana()) return;
+        if (window.__eclipseAvisado && window.__eclipseAvisado()) return;
+        if (window.__eclipseAvisar)
+          window.__eclipseAvisar(
+            "La escena 3D se ve de un solo color",
+            "Se esta dibujando, pero no se distingue nada: lo normal es que falten luces (los materiales tipo MeshStandardMaterial sin luz salen negros) o que la camara este dentro del objeto. Pidele a ECLIPSE que lo arregle."
+          );
+      }, 1800);
+    }
+
     window.addEventListener("load", function () {
       setTimeout(rescatarInvisibles, 400);
       setTimeout(rescatarInvisibles, 1600);
       setTimeout(avisarSiEstaVacia, 3000);
+      setTimeout(vigilarEscena, 2500);
     });
   })();
 </script>`;

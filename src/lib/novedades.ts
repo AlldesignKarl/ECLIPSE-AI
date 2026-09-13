@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.4",
+    // El anillo de diamante: el destello del segundo justo antes de que la luna
+    // tape el sol del todo. Va de que las escenas 3D por fin se vean.
+    nombre: "Diamante",
+    titulo: "Las escenas 3D salen como tienen que salir",
+    entrada:
+      "Pedías un cubo de Rubik y salía un bloque negro con pinchos. Ya no: ECLIPSE sabe ahora qué es lo que lo rompía y, si aun así sale mal, te avisa.",
+    puntos: [
+      "Luces y fondo siempre. Un material sin luz sale negro entero, y eso era lo que pasaba: el cubo tenía sus colores puestos, pero no había con qué verlos.",
+      "Los colores van en las caras del propio cubo, no en placas pegadas encima. Esas placas eran los pinchos que asomaban por los bordes.",
+      "Si una escena sale de un solo color, la vista previa te lo dice y puedes pedirle que lo arregle en un toque, en vez de quedarte mirando un cuadro negro.",
+      "Y para programar elige siempre el modelo más grande que tenga tu cuenta: uno pequeño responde rápido, pero entrega escenas a medias.",
+    ],
+  },
+  {
     version: "2.3",
     // La penumbra es la sombra de fuera, la que deja pasar parte de la luz:
     // aquí es justo eso, dejar pasar solo lo que hace falta de lo hablado.

@@ -189,6 +189,35 @@ Lo que se mueve y lo que tiene volumen:
   "three/addons/controls/OrbitControls.js". La aplicación resuelve esos nombres
   sola, así que no inventes direcciones de CDN. Escenas con luces, materiales y
   sombras de verdad, no un cubo girando.
+
+Una escena 3D solo está bien si se VE. Estas cinco cosas no son consejos, son
+requisitos, y son justo las que fallan cuando el resultado sale mal:
+1. Luces SIEMPRE. MeshStandardMaterial, MeshPhysicalMaterial, MeshPhongMaterial
+   y MeshLambertMaterial no se ven sin luz: salen negros enteros aunque les
+   pongas el color más vivo del mundo. Como mínimo una AmbientLight con
+   intensidad cerca de 1 y una DirectionalLight colocada en diagonal. Si de
+   verdad no quieres luces, entonces el material tiene que ser MeshBasicMaterial
+   o MeshNormalMaterial, que se ven solos.
+2. Fondo SIEMPRE, con scene.background = new THREE.Color(...). Sin ponerlo queda
+   el blanco de fábrica, que parece un error y no un fondo.
+3. La cámara, colocada FUERA y mirando al objeto, a una distancia como de dos o
+   tres veces su tamaño. Dentro del objeto se ve un color plano y nada más.
+4. El color va en el material de la propia malla. Para un cubo con las caras de
+   colores distintos se le pasa a la malla un ARRAY DE SEIS MATERIALES, en el
+   orden de three.js: +X derecha, -X izquierda, +Y arriba, -Y abajo, +Z frente,
+   -Z detrás. Nunca pegues placas, planos ni pegatinas encima de las caras: se
+   pelean con la superficie de debajo, parpadean y asoman por los bordes como
+   pinchos. Es exactamente lo que hace que un cubo de Rubik salga negro y con
+   púas.
+5. Las separaciones se hacen con el TAMAÑO, no con más geometría: en una
+   cuadrícula de cubos, el cubo mide un poco menos que el hueco (0,94 para una
+   separación de 1) y la rejilla aparece sola.
+
+Y lo básico de montar la escena, siempre: renderer.setSize con el tamaño de la
+ventana, setPixelRatio limitado a 2, el canvas añadido al documento, un bucle
+con setAnimationLoop y un listener de resize que actualice la cámara y el
+render. El body sin márgenes y el canvas en display:block, o sale barra de
+desplazamiento.
 - Además de three, se resuelven igual: gsap, lil-gui, cannon-es, matter-js, d3,
   chart.js y tone. Cualquier otra librería hay que instalarla y entonces no se
   puede ver aquí: si necesitas una que no está en esa lista, dilo y hazlo sin

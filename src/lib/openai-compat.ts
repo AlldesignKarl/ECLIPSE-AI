@@ -258,13 +258,29 @@ const PREFERENCIA_CHAT: RegExp[] = [
 
 const PREFERENCIA_CODIGO: RegExp[] = [
   /kimi|k2/i,
+  /qwen.*coder/i,
   /deepseek/i,
-  /qwen.*(coder|3)/i,
-  /qwen/i,
-  /gpt-oss.*120/i,
   /llama.*(405|90)b/i,
+  /gpt-oss.*120/i,
+  /maverick/i,
   /70b|72b/i,
+  /qwen.*3/i,
+  /qwen/i,
 ];
+
+/**
+ * Modelos pequeños, por lo que dice su propio nombre.
+ *
+ * Para programar, el tamaño se nota mucho más que en una conversación. Un
+ * modelo de 27B contesta rápido y parece que ha entendido, pero entrega una
+ * escena 3D sin luces y un cubo de Rubik negro: no es que se despiste, es que
+ * no le da. Así que en modo código se dejan para el final, y solo se usan si no
+ * hay nada mejor en la cuenta.
+ */
+const PEQUENO = (id: string) =>
+  // Con una salvedad: los modelos de expertos ponen en el nombre los parámetros
+  // que usan por token, no los que tienen. Maverick dice "17b" y son 400.
+  !/maverick|scout|\bmoe\b|\d+e\b/i.test(id) && /\b([1-9]|[12]\d)\s*b\b/i.test(id);
 
 const resolved: Partial<Record<CompatProvider, string>> = {};
 const resueltoCodigo: Partial<Record<CompatProvider, string>> = {};
@@ -311,9 +327,16 @@ async function elegirModelo(
   const guardado = modo === "code" ? resueltoCodigo[provider] : resolved[provider];
   if (guardado) return guardado;
 
+  // Los pequeños al final cuando hay que programar: así, entre dos que encajen
+  // con el mismo patrón, gana el grande en vez de ganar el que salga antes.
+  const candidatos =
+    modo === "code"
+      ? [...disponibles.filter((id) => !PEQUENO(id)), ...disponibles.filter(PEQUENO)]
+      : disponibles;
+
   const preferencias = modo === "code" ? PREFERENCIA_CODIGO : PREFERENCIA_CHAT;
   for (const patron of preferencias) {
-    const encontrado = disponibles.find((id) => patron.test(id));
+    const encontrado = candidatos.find((id) => patron.test(id));
     if (encontrado) {
       if (modo === "code") resueltoCodigo[provider] = encontrado;
       else resolved[provider] = encontrado;
@@ -323,7 +346,7 @@ async function elegirModelo(
 
   // Ninguno encaja con lo que se busca: el de siempre si está, y si no, el
   // primero que haya, que es mejor que no responder.
-  const elegido = disponibles.includes(preset.model) ? preset.model : disponibles[0];
+  const elegido = disponibles.includes(preset.model) ? preset.model : candidatos[0];
   if (modo === "code") resueltoCodigo[provider] = elegido;
   else resolved[provider] = elegido;
   return elegido;
