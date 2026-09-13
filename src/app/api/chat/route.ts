@@ -4,14 +4,16 @@ import { getClient, humanError, MODEL, tuning } from "@/lib/anthropic";
 import { GeminiError, streamChat } from "@/lib/gemini";
 import { keySource, resolveKey } from "@/lib/keys";
 import { gastar } from "@/lib/limites";
-import { CompatError, streamCompat, type CompatProvider } from "@/lib/openai-compat";
+import { CompatError, type CompatProvider } from "@/lib/openai-compat";
+import { conversarConHerramientas } from "@/lib/tools/bucle";
+import { herramientasPara } from "@/lib/tools/registro";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { activeProvider, providerSearches } from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
 import { priceLabelLive, stripeAvailable } from "@/lib/stripe";
 import { SSE_HEADERS, sseChunk, type StreamEvent } from "@/lib/sse";
-import type { Attachment, Mode, Speed } from "@/lib/types";
+import type { Attachment, Mode, Source, Speed } from "@/lib/types";
 
 export const runtime = "nodejs";
 // El plan gratuito de Vercel corta las funciones a los 60 s. Si despliegas en
@@ -305,34 +307,60 @@ async function runCompat(
   let wrote = false;
   send({ t: "status", v: "pensando" });
 
-  const stream = streamCompat({
+  const herramientas = await herramientasPara(opts.mode, opts.plan);
+  // Estos motores no navegan por su cuenta. Con un buscador configurado sí
+  // pueden, pero a través de nuestra herramienta, así que lo que hay que
+  // decirles cambia: sin ella, que no finjan haber buscado; con ella, cómo
+  // usarla. El prompt lo decide `web`.
+  const puedeBuscar = herramientas.some((h) => h.nombre === "buscar_web");
+
+  const stream = conversarConHerramientas({
     provider: opts.provider,
     key: await resolveKey(opts.provider),
-    // Estos motores no navegan: se lo decimos para que no finja que ha buscado.
     system: buildSystemPrompt({
       ...(await product(opts.provider)),
       mode: opts.mode,
       plan: opts.plan,
-      web: false,
+      web: puedeBuscar,
       engine: opts.provider,
       conImagen: ultimaConImagen(opts.body.messages),
+      conHerramientas: herramientas.map((h) => h.nombre),
     }),
     turns: opts.body.messages,
     speed: opts.speed,
+    mode: opts.mode,
+    plan: opts.plan,
     signal: opts.signal,
   });
 
+  let fuentes: Source[] = [];
+
   for await (const event of stream) {
     if (opts.signal.aborted) break;
-    if (event.text) {
+
+    if (event.texto) {
       if (!wrote) {
         wrote = true;
         send({ t: "status", v: "escribiendo" });
       }
-      send({ t: "text", v: event.text });
+      send({ t: "text", v: event.texto });
     }
+
+    if (event.herramienta) {
+      send({ t: "tool", v: event.herramienta });
+      send({ t: "status", v: event.herramienta.nombre === "buscar_web" ? "buscando" : "procesando" });
+    }
+    if (event.hecha) send({ t: "tool_done", v: event.hecha });
+    if (event.fuentes) {
+      fuentes = event.fuentes;
+      send({ t: "sources", v: fuentes });
+    }
+    if (event.archivo) send({ t: "file", v: event.archivo });
   }
 
+  // Las fuentes ya se han ido mandando clasificadas durante el bucle, así que
+  // aquí se devuelve la lista vacía para que la ruta no las vuelva a ordenar.
+  void fuentes;
   return { sources: [] as { url: string; title?: string }[], stopReason: null as string | null };
 }
 

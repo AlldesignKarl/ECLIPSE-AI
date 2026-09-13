@@ -54,14 +54,34 @@ export class CompatError extends Error {
 }
 
 interface Message {
-  role: "system" | "user" | "assistant";
-  content: string | ({ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } })[];
+  role: "system" | "user" | "assistant" | "tool";
+  content:
+    | string
+    | ({ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } })[];
+  /** Las llamadas que pidió el modelo, cuando el turno es suyo. */
+  tool_calls?: LlamadaCruda[];
+  /** A qué llamada responde este turno, cuando el papel es `tool`. */
+  tool_call_id?: string;
 }
+
+/** Una llamada a herramienta tal y como la escriben estos modelos. */
+export interface LlamadaCruda {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
+/** Un turno más de los que van y vienen dentro del bucle de herramientas. */
+export type TurnoExtra =
+  | { role: "assistant"; content: string; tool_calls: LlamadaCruda[] }
+  | { role: "tool"; tool_call_id: string; content: string };
 
 function toMessages(
   system: string,
   turns: { role: "user" | "assistant"; content: string; attachments?: Attachment[] }[],
   vision: boolean,
+  /** Lo que ya se ha hablado con las herramientas en esta misma respuesta. */
+  extra: TurnoExtra[] = [],
 ): Message[] {
   const out: Message[] = [{ role: "system", content: system }];
 
@@ -103,6 +123,15 @@ function toMessages(
     } else {
       out.push({ role: turn.role, content: written });
     }
+  }
+
+  // El ida y vuelta con las herramientas va al final, en el orden en que
+  // ocurrió: el modelo necesita ver su propia llamada justo antes de la
+  // respuesta que le dieron, o no sabe a qué corresponde cada resultado.
+  for (const t of extra) {
+    if (t.role === "assistant")
+      out.push({ role: "assistant", content: t.content, tool_calls: t.tool_calls });
+    else out.push({ role: "tool", tool_call_id: t.tool_call_id, content: t.content });
   }
 
   return out;
@@ -158,6 +187,8 @@ function envModel(provider: CompatProvider): string {
 
 export interface CompatEvent {
   text?: string;
+  /** El modelo ha pedido usar herramientas y ha dejado de escribir. */
+  llamadas?: LlamadaCruda[];
 }
 
 /** Conversa con el proveedor y va entregando lo que escribe. */
@@ -168,6 +199,10 @@ export async function* streamCompat(opts: {
   turns: { role: "user" | "assistant"; content: string; attachments?: Attachment[] }[];
   speed: Speed;
   signal?: AbortSignal;
+  /** Catálogo de herramientas, en el formato de OpenAI. Vacío = sin herramientas. */
+  tools?: unknown[];
+  /** El ida y vuelta con las herramientas que ya ha ocurrido en esta respuesta. */
+  extra?: TurnoExtra[];
 }): AsyncGenerator<CompatEvent> {
   const preset = PRESETS[opts.provider];
   if (!opts.key)
@@ -179,10 +214,11 @@ export async function* streamCompat(opts: {
   const body = (model: string) =>
     JSON.stringify({
       model,
-      messages: toMessages(opts.system, opts.turns, preset.vision.test(model)),
+      messages: toMessages(opts.system, opts.turns, preset.vision.test(model), opts.extra ?? []),
       max_tokens: maxTokens(opts.speed),
       temperature: 0.7,
       stream: true,
+      ...(opts.tools?.length ? { tools: opts.tools, tool_choice: "auto" } : {}),
     });
 
   const open = (model: string) =>
@@ -232,6 +268,13 @@ export async function* streamCompat(opts: {
   const decoder = new TextDecoder();
   let buffer = "";
 
+  /**
+   * Las llamadas a herramientas no llegan enteras: llegan a trozos, y el
+   * nombre puede venir en un fragmento y los argumentos repartidos entre
+   * veinte. Se arman por su índice y no se entregan hasta que el flujo acaba.
+   */
+  const enObra = new Map<number, LlamadaCruda>();
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -248,17 +291,49 @@ export async function* streamCompat(opts: {
 
       try {
         const chunk = JSON.parse(payload) as {
-          choices?: { delta?: { content?: string } }[];
+          choices?: {
+            delta?: {
+              content?: string;
+              tool_calls?: {
+                index?: number;
+                id?: string;
+                function?: { name?: string; arguments?: string };
+              }[];
+            };
+          }[];
           error?: { message?: string };
         };
         if (chunk.error?.message) throw new CompatError(chunk.error.message);
-        const text = chunk.choices?.[0]?.delta?.content;
-        if (text) yield { text };
+
+        const delta = chunk.choices?.[0]?.delta;
+        if (delta?.content) yield { text: delta.content };
+
+        for (const trozo of delta?.tool_calls ?? []) {
+          const i = trozo.index ?? 0;
+          const actual = enObra.get(i) ?? {
+            id: "",
+            type: "function" as const,
+            function: { name: "", arguments: "" },
+          };
+          if (trozo.id) actual.id = trozo.id;
+          if (trozo.function?.name) actual.function.name = trozo.function.name;
+          if (trozo.function?.arguments) actual.function.arguments += trozo.function.arguments;
+          enObra.set(i, actual);
+        }
       } catch (err) {
         if (err instanceof CompatError) throw err;
         // Fragmento partido entre lecturas: seguimos.
       }
     }
+  }
+
+  const llamadas = [...enObra.values()].filter((l) => l.function.name);
+  if (llamadas.length) {
+    // Sin id no se puede emparejar la respuesta; algunos proveedores lo omiten.
+    llamadas.forEach((l, i) => {
+      if (!l.id) l.id = `llamada_${i}`;
+    });
+    yield { llamadas };
   }
 }
 

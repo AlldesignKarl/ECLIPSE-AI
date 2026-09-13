@@ -5,6 +5,7 @@ import Composer from "./Composer";
 import EclipseLogo from "./EclipseLogo";
 import * as Icon from "./Icons";
 import MessageItem from "./MessageItem";
+import Pasos from "./Pasos";
 import SettingsDialog, {
   EMPTY_KEY_SOURCES,
   type Capabilities,
@@ -32,10 +33,12 @@ import {
   type Prefs,
 } from "@/lib/storage";
 import type {
+  Artifact,
   Attachment,
   Conversation,
   Message,
   Mode,
+  Paso,
   Plan,
   Source,
   Status,
@@ -96,6 +99,8 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
    * `null` mientras no se sepa: no se avisa de lo que no se ha medido.
    */
   const [restantes, setRestantes] = useState<number | null>(null);
+  /** Las herramientas que está usando ahora mismo, para enseñarlas al vuelo. */
+  const [pasosVivos, setPasosVivos] = useState<Paso[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -372,6 +377,9 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
 
       let sources: Source[] = [];
       let elapsedMs: number | undefined;
+      const pasos: Paso[] = [];
+      const archivos: Artifact[] = [];
+      setPasosVivos([]);
       let failure: string | undefined;
 
       try {
@@ -423,6 +431,37 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
               case "sources":
                 sources = event.v as Source[];
                 break;
+              case "tool": {
+                const v = event.v as { nombre: string; detalle: string };
+                pasos.push({ nombre: v.nombre, detalle: v.detalle });
+                setPasosVivos([...pasos]);
+                break;
+              }
+              case "tool_done": {
+                const v = event.v as { nombre: string; ok: boolean; detalle: string };
+                // Se cierra el último paso abierto de esa herramienta, no el
+                // primero: con dos búsquedas seguidas se marcaría la que no es.
+                for (let i = pasos.length - 1; i >= 0; i--) {
+                  if (pasos[i].nombre === v.nombre && pasos[i].ok === undefined) {
+                    pasos[i] = { ...pasos[i], ok: v.ok, detalle: v.detalle || pasos[i].detalle };
+                    break;
+                  }
+                }
+                setPasosVivos([...pasos]);
+                break;
+              }
+              case "file": {
+                const v = event.v as { nombre: string; mime: string; contenido: string };
+                archivos.push({
+                  type: "file",
+                  title: v.nombre,
+                  mime: v.mime,
+                  // Se guarda como data URL para que la descarga funcione sin
+                  // servidor, igual que las imágenes generadas.
+                  url: `data:${v.mime};base64,${btoa(unescape(encodeURIComponent(v.contenido)))}`,
+                });
+                break;
+              }
               case "error":
                 failure = event.v;
                 break;
@@ -455,15 +494,22 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         error: failure,
         elapsedMs,
         mode: currentMode,
-        artifacts: files.length
-          ? [
-              {
-                type: "code" as const,
-                files,
-                title: projectName(history.at(-1)?.content ?? "proyecto"),
-              },
-            ]
-          : undefined,
+        pasos: pasos.length ? pasos : undefined,
+        artifacts:
+          files.length || archivos.length
+            ? [
+                ...(files.length
+                  ? [
+                      {
+                        type: "code" as const,
+                        files,
+                        title: projectName(history.at(-1)?.content ?? "proyecto"),
+                      },
+                    ]
+                  : []),
+                ...archivos,
+              ]
+            : undefined,
       });
 
       document.removeEventListener("visibilitychange", alOcultarse);
@@ -471,6 +517,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
 
       upsert(conversationId, (c) => ({ ...c, messages: [...c.messages, reply] }));
       setStream({ text: "", thinking: "" });
+      setPasosVivos([]);
 
       // La explicación ya está a la vista; la imagen retocada llega detrás, que
       // tarda lo suyo. Al revés se quedaría la pantalla en blanco esperando.
@@ -744,6 +791,13 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
                 {busy && !streamingMessage && (
                   <div className="px-4 py-3">
                     <ThinkingBar status={status} />
+                    {/* Lo que va haciendo, mientras lo hace: veinte segundos de
+                        silencio se parecen demasiado a estar roto. */}
+                    {pasosVivos.length > 0 && (
+                      <div className="mt-2.5 pl-[42px]">
+                        <Pasos pasos={pasosVivos} vivos />
+                      </div>
+                    )}
                   </div>
                 )}
 

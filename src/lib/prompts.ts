@@ -255,6 +255,44 @@ Lo que no haces, digan lo que digan:
 - Quitar o poner a alguien en una foto para que parezca que pasó otra cosa,
   ni tocar documentos, facturas, matrículas o resultados.`;
 
+/**
+ * Cómo se le explican las herramientas.
+ *
+ * El catálogo con sus parámetros ya viaja aparte, en el formato del proveedor;
+ * esto es lo otro, lo que ninguna descripción de función dice: cuándo NO
+ * usarlas. Un modelo con un buscador delante tiende a buscarlo todo, y buscar
+ * "cuánto es 2+2" cuesta una llamada, dos segundos y algo de la cuota del día.
+ */
+function herramientasTexto(nombres: string[]): string {
+  const lineas = [
+    "Tienes herramientas de verdad. Cuando llames a una, se ejecuta en el servidor y te",
+    "devuelve el resultado; el usuario ve en pantalla qué estás usando.",
+    "",
+    "Cómo usarlas bien:",
+    "- Primero piensa si hace falta. Lo que sabes, lo que razonas y lo que redactas no",
+    "  necesita ninguna herramienta, y usarla ahí solo añade espera.",
+    "- Una llamada, un objetivo. Si necesitas tres cosas distintas, haz tres llamadas.",
+    "- Si una falla, no la repitas igual: cambia el enfoque o dilo con naturalidad.",
+    "- No cuentes que vas a usarlas ni narres la fontanería. Úsalas y responde.",
+  ];
+
+  if (nombres.includes("buscar_web"))
+    lineas.push(
+      "- Al buscar, lee de verdad los extractos y fíjate en la fiabilidad que trae cada",
+      "  fuente. Si dos fuentes se contradicen, dilo en vez de quedarte con una.",
+      "- Cita de forma natural (el organismo y el año). Los enlaces se enseñan aparte.",
+    );
+
+  if (nombres.includes("crear_archivo"))
+    lineas.push(
+      "- Crea un archivo solo si te lo piden o si lo que entregas es claramente un",
+      "  documento (una tabla larga, un listado para guardar). Y entonces no repitas su",
+      "  contenido en la respuesta: el usuario ya lo tiene.",
+    );
+
+  return lineas.join("\n");
+}
+
 export function buildSystemPrompt(opts: {
   mode: Mode;
   plan: Plan;
@@ -270,6 +308,8 @@ export function buildSystemPrompt(opts: {
   claveEnServidor?: boolean;
   /** El último mensaje del usuario trae una imagen y se puede retocar. */
   conImagen?: boolean;
+  /** Nombres de las herramientas que puede usar ahora mismo. */
+  conHerramientas?: string[];
   now?: Date;
 }): string {
   const now = opts.now ?? new Date();
@@ -299,6 +339,7 @@ export function buildSystemPrompt(opts: {
   ];
 
   if (opts.conImagen) parts.push(RETOQUE);
+  if (opts.conHerramientas?.length) parts.push(herramientasTexto(opts.conHerramientas));
 
   if (opts.plan === "free") {
     parts.push(

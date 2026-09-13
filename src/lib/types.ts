@@ -34,13 +34,23 @@ export interface GeneratedFile {
 }
 
 export interface Artifact {
-  type: "image" | "video" | "code";
+  type: "image" | "video" | "code" | "file";
   /** data: URL para imagen, URL reproducible para vídeo. */
   url?: string;
   prompt?: string;
   files?: GeneratedFile[];
-  /** Nombre del proyecto cuando `type === "code"`. */
+  /** Nombre del proyecto cuando `type === "code"`, del archivo cuando es "file". */
   title?: string;
+  /** Tipo de contenido del archivo generado. */
+  mime?: string;
+}
+
+/** Un paso de herramienta, para poder contar qué hizo ECLIPSE y en qué orden. */
+export interface Paso {
+  nombre: string;
+  detalle: string;
+  /** Sin terminar mientras está en marcha. */
+  ok?: boolean;
 }
 
 export interface Message {
@@ -58,6 +68,8 @@ export interface Message {
   elapsedMs?: number;
   /** En qué modo se pidió. En código, el texto se enseña sin los archivos. */
   mode?: Mode;
+  /** Las herramientas que usó para responder, en orden. */
+  pasos?: Paso[];
 }
 
 export interface Conversation {

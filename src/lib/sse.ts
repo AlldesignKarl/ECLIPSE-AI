@@ -4,6 +4,12 @@ export type StreamEvent =
   | { t: "thinking"; v: string }
   | { t: "text"; v: string }
   | { t: "sources"; v: unknown }
+  /** Ha empezado a usar una herramienta: qué y sobre qué. */
+  | { t: "tool"; v: { nombre: string; detalle: string } }
+  /** Ha terminado con ella, y si salió bien. */
+  | { t: "tool_done"; v: { nombre: string; ok: boolean; detalle: string } }
+  /** Un archivo generado, listo para descargar. */
+  | { t: "file"; v: { nombre: string; mime: string; contenido: string } }
   | { t: "artifact"; v: unknown }
   | { t: "meta"; v: Record<string, unknown> }
   | { t: "error"; v: string }

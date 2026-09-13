@@ -6,6 +6,7 @@ import * as Icon from "./Icons";
 import Markdown from "./Markdown";
 import { proseOnly } from "@/lib/project";
 import ProjectPanel from "./ProjectPanel";
+import Pasos from "./Pasos";
 import Sources from "./Sources";
 import type { Message } from "@/lib/types";
 
@@ -123,6 +124,12 @@ export default function MessageItem({
             </div>
           )}
 
+          {message.pasos && message.pasos.length > 0 && (
+            <div className="mt-3 rounded-xl border border-line-soft bg-panel/30 px-3 py-2.5">
+              <Pasos pasos={message.pasos} />
+            </div>
+          )}
+
           {message.sources && message.sources.length > 0 && <Sources sources={message.sources} />}
 
           {message.artifacts?.map((art, i) => {
@@ -159,6 +166,22 @@ export default function MessageItem({
                     </a>
                   </figcaption>
                 </figure>
+              );
+
+            if (art.type === "file" && art.url)
+              return (
+                <a
+                  key={i}
+                  href={art.url}
+                  download={art.title ?? "eclipse.txt"}
+                  className="mt-3 flex items-center gap-3 rounded-xl border border-line bg-panel/60 px-3.5 py-3 transition hover:border-halo/35 hover:bg-panel"
+                >
+                  <Icon.Download width={17} height={17} className="shrink-0 text-halo" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px] text-ink">{art.title}</span>
+                    <span className="text-[11.5px] text-faint">Pulsa para descargar</span>
+                  </span>
+                </a>
               );
 
             if (art.type === "code" && art.files?.length)
