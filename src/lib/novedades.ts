@@ -27,6 +27,20 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.11",
+    // El tercer contacto: cuando el sol vuelve a asomar y se acaba la
+    // oscuridad. Aquí, que ECLIPSE deje de contradecirse con las fotos.
+    nombre: "Tercer contacto",
+    titulo: "Responde a las fotos sin rodeos",
+    entrada:
+      "Decía que no podía ver la imagen y al mensaje siguiente la leía entera. Y a veces contestaba con trozos de código raros en vez de con una respuesta.",
+    puntos: [
+      "Ya no se le escapan sus notas internas. Esos <tool_code> con búsquedas que no venían a cuento eran maquinaria suya hablando sola: ahora van al panel de razonamiento, donde se pueden mirar si interesa.",
+      "Y si al quitarlas no quedaba respuesta, la vuelve a pedir en vez de dejarte un mensaje en blanco.",
+      "Una foto va siempre al motor que sabe verla, desde el primer mensaje. Y si a ese motor se le ha acabado la cuota del día, vuelve al de siempre y lo intenta, en vez de dejarte con un error.",
+    ],
+  },
+  {
     version: "2.10",
     // El anillo: cuando la luna está dentro del sol y se ve el borde entero.
     // Aquí, que ECLIPSE vuelva a tener ojos.

@@ -261,28 +261,30 @@ async function runGoogle(
 
   send({ t: "status", v: opts.wantsWeb ? "buscando" : "pensando" });
 
-  const stream = streamChat({
-    system: buildSystemPrompt({
-      ...(await product("google")),
-      mode: opts.mode,
-      plan: opts.plan,
-      web: opts.wantsWeb,
-      engine: "google",
-      conImagen: ultimaConImagen(opts.body.messages),
-      tres3D: partes3D(opts.body.messages),
-    }),
+  const key = await resolveKey("google");
+  const sistema = buildSystemPrompt({
+    ...(await product("google")),
+    mode: opts.mode,
+    plan: opts.plan,
+    web: opts.wantsWeb,
+    engine: "google",
+    conImagen: ultimaConImagen(opts.body.messages),
+    tres3D: partes3D(opts.body.messages),
+  });
+
+  for await (const event of streamChat({
+    system: sistema,
     turns: opts.body.messages,
     speed: opts.speed,
     webSearch: opts.wantsWeb,
-    key: await resolveKey("google"),
+    key,
     signal: opts.signal,
-  });
-
-  for await (const event of stream) {
+  })) {
     if (opts.signal.aborted) break;
     if (event.waiting) send({ t: "status", v: "esperando" });
     if (event.searching) send({ t: "status", v: "buscando" });
     if (event.sources) sources.push(...event.sources);
+    if (event.pensando) send({ t: "thinking", v: event.pensando });
     if (event.text) {
       if (!wrote) {
         wrote = true;
@@ -423,9 +425,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "No hay mensajes que responder." }, { status: 400 });
   }
 
-  // Con una foto delante manda quien sepa verla, no quien esté puesto.
+  // Con una foto delante manda quien sepa verla, no quien esté puesto. Se
+  // guarda también el de siempre, por si a Google se le ha acabado la cuota.
+  const deVuelta = await activeProvider();
   const provider = await providerForTurn(
-    await activeProvider(),
+    deVuelta,
     body.messages.some((m) => m.attachments?.some((a) => a.kind === "image" && a.data)),
   );
   if (!provider) {
@@ -473,12 +477,33 @@ export async function POST(req: NextRequest) {
         send({ t: "status", v: "conectando" });
         const shared = { body, mode, speed, plan, wantsWeb, signal: req.signal };
 
-        const result =
-          provider === "google"
-            ? await runGoogle(send, shared)
-            : provider === "anthropic"
-              ? await runAnthropic(send, shared)
-              : await runCompat(send, { ...shared, provider });
+        const correr = async (quien: typeof provider) =>
+          quien === "google"
+            ? runGoogle(send, shared)
+            : quien === "anthropic"
+              ? runAnthropic(send, shared)
+              : runCompat(send, { ...shared, provider: quien });
+
+        /*
+          Si a Google se le acabó la cuota, que no se quede aquí la cosa.
+
+          A un mensaje con foto se le manda a Google porque es quien seguro
+          sabe verla. Pero su capa gratuita es corta y se agota a diario, y
+          entonces lo que recibía el usuario era un error en vez de una
+          respuesta. Así que se vuelve al motor de siempre, que con la foto
+          hará lo que pueda: intentarlo, y si el modelo la rechaza, decirlo.
+          Una respuesta imperfecta es mejor que ninguna.
+        */
+        let result;
+        try {
+          result = await correr(provider);
+        } catch (err) {
+          const sinCuota =
+            err instanceof GeminiError && (err.status === 429 || /cuota|quota|rate/i.test(err.message));
+          if (!provider || provider === deVuelta || !sinCuota || !deVuelta) throw err;
+          send({ t: "status", v: "pensando" });
+          result = await correr(deVuelta);
+        }
 
         if (result.sources.length) send({ t: "sources", v: rankSources(result.sources) });
         send({

@@ -1,3 +1,4 @@
+import { crearSeparador } from "./pensamiento";
 import { googleKeyFromEnv } from "./keys";
 import { looksLikeDomain } from "./sources";
 import type { Attachment, Speed } from "./types";
@@ -126,6 +127,8 @@ function maxTokens(speed: Speed): number {
 }
 
 export interface GeminiEvent {
+  /** Su deliberación y sus llamadas internas: van al panel, no a la respuesta. */
+  pensando?: string;
   text?: string;
   sources?: { url: string; title?: string; domainHint?: string }[];
   searching?: boolean;
@@ -170,12 +173,42 @@ async function readError(res: Response): Promise<{ message: string; raw: string 
  * Conversa con Gemini y va entregando lo que escribe.
  * `webSearch` activa la búsqueda en Google con citación de fuentes.
  */
+/**
+ * Conversa con Gemini, y si vuelve en blanco lo intenta otra vez sin búsqueda.
+ *
+ * Con la búsqueda activada, a veces en lugar de buscar escribe la llamada como
+ * si fuera texto —un bloque <tool_code> con una consulta que no viene a
+ * cuento— y ahí se queda. Filtrado eso, no queda respuesta ninguna, y una
+ * burbuja en blanco es lo peor que le puede pasar al usuario. Sin búsqueda no
+ * tiene nada que llamar y contesta con lo que sabe, que para "¿de qué ciudad
+ * son estos rascacielos?" es de sobra.
+ */
 export async function* streamChat(opts: {
   system: string;
   turns: Turn[];
   speed: Speed;
   webSearch: boolean;
   /** Clave resuelta por quien llama (variable de entorno o dispositivo). */
+  key: string;
+  signal?: AbortSignal;
+}): AsyncGenerator<GeminiEvent> {
+  let algoEscrito = false;
+
+  for await (const e of unaVuelta(opts)) {
+    if (e.text) algoEscrito = true;
+    yield e;
+  }
+
+  if (algoEscrito || !opts.webSearch || opts.signal?.aborted) return;
+
+  for await (const e of unaVuelta({ ...opts, webSearch: false })) yield e;
+}
+
+async function* unaVuelta(opts: {
+  system: string;
+  turns: Turn[];
+  speed: Speed;
+  webSearch: boolean;
   key: string;
   signal?: AbortSignal;
 }): AsyncGenerator<GeminiEvent> {
@@ -296,6 +329,7 @@ export async function* streamChat(opts: {
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   const sources: { url: string; title?: string; domainHint?: string }[] = [];
+  const separador = crearSeparador();
   let buffer = "";
   let announcedSearch = false;
 
@@ -350,10 +384,20 @@ export async function* streamChat(opts: {
       }
 
       for (const part of candidate.content?.parts ?? []) {
-        if (part.text) yield { text: part.text };
+        if (!part.text) continue;
+        // Gemini deja escapar sus propias llamadas en texto —bloques
+        // <tool_code> con consultas que no vienen a cuento— y sin filtrarlas
+        // el usuario recibe eso en vez de una respuesta.
+        const { texto, pensando } = separador.trozo(part.text);
+        if (pensando) yield { pensando };
+        if (texto) yield { text: texto };
       }
     }
   }
+
+  const final = separador.cerrar();
+  if (final.pensando) yield { pensando: final.pensando };
+  if (final.texto) yield { text: final.texto };
 
   if (sources.length) yield { sources };
 }

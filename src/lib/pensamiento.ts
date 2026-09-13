@@ -1,21 +1,43 @@
 /**
  * Separar lo que el modelo piensa de lo que responde.
  *
- * Los modelos de razonamiento escriben su deliberación entre <think> y
- * </think> antes de contestar. Eso no es la respuesta: es el borrador, va en
- * inglés aunque la conversación sea en español, y verlo en pantalla parece que
- * la aplicación se ha roto. La interfaz ya tiene su sitio para el
- * razonamiento, así que hay que llevarlo allí.
+ * Los modelos escriben cosas que no son la respuesta y que nunca deberían
+ * llegar a la pantalla:
+ *
+ * - Su deliberación, entre <think> y </think>. Es el borrador, va en inglés
+ *   aunque la conversación sea en español, y verlo parece que la app se ha
+ *   roto.
+ * - Sus llamadas a herramientas, entre <tool_code>, <tool_call> y parecidos.
+ *   Eso es maquinaria interna que se le escapa en texto, y al usuario le llega
+ *   algo como search.query("Spain total household net worth 2024") en mitad de
+ *   una pregunta sobre unos rascacielos. No significa nada para él.
+ *
+ * Todo eso va al panel de razonamiento, que es donde tiene sentido.
  *
  * Lo difícil es que el texto llega a trozos y una etiqueta puede partirse por
  * la mitad entre dos: "<thi" en uno y "nk>" en el siguiente. Por eso el final
  * de cada trozo se guarda hasta saber si empieza una etiqueta o no.
  */
 
-const ABRE = /<think(?:ing)?>/i;
-const CIERRA = /<\/think(?:ing)?>/i;
+/** Las etiquetas cuyo contenido no es la respuesta. */
+const ETIQUETAS = [
+  "think",
+  "thinking",
+  "tool_code",
+  "tool_call",
+  "tool_calls",
+  "tool_outputs",
+  "tool_output",
+  "function_call",
+  "reasoning",
+  "scratchpad",
+];
+
+const ABRE = new RegExp(`<(${ETIQUETAS.join("|")})>`, "i");
+const cierreDe = (etiqueta: string) => new RegExp(`</${etiqueta}>`, "i");
+
 /** Lo más largo que puede medir una etiqueta: no hace falta guardar más. */
-const MAX_COLA = "</thinking>".length;
+const MAX_COLA = Math.max(...ETIQUETAS.map((e) => e.length)) + 3;
 
 export interface Separado {
   /** Lo que va a la respuesta. */
@@ -25,7 +47,8 @@ export interface Separado {
 }
 
 export function crearSeparador() {
-  let dentro = false;
+  /** La etiqueta abierta ahora mismo, o "" si estamos en la respuesta. */
+  let abierta = "";
   let cola = "";
 
   return {
@@ -37,13 +60,13 @@ export function crearSeparador() {
       let pensando = "";
 
       while (resto) {
-        const marca = dentro ? CIERRA.exec(resto) : ABRE.exec(resto);
+        const marca = abierta ? cierreDe(abierta).exec(resto) : ABRE.exec(resto);
 
         if (marca) {
           const antes = resto.slice(0, marca.index);
-          if (dentro) pensando += antes;
+          if (abierta) pensando += antes;
           else texto += antes;
-          dentro = !dentro;
+          abierta = abierta ? "" : marca[1].toLowerCase();
           resto = resto.slice(marca.index + marca[0].length);
           continue;
         }
@@ -59,10 +82,10 @@ export function crearSeparador() {
 
         if (dudoso.includes("<")) {
           const desde = dudoso.indexOf("<");
-          if (dentro) pensando += seguro + dudoso.slice(0, desde);
+          if (abierta) pensando += seguro + dudoso.slice(0, desde);
           else texto += seguro + dudoso.slice(0, desde);
           cola = dudoso.slice(desde);
-        } else if (dentro) {
+        } else if (abierta) {
           pensando += resto;
         } else {
           texto += resto;
@@ -77,7 +100,9 @@ export function crearSeparador() {
     cerrar(): Separado {
       const sobra = cola;
       cola = "";
-      return dentro ? { texto: "", pensando: sobra } : { texto: sobra, pensando: "" };
+      // Si la etiqueta se quedó sin cerrar, lo que hay dentro sigue sin ser la
+      // respuesta: un <tool_code> a medias en pantalla es ruido igualmente.
+      return abierta ? { texto: "", pensando: sobra } : { texto: sobra, pensando: "" };
     },
   };
 }
