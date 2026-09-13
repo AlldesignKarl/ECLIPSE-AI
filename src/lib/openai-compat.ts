@@ -187,55 +187,86 @@ async function listModels(preset: Preset, key: string): Promise<string[]> {
 }
 
 /**
- * Para código, el modelo más capaz que tenga la cuenta.
+ * Qué modelo se usa, comprobado contra lo que la cuenta tiene de verdad.
  *
- * El de charla responde rápido y corto, que es lo que quieres conversando y lo
- * que menos sirve escribiendo un proyecto: entrega ciento y pico líneas y se
- * queda tan ancho. Aquí se busca uno mayor.
+ * Antes se empezaba por un identificador escrito a mano y solo se buscaba otro
+ * cuando el proveedor contestaba con un error. Eso funciona hasta el día en que
+ * el proveedor retira ese modelo —las capas gratuitas lo hacen cada pocas
+ * semanas— y entonces el primer intento de cada conversación es un error en la
+ * cara del usuario, con suerte recuperable y con mala suerte no.
  *
- * Se elige de la lista REAL de la cuenta, nunca de una lista escrita a mano:
- * los proveedores gratuitos retiran modelos cada pocas semanas, y un
- * identificador inventado o caducado es un error 404 delante del usuario. Se
- * ordena por patrones de nombre —familias conocidas por programar bien, y el
- * tamaño en miles de millones de parámetros— y se coge el primero que exista.
+ * Así que ahora se pregunta primero. Se pide el catálogo de la cuenta, se elige
+ * de ahí, y el nombre escrito a mano queda solo para cuando el catálogo no se
+ * puede consultar. Lo elegido se guarda, de modo que esa consulta ocurre una
+ * vez por arranque del servidor y no en cada mensaje.
  */
+
+/** Para código se busca el más capaz; para charlar, el más equilibrado. */
 const PREFERENCIA_CODIGO: RegExp[] = [
   /kimi|k2/i,
   /deepseek/i,
   /qwen.*(coder|3)/i,
   /qwen/i,
+  /gpt-oss.*120/i,
   /llama.*(405|90)b/i,
   /70b|72b/i,
 ];
 
+const resolved: Partial<Record<CompatProvider, string>> = {};
 const resueltoCodigo: Partial<Record<CompatProvider, string>> = {};
+/** El catálogo de la cuenta, para no pedirlo en cada mensaje. */
+const catalogo: Partial<Record<CompatProvider, string[]>> = {};
 
-async function modeloParaCodigo(
+async function modelosDeLaCuenta(
   provider: CompatProvider,
   preset: Preset,
   key: string,
-): Promise<string | null> {
-  if (resueltoCodigo[provider]) return resueltoCodigo[provider]!;
-
-  // Si el hosting fija uno, manda ese y no se busca nada.
-  const fijado = process.env.CODE_MODEL;
-  if (fijado) {
-    resueltoCodigo[provider] = fijado;
-    return fijado;
-  }
-
-  const disponibles = await listModels(preset, key);
-  for (const patron of PREFERENCIA_CODIGO) {
-    const encontrado = disponibles.find((id) => patron.test(id));
-    if (encontrado) {
-      resueltoCodigo[provider] = encontrado;
-      return encontrado;
-    }
-  }
-  return null;
+): Promise<string[]> {
+  if (catalogo[provider]) return catalogo[provider]!;
+  const lista = await listModels(preset, key);
+  // Una lista vacía no se guarda: sería recordar para siempre un fallo de red.
+  if (lista.length) catalogo[provider] = lista;
+  return lista;
 }
 
-const resolved: Partial<Record<CompatProvider, string>> = {};
+async function elegirModelo(
+  provider: CompatProvider,
+  preset: Preset,
+  key: string,
+  modo: Mode,
+): Promise<string> {
+  const fijado = envModel(provider) || (modo === "code" ? process.env.CODE_MODEL || "" : "");
+  if (fijado) return fijado;
+
+  const guardado = modo === "code" ? resueltoCodigo[provider] : resolved[provider];
+  if (guardado) return guardado;
+
+  const disponibles = await modelosDeLaCuenta(provider, preset, key);
+
+  // Sin catálogo (red caída, clave sin permiso para listarlo) queda el nombre
+  // de siempre: peor que elegir bien, mejor que no intentarlo.
+  if (disponibles.length === 0) return preset.model;
+
+  if (modo === "code") {
+    for (const patron of PREFERENCIA_CODIGO) {
+      const encontrado = disponibles.find((id) => patron.test(id));
+      if (encontrado) return (resueltoCodigo[provider] = encontrado);
+    }
+  }
+
+  // Para conversar, el de siempre si la cuenta lo tiene; si lo han retirado,
+  // el primero de la lista, que `listModels` ya devuelve ordenada por buenos.
+  const elegido = disponibles.includes(preset.model) ? preset.model : disponibles[0];
+  if (modo === "code") resueltoCodigo[provider] = elegido;
+  else resolved[provider] = elegido;
+  return elegido;
+}
+
+/** Ese modelo ha fallado: se olvida para no volver a intentarlo con él. */
+function olvidarModelo(provider: CompatProvider, modelo: string) {
+  if (resolved[provider] === modelo) delete resolved[provider];
+  if (resueltoCodigo[provider] === modelo) delete resueltoCodigo[provider];
+}
 
 /** Permite fijar el modelo desde el hosting, sin tocar el código. */
 function envModel(provider: CompatProvider): string {
@@ -298,23 +329,24 @@ export async function* streamCompat(opts: {
       body: body(model),
     });
 
-  const wanted =
-    envModel(opts.provider) ||
-    (opts.modo === "code"
-      ? await modeloParaCodigo(opts.provider, preset, opts.key)
-      : null) ||
-    resolved[opts.provider] ||
-    preset.model;
+  const wanted = await elegirModelo(opts.provider, preset, opts.key, opts.modo ?? "chat");
   let res = await open(wanted);
 
   // Modelo desconocido o retirado: buscamos uno disponible en la cuenta.
+  // El elegido ya no sirve (retirado, o sin acceso con esta clave): se olvida,
+  // se pide el catálogo de nuevo —el guardado puede ser justo el que caducó— y
+  // se prueban varios antes de rendirse. Es la diferencia entre una conversación
+  // que sigue y un error rojo en pantalla.
   if (res.status === 404 || res.status === 400) {
-    if (resueltoCodigo[opts.provider] === wanted) delete resueltoCodigo[opts.provider];
-    for (const candidate of (await listModels(preset, opts.key)).slice(0, 4)) {
+    olvidarModelo(opts.provider, wanted);
+    delete catalogo[opts.provider];
+
+    for (const candidate of (await modelosDeLaCuenta(opts.provider, preset, opts.key)).slice(0, 8)) {
       if (candidate === wanted) continue;
       res = await open(candidate);
       if (res.ok) {
-        resolved[opts.provider] = candidate;
+        if (opts.modo === "code") resueltoCodigo[opts.provider] = candidate;
+        else resolved[opts.provider] = candidate;
         break;
       }
     }
@@ -327,6 +359,15 @@ export async function* streamCompat(opts: {
     delete resueltoCodigo[opts.provider];
     const otro = resolved[opts.provider] || preset.model;
     if (otro !== wanted) res = await open(otro);
+  }
+
+  // Cuando ni con los respaldos hay modelo, el volcado del proveedor no ayuda a
+  // nadie: dice el nombre de un modelo que la persona no ha elegido nunca.
+  if (res.status === 404 || res.status === 400) {
+    throw new CompatError(
+      `${preset.label.split(" ")[0]} ha retirado los modelos que esta aplicación conocía. Prueba en unos minutos, o pon otro motor en Ajustes.`,
+      res.status,
+    );
   }
 
   if (!res.ok) {
