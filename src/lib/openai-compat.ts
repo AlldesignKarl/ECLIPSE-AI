@@ -487,6 +487,32 @@ async function elegirModelo(
   return elegido;
 }
 
+/**
+ * ¿Este motor tiene ALGÚN modelo que sepa mirar imágenes?
+ *
+ * Se pregunta al catálogo de la cuenta antes de mandar nada, y es la diferencia
+ * entre acertar a la primera y gastar un viaje en descubrir que no. Porque esto
+ * no se puede saber de antemano: una cuenta de Mistral puede tener Pixtral y
+ * otra no, y cambia solo cuando el proveedor mueve su catálogo.
+ *
+ * Devuelve tres cosas y no dos, porque "no lo sé" no es "no puede": un
+ * catálogo que no se puede consultar deja la duda, y quien pregunta decide.
+ */
+export async function tieneVista(
+  provider: CompatProvider,
+  key: string,
+): Promise<"si" | "no" | "no-se"> {
+  if (!key) return "no";
+  const preset = PRESETS[provider];
+  const disponibles = await modelosDeLaCuenta(provider, preset, key);
+
+  // Catálogo vacío es "no lo sé", no "no puede": puede ser la red, o que la
+  // clave no tenga permiso para listarlo. Es distinto de saber que no hay
+  // ninguno, y quien pregunta decide qué hacer con la duda.
+  if (disponibles.length === 0) return "no-se";
+  return disponibles.some((id) => preset.vision.test(id)) ? "si" : "no";
+}
+
 /** Ese modelo ha fallado: se olvida para no volver a intentarlo con él. */
 function olvidarModelo(provider: CompatProvider, modelo: string) {
   if (resolved[provider] === modelo) delete resolved[provider];

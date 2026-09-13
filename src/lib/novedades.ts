@@ -27,6 +27,18 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.26",
+    // Preguntar antes, en vez de intentarlo y fallar.
+    nombre: "Antes de mandar",
+    titulo: "Las fotos van directas a quien puede verlas",
+    entrada:
+      "Seguía fallando el primer mensaje después de abrir la app. Ya no lo intenta a ciegas: comprueba quién puede ver la foto y se la manda a ese.",
+    puntos: [
+      "Antes de enviar nada, ECLIPSE mira qué motor tiene un modelo capaz de ver imágenes, y la foto va directa ahí. Se acabó el viaje perdido y el mensaje de disculpa.",
+      "Y distingue «este motor no puede» de «no he podido comprobarlo»: si es lo segundo, lo intenta igual en vez de descartarlo por una consulta que falló.",
+    ],
+  },
+  {
     version: "2.25",
     // El método, no la receta.
     nombre: "Método",

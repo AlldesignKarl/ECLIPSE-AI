@@ -4,7 +4,7 @@ import { getClient, humanError, MODEL, tuning } from "@/lib/anthropic";
 import { GeminiError, streamChat } from "@/lib/gemini";
 import { keySource, resolveKey } from "@/lib/keys";
 import { gastar } from "@/lib/limites";
-import { CompatError, type CompatProvider } from "@/lib/openai-compat";
+import { CompatError, tieneVista, type CompatProvider } from "@/lib/openai-compat";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { herramientasPara } from "@/lib/tools/registro";
 import { currentPlan } from "@/lib/plan-server";
@@ -479,11 +479,44 @@ export async function POST(req: NextRequest) {
   // Con una foto delante manda quien sepa verla, no quien esté puesto. Se
   // guarda también el de siempre, por si a Google se le ha acabado la cuota.
   const deVuelta = await activeProvider();
-  const provider = await providerForTurn(
-    deVuelta,
-    body.messages.some((m) => m.attachments?.some((a) => a.kind === "image" && a.data)),
-    body.mode === "code",
+  const hayImagenes = body.messages.some((m) =>
+    m.attachments?.some((a) => a.kind === "image" && a.data),
   );
+
+  let provider = await providerForTurn(deVuelta, hayImagenes, body.mode === "code");
+
+  /*
+    Con una foto delante, se COMPRUEBA quién puede verla antes de mandar nada.
+
+    Intentarlo y que te rechacen la imagen sale caro: un viaje perdido, y si
+    después falla el recambio el usuario acaba leyendo "no puedo ver imágenes",
+    que es lo único que no puede pasar. Y no se puede saber de antemano sin
+    mirar: una cuenta de Mistral puede tener Pixtral y otra no, y eso cambia
+    cuando al proveedor le da por mover su catálogo.
+
+    Así que se le pregunta al catálogo, que está cacheado y no cuesta nada a
+    partir de la primera vez, y responde quien de verdad puede.
+  */
+  if (hayImagenes && provider && provider !== "google" && provider !== "anthropic") {
+    const puede = await tieneVista(provider as CompatProvider, await resolveKey(provider));
+
+    if (puede !== "si") {
+      for (const otro of await motoresConOjos(provider)) {
+        // Google y Anthropic miran imágenes siempre: no hay nada que preguntar.
+        if (otro === "google" || otro === "anthropic") {
+          provider = otro;
+          break;
+        }
+        if ((await tieneVista(otro as CompatProvider, await resolveKey(otro))) === "si") {
+          provider = otro;
+          break;
+        }
+      }
+      // Y si nadie ha dicho "sí" pero el de turno tampoco dijo "no" —su
+      // catálogo no se pudo consultar—, se queda él y que lo intente: mejor
+      // probar que descartarlo por una consulta que falló.
+    }
+  }
   if (!provider) {
     return Response.json(
       {
