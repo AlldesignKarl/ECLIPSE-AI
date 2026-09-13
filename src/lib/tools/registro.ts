@@ -15,13 +15,19 @@ const TODAS: Herramienta[] = [herramientaBuscar, herramientaImagen, herramientaD
 /**
  * Qué herramientas puede usar cada modo. Lo que no está aquí, no se ofrece.
  *
- * En `code` no hay ninguna a propósito: ahí la respuesta son archivos de un
- * proyecto, y un modelo con herramientas delante se distrae buscando en vez de
- * escribir el código que le han pedido.
+ * En `code` solo se busca, y solo a veces. Se le quitó la búsqueda porque un
+ * modelo con herramientas delante se distrae buscando en vez de escribir; pero
+ * quitársela del todo tenía su precio: al pedirle una pirámide egipcia salía un
+ * prisma con textura de pared de ladrillo, porque no sabía de memoria ni la
+ * proporción ni el aparejo ni el ángulo de las caras. Para modelar algo que
+ * existe de verdad, mirar cómo es no es distraerse.
+ *
+ * Crear imágenes y escribir documentos siguen fuera: ahí la respuesta son los
+ * archivos del proyecto, y una imagen suelta no pinta nada.
  */
 const POR_MODO: Record<Mode, string[]> = {
   chat: ["buscar_web", "crear_imagen", "crear_archivo"],
-  code: [],
+  code: ["buscar_web"],
 };
 
 /**

@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.13",
+    // La primera luz que vuelve tras la totalidad: ya se ve lo que hay.
+    nombre: "Primera luz",
+    titulo: "Ahora mira cómo son las cosas antes de construirlas",
+    entrada:
+      "Le pedías una pirámide egipcia y salía un prisma con textura de pared. No es que no supiera hacerla: es que no podía mirar cómo es.",
+    puntos: [
+      "ECLIPSE CODE ya busca en internet. Cuando lo que le pides existe de verdad —un monumento, un coche, un animal, un escudo— mira sus proporciones y de qué está hecho antes de empezar.",
+      "Busca poco y corto, a propósito: lo que ocupa la búsqueda es sitio que le quita al archivo. Para una calculadora o un juego no busca nada, que no hace falta.",
+      "Y la cámara ya no se pone de frente. De frente una pirámide es un triángulo y un cubo es un cuadrado: el volumen desaparecía y parecía un dibujo plano.",
+    ],
+  },
+  {
     version: "2.12",
     // La totalidad vista desde el otro lado: ya no queda sombra que explicar.
     nombre: "Sin sombra",

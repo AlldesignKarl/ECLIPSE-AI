@@ -1,4 +1,4 @@
-import type { Plan, Source } from "../types";
+import type { Mode, Plan, Source } from "../types";
 
 /**
  * El contrato de una herramienta de ECLIPSE.
@@ -23,6 +23,15 @@ export interface EsquemaParametros {
 /** Lo que la herramienta sabe del mundo cuando se ejecuta. */
 export interface Contexto {
   plan: Plan;
+  /**
+   * Desde qué modo se la llama.
+   *
+   * Importa para el tamaño de lo que devuelve: en código, la respuesta es un
+   * archivo entero y lo que ocupe la herramienta se lo quita. Media docena de
+   * resultados de búsqueda con sus extractos largos son mil quinientos tokens
+   * que luego faltan para terminar el archivo.
+   */
+  modo?: Mode;
   /** Para cortar si el usuario se cansa de esperar. */
   signal?: AbortSignal;
   /** Cuenta lo que va pasando, para poder enseñarlo en pantalla. */

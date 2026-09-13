@@ -122,7 +122,10 @@ export async function buscarEnLaWeb(
   consulta: string,
   cuantos = 6,
   signal?: AbortSignal,
+  /** Lo justo para enterarse, cuando el sitio para escribir está contado. */
+  breve = false,
 ): Promise<Resultado> {
+  if (breve) cuantos = Math.min(cuantos, 3);
   const proveedor = elegido();
   if (!proveedor)
     return {
@@ -145,9 +148,12 @@ export async function buscarEnLaWeb(
   if (conUrl.length === 0)
     return { texto: `La búsqueda de "${consulta}" no ha devuelto ningún resultado.` };
 
+  // El recorte se hace también aquí y no solo al pedirlo: hay buscadores que
+  // devuelven más de los que se les piden, y en modo código cada resultado de
+  // más son tokens que luego le faltan al archivo.
   const fuentes = rankSources(
     conUrl.map((h) => ({ url: h.url, title: h.titulo })),
-  );
+  ).slice(0, cuantos);
 
   // Se le entregan en el orden de fiabilidad, no en el del buscador.
   const porUrl = new Map(conUrl.map((h) => [h.url, h]));
@@ -156,9 +162,10 @@ export async function buscarEnLaWeb(
       const h = porUrl.get(f.url);
       // El título y el extracto los escribe quien hizo esa página, así que van
       // marcados como ajenos. Lo de fuera de la etiqueta lo ponemos nosotros.
+      const extracto = breve ? (h?.extracto ?? "").slice(0, 280) : (h?.extracto ?? "");
       return `[${i + 1}] ${f.domain} · ${f.label}, fiabilidad ${f.trust}/100\nURL: ${f.url}\n${envolverAjeno(
         f.domain,
-        `${f.title}\n${h?.extracto ?? ""}`,
+        `${f.title}\n${extracto}`,
       )}`;
     })
     .join("\n\n");
@@ -198,6 +205,12 @@ ahí eres más rápido y mejor tú solo.`,
     if (!consulta) return { texto: "", error: "No has dicho qué buscar." };
 
     ctx.avisar?.(`Buscando: ${consulta}`);
-    return buscarEnLaWeb(consulta, Number(args.cuantos) || 6, ctx.signal);
+    const enCodigo = ctx.modo === "code";
+    return buscarEnLaWeb(
+      consulta,
+      Number(args.cuantos) || (enCodigo ? 3 : 6),
+      ctx.signal,
+      enCodigo,
+    );
   },
 };

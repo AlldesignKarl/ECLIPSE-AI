@@ -155,6 +155,7 @@ export async function* conversarConHerramientas(opts: {
 
       const resultado = await ejecutarHerramienta(llamada.function.name, args, {
         plan: opts.plan,
+        modo: opts.mode,
         signal: opts.signal,
       });
 
