@@ -202,11 +202,32 @@ function anotarCupo(provider: CompatProvider, res: Response) {
   if (Number.isFinite(n) && n > 0) cupoPorMinuto[provider] = n;
 }
 
+/**
+ * Lo que cuesta una imagen, en tokens.
+ *
+ * Una foto viaja como base64, y medirla por caracteres es un disparate: 300 KB
+ * de base64 parecen ochenta mil tokens cuando el modelo la cuenta como mil y
+ * pico. Con la cuenta mala, el hueco para responder se venía abajo y hasta se
+ * llegaba a soltar el mensaje que traía la foto por "no caber". Así que las
+ * imágenes se cuentan aparte y a lo que valen.
+ */
+const TOKENS_POR_IMAGEN = 1400;
+
 /** Cuántos tokens ocupa más o menos lo que se va a mandar. */
 function estimarTokens(mensajes: Message[]): number {
+  let imagenes = 0;
+
+  const texto = JSON.stringify(mensajes, (clave, valor) => {
+    if (clave === "url" && typeof valor === "string" && valor.startsWith("data:")) {
+      imagenes++;
+      return "";
+    }
+    return valor;
+  });
+
   // Tres caracteres y medio por token es la regla de servilleta de siempre, y
   // aquí solo hace falta para no pasarse, no para acertar.
-  return Math.ceil(JSON.stringify(mensajes).length / 3.5);
+  return Math.ceil(texto.length / 3.5) + imagenes * TOKENS_POR_IMAGEN;
 }
 
 /** Por debajo de esto la respuesta ya no sirve: sobra la conversación, no el hueco. */

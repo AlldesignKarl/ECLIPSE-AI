@@ -26,6 +26,65 @@ function base64FromBuffer(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+/**
+ * El lado largo al que se encoge una foto antes de mandarla.
+ *
+ * No es un recorte de calidad: los modelos que miran imágenes las reducen ellos
+ * a un tamaño parecido antes de mirarlas, así que mandar los doce megapíxeles
+ * de la cámara no mejora en nada lo que ve. Lo que sí hace es que una foto del
+ * móvil de seis megas no quepa en la petición y se rechace entera, que era
+ * justo lo que pasaba: "pesa demasiado" a una foto normal de un teléfono
+ * normal. Encogida ocupa unos cientos de kilobytes y se ve igual de bien.
+ */
+const LADO_LARGO = 1568;
+
+/** Calidad del JPEG resultante. Por encima de 0,85 solo se gana peso. */
+const CALIDAD = 0.82;
+
+/**
+ * Encoge una foto en el propio navegador. Si no se puede, devuelve null y se
+ * sigue con el archivo original: mejor mandarlo tal cual que no mandar nada.
+ */
+async function encoger(file: File): Promise<{ data: string; mime: string; size: number } | null> {
+  if (typeof createImageBitmap !== "function" || typeof document === "undefined") return null;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const mayor = Math.max(bitmap.width, bitmap.height);
+    const escala = mayor > LADO_LARGO ? LADO_LARGO / mayor : 1;
+
+    const lienzo = document.createElement("canvas");
+    lienzo.width = Math.max(1, Math.round(bitmap.width * escala));
+    lienzo.height = Math.max(1, Math.round(bitmap.height * escala));
+
+    const ctx = lienzo.getContext("2d");
+    if (!ctx) return null;
+    // Fondo blanco: un PNG con transparencia sobre JPEG saldría con manchas
+    // negras donde no había nada, y eso el modelo lo ve como parte de la foto.
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+    ctx.drawImage(bitmap, 0, 0, lienzo.width, lienzo.height);
+    bitmap.close?.();
+
+    const blob = await new Promise<Blob | null>((listo) =>
+      lienzo.toBlob(listo, "image/jpeg", CALIDAD),
+    );
+    if (!blob) return null;
+
+    // Si encoger no ha servido de nada (una imagen ya pequeña), se deja la
+    // original, que conserva su formato y su transparencia.
+    if (blob.size >= file.size && file.size <= MAX_FILE_BYTES) return null;
+
+    return {
+      data: base64FromBuffer(await blob.arrayBuffer()),
+      mime: "image/jpeg",
+      size: blob.size,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export class FileTooLarge extends Error {}
 
 /** Convierte un archivo del navegador en algo que el modelo pueda leer. */
@@ -38,6 +97,26 @@ export async function toAttachment(file: File): Promise<Attachment> {
         MAX_FILE_BYTES / 1024 / 1024,
       )} MB. Recorta el vídeo a unos segundos (o haz una captura del momento que te interesa) y vuelve a probar.`,
     );
+
+  // Las fotos se encogen antes de pesarlas: una foto de móvil pasa de los 3 MB
+  // con facilidad, y rechazarla sería impedir lo único que se quería hacer.
+  if (file.type.startsWith("image/")) {
+    const encogida = await encoger(file);
+    if (encogida) {
+      if (encogida.size > MAX_FILE_BYTES)
+        throw new FileTooLarge(
+          `"${file.name}" sigue pesando demasiado incluso reducida. Prueba con una captura de pantalla.`,
+        );
+      return {
+        id: newId(),
+        name: file.name,
+        mime: encogida.mime,
+        size: encogida.size,
+        kind: "image",
+        data: encogida.data,
+      };
+    }
+  }
 
   if (file.size > MAX_FILE_BYTES)
     throw new FileTooLarge(
