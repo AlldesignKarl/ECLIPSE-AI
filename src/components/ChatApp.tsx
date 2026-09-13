@@ -565,7 +565,13 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
 
       // La explicación ya está a la vista; la imagen retocada llega detrás, que
       // tarda lo suyo. Al revés se quedaría la pantalla en blanco esperando.
-      const original = history.at(-1)?.attachments?.find((a) => a.kind === "image");
+      // La foto más reciente de la conversación, no solo la del último mensaje:
+      // se manda una foto, se habla de ella y después se pide el retoque sin
+      // volver a adjuntarla.
+      const original = [...history]
+        .reverse()
+        .flatMap((m) => (m.role === "user" ? (m.attachments ?? []) : []))
+        .find((a) => a.kind === "image" && a.data);
       if (encargo && original && !failure)
         await retocar(conversationId, reply.id, original, encargo);
 

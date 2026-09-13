@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { getClient, humanError, MODEL, tuning } from "@/lib/anthropic";
 import { GeminiError, streamChat } from "@/lib/gemini";
-import { keySource, resolveKey } from "@/lib/keys";
+import { keyAvailable, keySource, resolveKey } from "@/lib/keys";
 import { gastar } from "@/lib/limites";
 import { CompatError, type CompatProvider } from "@/lib/openai-compat";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
@@ -37,13 +37,20 @@ interface Body {
 const PRO_MODES: Mode[] = ["code"];
 
 /**
- * ¿El último mensaje del usuario trae una foto? De eso depende que se le
- * explique al modelo que puede devolverla retocada. Solo se mira el último:
- * ofrecer retocar una imagen de hace veinte mensajes confunde más que ayuda.
+ * ¿Hay una foto reciente en la conversación? De eso depende que se le explique
+ * al modelo que puede devolverla retocada. Se miran los últimos mensajes y no
+ * toda la conversación: ofrecer retocar una imagen de hace veinte mensajes
+ * confunde más que ayuda.
  */
 function ultimaConImagen(messages: Turn[]): boolean {
-  const ultimo = [...messages].reverse().find((m) => m.role === "user");
-  return Boolean(ultimo?.attachments?.some((a) => a.kind === "image"));
+  // Los tres últimos, no solo el último. Lo normal es mandar la foto, hablar de
+  // ella y luego decir "¿le cambiarías algo?" sin volver a adjuntarla. Mirando
+  // solo el último mensaje, justo ahí es donde se perdía la posibilidad de
+  // retocarla, que es cuando de verdad se pide.
+  return messages
+    .filter((m) => m.role === "user")
+    .slice(-3)
+    .some((m) => m.attachments?.some((a) => a.kind === "image"));
 }
 
 /** Lo que ECLIPSE tiene que saber de su propia app: precio, pago y clave. */
@@ -311,6 +318,25 @@ async function runCompat(
   },
 ) {
   let wrote = false;
+  /*
+    Este motor no ha podido con las fotos.
+
+    Se sabe antes de que escriba una sola palabra, así que todavía se está a
+    tiempo de irse a otro que sí pueda. Lo que había antes era entregarle al
+    usuario un "este motor no puede ver imágenes": a quien ya conoce la
+    aplicación le sonará a excusa, y a quien entra por primera vez le parecerá
+    que no funciona. Ninguna de las dos cosas hace falta si hay un motor con
+    ojos a mano.
+  */
+  let sinVista = false;
+  /*
+    Solo tiene sentido abandonar si hay a dónde ir.
+
+    Sin clave de Google, cortar aquí dejaría al usuario con la respuesta en
+    blanco, que es peor que la explicación de por qué no se ve la foto. Así que
+    en ese caso se deja seguir: al menos contesta y le dice qué hacer.
+  */
+  const hayOtroConOjos = await keyAvailable("google");
   send({ t: "status", v: "pensando" });
 
   const herramientas = await herramientasPara(opts.mode, opts.plan);
@@ -375,6 +401,10 @@ async function runCompat(
     if (event.imagen) send({ t: "artifact", v: event.imagen });
     if (event.pensando) send({ t: "thinking", v: event.pensando });
     if (event.cortado) send({ t: "meta", v: { cortado: true } });
+    if (event.sinVista) {
+      sinVista = true;
+      if (!wrote && hayOtroConOjos) break;
+    }
     if (event.modelo) {
       modelo = event.modelo;
       send({ t: "meta", v: { modelo } });
@@ -384,7 +414,11 @@ async function runCompat(
   // Las fuentes ya se han ido mandando clasificadas durante el bucle, así que
   // aquí se devuelve la lista vacía para que la ruta no las vuelva a ordenar.
   void fuentes;
-  return { sources: [] as { url: string; title?: string }[], stopReason: null as string | null };
+  return {
+    sources: [] as { url: string; title?: string }[],
+    stopReason: null as string | null,
+    sinVista: sinVista && !wrote && hayOtroConOjos,
+  };
 }
 
 /* -------------------------------- Ruta ---------------------------------- */
@@ -503,6 +537,18 @@ export async function POST(req: NextRequest) {
           if (!provider || provider === deVuelta || !sinCuota || !deVuelta) throw err;
           send({ t: "status", v: "pensando" });
           result = await correr(deVuelta);
+        }
+
+        /*
+          Se ha quedado sin las fotos y todavía no ha escrito nada: se cambia a
+          Google, que sí las ve, y el usuario ni se entera. Esto es la red de
+          seguridad de lo de arriba —donde ya se elige Google si hay foto—, y
+          está aquí porque quien decide de verdad si un modelo puede con una
+          imagen es el proveedor, no nosotros.
+        */
+        if ("sinVista" in result && result.sinVista && (await keyAvailable("google"))) {
+          send({ t: "status", v: "pensando" });
+          result = await correr("google");
         }
 
         if (result.sources.length) send({ t: "sources", v: rankSources(result.sources) });

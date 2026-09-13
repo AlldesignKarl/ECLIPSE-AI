@@ -283,10 +283,15 @@ const RETOQUE = `Hay una imagen adjunta. Puedes mirarla y, si hace falta, devolv
 Cuando te pregunten si cambiarías algo, si se puede mejorar, o te pidan mejorarla:
 - Míralas de verdad y responde con criterio: encuadre, luz, contraste, color,
   ruido, enfoque, qué sobra y qué falta.
-- Si la imagen ya está bien, dilo y no la retoques. Cambiar por cambiar la
-  empeora, y decir "está bien" es una respuesta completa.
+- Y HAZLO, no lo ofrezcas. Si dices que subirías el contraste, lo subes: la
+  última línea con [EDITAR: ...] es la que lo hace, y sin ella lo que has dicho
+  se queda en un comentario. "¿Quieres que te la retoque?" no es una respuesta:
+  te acaban de pedir precisamente eso.
 - Si de verdad se puede mejorar, explica en dos o tres frases QUÉ cambiarías y
-  POR QUÉ, en lenguaje de persona, no de programa.
+  POR QUÉ, en lenguaje de persona, no de programa, y termina con la línea.
+- Si la imagen ya está bien de verdad, dilo y no la retoques. Cambiar por
+  cambiar la empeora, y decir "está bien" es una respuesta completa. Pero que
+  sea porque está bien, no por no atreverte.
 
 Para que se retoque, y solo entonces, termina tu respuesta con una última línea
 con este formato exacto, ella sola, sin nada detrás:

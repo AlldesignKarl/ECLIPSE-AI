@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.12",
+    // La totalidad vista desde el otro lado: ya no queda sombra que explicar.
+    nombre: "Sin sombra",
+    titulo: "Las fotos, a la primera",
+    entrada:
+      "Se acabó el mensaje de \"este motor no puede ver imágenes\". Si el motor de turno no puede, ECLIPSE se cambia a uno que sí, y tú ni te enteras.",
+    puntos: [
+      "El cambio ocurre antes de escribir una sola palabra, así que ya no hay un primer mensaje que sobra ni una explicación que nadie ha pedido.",
+      "Y ahora sí retoca. Le mandas una foto, habláis de ella, y aunque le preguntes dos mensajes después si le cambiaría algo, te dice qué y te la devuelve cambiada. Antes perdía la foto en cuanto dejaba de ser el último mensaje.",
+      "Si te dice que subiría el contraste, lo sube. Ya no se queda en \"¿quieres que te la retoque?\" cuando es justo lo que le has pedido.",
+    ],
+  },
+  {
     version: "2.11",
     // El tercer contacto: cuando el sol vuelve a asomar y se acaba la
     // oscuridad. Aquí, que ECLIPSE deje de contradecirse con las fotos.

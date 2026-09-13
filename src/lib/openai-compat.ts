@@ -432,6 +432,12 @@ export interface CompatEvent {
   modelo?: string;
   /** El modelo ha pedido usar herramientas y ha dejado de escribir. */
   llamadas?: LlamadaCruda[];
+  /**
+   * Había fotos y este motor no ha podido con ellas. Se avisa ANTES de escribir
+   * nada, para que quien llama pueda irse a otro motor a tiempo en vez de
+   * entregar un "no puedo ver imágenes" que no le sirve a nadie.
+   */
+  sinVista?: boolean;
 }
 
 /** Conversa con el proveedor y va entregando lo que escribe. */
@@ -712,6 +718,10 @@ export async function* streamCompat(opts: {
   // respaldos, no tiene por qué ser el que se pidió, y sin esto no hay forma de
   // saber por qué una respuesta salió floja.
   yield { modelo: resolved[opts.provider] || wanted };
+
+  // Había fotos y se han quedado por el camino: que se entere quien llama,
+  // antes de que empiece a llegar texto.
+  if (hayFotos && !mandarImagenes) yield { sinVista: true };
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

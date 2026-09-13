@@ -41,6 +41,8 @@ export interface EventoBucle {
   pensando?: string;
   /** Se quedó a medias por falta de espacio. */
   cortado?: boolean;
+  /** Había fotos y este motor no ha podido con ellas. */
+  sinVista?: boolean;
 }
 
 /** Cuántas rondas de herramientas se permiten según lo que pida el usuario. */
@@ -86,6 +88,7 @@ export async function* conversarConHerramientas(opts: {
       if (e.text) yield { texto: e.text };
       if (e.pensando) yield { pensando: e.pensando };
       if (e.cortado) yield { cortado: true };
+      if (e.sinVista) yield { sinVista: true };
       if (e.modelo) yield { modelo: e.modelo };
     }
     return;
@@ -125,6 +128,7 @@ export async function* conversarConHerramientas(opts: {
         }
         if (e.pensando) yield { pensando: e.pensando };
         if (e.cortado) yield { cortado: true };
+        if (e.sinVista) yield { sinVista: true };
         if (e.modelo && vuelta === 0) yield { modelo: e.modelo };
         if (e.llamadas) llamadas = e.llamadas;
       }
