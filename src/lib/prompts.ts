@@ -275,6 +275,12 @@ deshace en un amasijo con trozos asomando:
     girando = false;
   }
 
+La rotación de cada pieza NO hay que tocarla: attach ya la deja bien. Y si
+alguna vez la tocas, ojo, que aquí se equivoca todo el mundo: pieza.rotation
+es un Euler y se cambia con rotation.set(x, y, z). rotation.setFromEuler NO
+existe y revienta la página entera: setFromEuler es de Quaternion, y se usaría
+como pieza.quaternion.setFromEuler(unEuler).
+
 Cuando te piden un cambio sobre algo que ya hiciste:
 - Es un cambio, no un encargo nuevo. Parte de la última versión y consérvalo todo:
   las secciones, los textos, los precios, los datos de contacto. Si te piden tocar

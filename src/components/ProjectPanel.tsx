@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as Icon from "./Icons";
 import Markdown from "./Markdown";
 import { guessLanguage } from "@/lib/project";
@@ -41,6 +41,34 @@ export default function ProjectPanel({ title, files, onArreglar }: Props) {
     return () => window.removeEventListener("message", alLlegar);
   }, []);
 
+  /*
+    La vista previa solo existe mientras se ve.
+
+    Un proyecto abierto es una página entera corriendo: su bucle de animación,
+    su escena 3D, su contexto de WebGL. Eso no se para al bajar el dedo, y en
+    una conversación con tres o cuatro proyectos abiertos el móvil acaba con
+    cuatro escenas 3D a la vez. Los navegadores de móvil aguantan muy pocos
+    contextos de WebGL, y cuando se pasan no avisan: cierran la pestaña.
+
+    Así que el marco se desmonta al salir de pantalla y se vuelve a montar al
+    volver. Se deja un margen generoso para que al desplazarse despacio no se
+    reinicie en la cara del usuario.
+  */
+  const caja = useRef<HTMLDivElement>(null);
+  const [enPantalla, setEnPantalla] = useState(true);
+
+  useEffect(() => {
+    const nodo = caja.current;
+    if (!nodo || typeof IntersectionObserver === "undefined") return;
+
+    const observador = new IntersectionObserver(
+      ([entrada]) => setEnPantalla(entrada.isIntersecting),
+      { rootMargin: "600px 0px" },
+    );
+    observador.observe(nodo);
+    return () => observador.disconnect();
+  }, []);
+
   const [selected, setSelected] = useState(0);
   const [zipping, setZipping] = useState(false);
   const [viendo, setViendo] = useState(false);
@@ -75,7 +103,7 @@ export default function ProjectPanel({ title, files, onArreglar }: Props) {
   const totalLines = files.reduce((n, f) => n + f.content.split("\n").length, 0);
 
   return (
-    <div className="mt-4 overflow-hidden rounded-xl border border-line bg-void/60">
+    <div ref={caja} className="mt-4 overflow-hidden rounded-xl border border-line bg-void/60">
       {/* En móvil no caben el nombre y los tres botones en una línea: el
           nombre manda arriba y los botones bajan a la suya. */}
       <div className="border-b border-line-soft bg-panel/60 px-3 py-2">
@@ -151,14 +179,20 @@ export default function ProjectPanel({ title, files, onArreglar }: Props) {
 
       {viendo && pagina ? (
         <div className="relative">
-          <iframe
-            title={`Vista previa de ${title}`}
-            srcDoc={pagina.html}
-            /* Sin `allow-same-origin`: el código va en un origen propio y no
-               puede tocar ni la página ni las cookies de ECLIPSE. */
-            sandbox="allow-scripts allow-forms allow-popups allow-modals"
-            className="h-[420px] w-full border-0 bg-white"
-          />
+          {enPantalla && !pantallaCompleta ? (
+            <iframe
+              title={`Vista previa de ${title}`}
+              srcDoc={pagina.html}
+              /* Sin `allow-same-origin`: el código va en un origen propio y no
+                 puede tocar ni la página ni las cookies de ECLIPSE. */
+              sandbox="allow-scripts allow-forms allow-popups allow-modals"
+              className="h-[420px] w-full border-0 bg-white"
+            />
+          ) : (
+            // El hueco se queda del mismo alto: si no, la conversación pega un
+            // salto justo cuando el usuario está desplazándose por ella.
+            <div className="h-[420px] w-full bg-panel/40" aria-hidden />
+          )}
           <button
             onClick={() => setPantallaCompleta(true)}
             className="absolute right-2.5 top-2.5 rounded-lg border border-line bg-void/85 px-2.5 py-1.5 text-[11.5px] text-muted backdrop-blur transition hover:text-ink"

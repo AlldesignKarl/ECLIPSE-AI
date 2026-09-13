@@ -186,6 +186,29 @@ function excesoPorMinuto(detalle: string): number | null {
   return Number.isFinite(exceso) && exceso > 0 ? exceso : null;
 }
 
+/**
+ * El cupo por minuto que el propio proveedor anuncia en cada respuesta.
+ *
+ * Groq lo manda en una cabecera, y saberlo cambia mucho las cosas: en modo
+ * código se piden 16.384 tokens de hueco, y si el cupo del plan gratuito es de
+ * 8.000, ese primer intento está condenado antes de salir. Sabiéndolo, se pide
+ * de entrada lo que cabe y no se gasta un viaje en aprenderlo cada vez.
+ */
+const cupoPorMinuto: Partial<Record<CompatProvider, number>> = {};
+
+function anotarCupo(provider: CompatProvider, res: Response) {
+  const bruto = res.headers.get("x-ratelimit-limit-tokens");
+  const n = bruto ? Number(bruto) : NaN;
+  if (Number.isFinite(n) && n > 0) cupoPorMinuto[provider] = n;
+}
+
+/** Cuántos tokens ocupa más o menos lo que se va a mandar. */
+function estimarTokens(mensajes: Message[]): number {
+  // Tres caracteres y medio por token es la regla de servilleta de siempre, y
+  // aquí solo hace falta para no pasarse, no para acertar.
+  return Math.ceil(JSON.stringify(mensajes).length / 3.5);
+}
+
 /** Por debajo de esto la respuesta ya no sirve: sobra la conversación, no el hueco. */
 const MINIMO_UTIL = 1024;
 /** Un poco de aire: el proveedor cuenta los tokens de forma algo distinta. */
@@ -400,6 +423,29 @@ export async function* streamCompat(opts: {
       503,
     );
 
+  /*
+    La conversación que se manda, que no siempre es la entera.
+
+    Cuando no cabe, antes se le decía al usuario que abriera una conversación
+    nueva. Eso está mal: es pedirle que haga a mano lo que puede hacer el
+    programa. Así que si no cabe, se suelta lo más viejo —que es lo que menos
+    falta hace— y se vuelve a intentar. Solo se avisa si ni con el último
+    mensaje solo hay sitio.
+  */
+  let turnos = opts.turns;
+
+  const soltarLoMasViejo = () => {
+    if (turnos.length <= 1) return false;
+    // Se tira la mitad más antigua de golpe: ir de uno en uno serían cinco
+    // viajes al proveedor para acabar en el mismo sitio.
+    let resto = turnos.slice(Math.max(1, Math.ceil(turnos.length / 2)));
+    // Y que empiece por el usuario: una conversación que arranca con una
+    // respuesta suelta del asistente se lee como si faltara algo, porque falta.
+    while (resto.length > 1 && resto[0].role !== "user") resto = resto.slice(1);
+    turnos = resto;
+    return true;
+  };
+
   const open = (model: string, tope: number, nombreNuevo = false) =>
     fetch(`${preset.base}/chat/completions`, {
       method: "POST",
@@ -413,7 +459,7 @@ export async function* streamCompat(opts: {
       signal: opts.signal,
       body: JSON.stringify({
         model,
-        messages: toMessages(opts.system, opts.turns, preset.vision.test(model), opts.extra ?? []),
+        messages: toMessages(opts.system, turnos, preset.vision.test(model), opts.extra ?? []),
         // Los modelos nuevos piden `max_completion_tokens`; los de siempre,
         // `max_tokens`. Mandar el que no toca es un 400 que no habla del modelo.
         ...(nombreNuevo ? { max_completion_tokens: tope } : { max_tokens: tope }),
@@ -423,8 +469,8 @@ export async function* streamCompat(opts: {
       }),
     });
 
-  /** La petición no cupo en el cupo por minuto, aunque se recortara. */
-  let peticionEnorme = false;
+  /** No hay sitio ni soltando conversación: esto sí hay que contarlo. */
+  let sinSitio = false;
 
   /**
    * Pide la respuesta y, si lo que falla es el tamaño y no el modelo, insiste.
@@ -441,29 +487,51 @@ export async function* streamCompat(opts: {
    * con el otro nombre del parámetro y bajando el tope a la mitad. Solo si el
    * error no va de eso se da el modelo por perdido.
    *
-   * Y lo mismo con el cupo por minuto: ahí no sobra el tope, sobra la suma de
-   * la conversación y el tope. Se recorta lo justo y se reintenta, porque
-   * cambiar de modelo por esto sería dejar de usar el bueno sin motivo.
+   * Y con el cupo por minuto, tres pasos en este orden: pedir de entrada lo que
+   * cabe, recortar el hueco de la respuesta si aun así se pasa, y soltar
+   * conversación vieja si ni eso basta. Rendirse es el cuarto, y casi nunca.
    */
   const pedir = async (model: string) => {
-    let tope = maxTokens(opts.speed, opts.modo);
+    const maximo = maxTokens(opts.speed, opts.modo);
+
+    // Lo que cabe de entrada, sabiendo el cupo del proveedor. Sin esto, en el
+    // plan gratuito de Groq —8.000 por minuto— cada petición de código nacía
+    // pidiendo 16.384 y se gastaba un viaje entero en descubrirlo.
+    const aMedida = () => {
+      const cupo = cupoPorMinuto[opts.provider];
+      if (!cupo) return maximo;
+      const ocupado = estimarTokens(
+        toMessages(opts.system, turnos, preset.vision.test(model), opts.extra ?? []),
+      );
+      return Math.max(MINIMO_UTIL, Math.min(maximo, cupo - ocupado - MARGEN));
+    };
+
+    let tope = aMedida();
     let nombreNuevo = false;
     let res = await open(model, tope, nombreNuevo);
+    anotarCupo(opts.provider, res);
 
-    for (let intento = 0; intento < 4 && !res.ok; intento++) {
+    for (let intento = 0; intento < 5 && !res.ok; intento++) {
       const detalle = await res.clone().text().catch(() => "");
 
-      // No cabe la petición entera en el cupo por minuto. Se recorta el hueco
-      // de la respuesta justo lo que sobra y se vuelve a intentar; si ni
-      // dejándole el mínimo cabe, es la conversación la que ya no entra y no
-      // hay recorte que lo arregle.
       if (esPeticionEnorme(detalle)) {
-        peticionEnorme = true;
         const exceso = excesoPorMinuto(detalle);
         const recortado = exceso === null ? Math.floor(tope / 2) : tope - exceso - MARGEN;
-        if (recortado < MINIMO_UTIL) break;
-        tope = recortado;
+
+        if (recortado >= MINIMO_UTIL) {
+          tope = recortado;
+        } else if (soltarLoMasViejo()) {
+          // Ya no cabe la respuesta ni al mínimo: entonces lo que sobra es
+          // conversación. Se suelta la mitad más vieja y se vuelve a empezar
+          // con el hueco entero.
+          tope = aMedida();
+        } else {
+          sinSitio = true;
+          break;
+        }
+
         res = await open(model, tope, nombreNuevo);
+        anotarCupo(opts.provider, res);
         continue;
       }
 
@@ -473,6 +541,7 @@ export async function* streamCompat(opts: {
       else tope = Math.max(MINIMO_UTIL, Math.floor(tope / 2));
 
       res = await open(model, tope, nombreNuevo);
+      anotarCupo(opts.provider, res);
     }
     return res;
   };
@@ -491,8 +560,6 @@ export async function* streamCompat(opts: {
   // primero fue "has llegado al límite" y los respaldos fallan por otra cosa,
   // contar lo último es contar el síntoma y esconder la causa.
   const primerEstado = res.ok ? 0 : res.status;
-  // Y si lo que falló fue el tamaño: eso se le cuenta al usuario de otra manera.
-  const primeroEnorme = !res.ok && peticionEnorme;
 
   /**
    * Otros modelos que la cuenta tenga, para cuando el elegido no sirve.
@@ -545,9 +612,9 @@ export async function* streamCompat(opts: {
   }
 
   // Agotados los respaldos, se explica la causa PRIMERA, no la última.
-  if (!res.ok && primeroEnorme)
+  if (!res.ok && sinSitio)
     throw new CompatError(
-      "Esta conversación ya pesa demasiado para mandarla entera de una vez: entre lo hablado y los archivos creados no cabe en un solo mensaje. Abre una conversación nueva y cuéntale ahí solo lo que quieras seguir haciendo; irá igual de rápido y sin este tope.",
+      "Este mensaje es demasiado largo para mandarlo de una vez. Divídelo en dos, o quítale algún archivo adjunto, y vuelve a intentarlo.",
       413,
     );
 

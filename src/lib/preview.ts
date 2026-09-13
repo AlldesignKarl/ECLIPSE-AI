@@ -298,7 +298,17 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
         url + " — sin ella el codigo no puede arrancar. Pidele a ECLIPSE que use otra direccion o que lo haga sin esa libreria."
       );
     }
-    avisar("El codigo ha dado un error", (e.message || "error desconocido") + (e.lineno ? " (linea " + e.lineno + ")" : ""));
+    /*
+      El numero de linea, contado desde el archivo del usuario.
+
+      El navegador cuenta desde el principio del documento, y arriba del
+      documento va lo que mete ECLIPSE: el mapa de importaciones y este mismo
+      vigilante. Sin descontarlo, el aviso decia "linea 218" de un archivo que
+      tiene 184, y eso no ayuda a nadie: confunde al usuario y despista al
+      propio ECLIPSE cuando se le pide que lo arregle.
+    */
+    var linea = e.lineno ? e.lineno - __DESFASE__ : 0;
+    avisar("El codigo ha dado un error", (e.message || "error desconocido") + (linea > 0 ? " (linea " + linea + ")" : ""));
   }, true);
 
   window.addEventListener("unhandledrejection", function (e) {
@@ -330,7 +340,11 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
 <\/script>`;
 
   // El mapa primero, y el vigilante justo detrás: los dos antes que nada.
-  const cabecera = mapaDeImportaciones() + vigilante;
+  // Y con eso ya se sabe cuántas líneas se han colado por delante del código
+  // del usuario, que es justo lo que hay que restarle a los errores.
+  const cabeceraCruda = mapaDeImportaciones() + vigilante;
+  const desfase = cabeceraCruda.split("\n").length - 1;
+  const cabecera = cabeceraCruda.replace("__DESFASE__", String(desfase));
   const conVigilante = /<head[^>]*>/i.test(html)
     ? html.replace(/<head[^>]*>/i, (etiqueta) => etiqueta + cabecera)
     : cabecera + html;

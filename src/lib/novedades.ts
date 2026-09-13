@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.5",
+    // Las perlas de Baily: los últimos puntos de luz que quedan colándose por
+    // los valles de la luna. Los detalles pequeños que se veían mal.
+    nombre: "Baily",
+    titulo: "Más conversación, menos tirones",
+    entrada:
+      "Tres cosas que molestaban cada día: las conversaciones se cortaban pronto, el móvil se atascaba y los errores señalaban una línea que no existía.",
+    puntos: [
+      "Las conversaciones duran mucho más. Cuando ya no cabe todo, ECLIPSE suelta lo más antiguo y sigue, en vez de pedirte que empieces de cero.",
+      "Y pide de entrada lo que cabe: antes gastaba un viaje entero en descubrir el límite en cada mensaje.",
+      "El móvil ya no se atasca con varios proyectos abiertos: la vista previa se para cuando la dejas de ver y arranca sola al volver.",
+      "Los errores del código señalan la línea de tu archivo. Antes contaban también lo que ECLIPSE añade por dentro y decían \"línea 218\" de un archivo de 184.",
+    ],
+  },
+  {
     version: "2.4",
     // El anillo de diamante: el destello del segundo justo antes de que la luna
     // tape el sol del todo. Va de que las escenas 3D por fin se vean.
