@@ -27,6 +27,18 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.23",
+    // Aclarar: nada nuevo, pero ahora se entiende lo que pone.
+    nombre: "Aclarado",
+    titulo: "El aviso del plan Pro decía lo que no era",
+    entrada:
+      "En Ajustes salía «Activación del plan Pro · Falta PRO_ACCESS_CODE» con un punto apagado, y parecía que algo estaba roto. No lo estaba.",
+    puntos: [
+      "Eso no tiene nada que ver con tu plan: es la forma de que OTRAS personas consigan el Pro, con un código o pagándolo.",
+      "Ahora lo dice así, y se da por resuelto si el cobro con tarjeta está conectado, que es la otra manera de conseguirlo.",
+    ],
+  },
+  {
     version: "2.22",
     // Mirada: lo que hacía falta para que las fotos se vean a la primera.
     nombre: "Mirada",

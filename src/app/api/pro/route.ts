@@ -27,7 +27,10 @@ export async function GET() {
     capabilities: {
       chat: provider !== null,
       image: await imageProviderAvailable(),
-      proCodeConfigured: Boolean(process.env.PRO_ACCESS_CODE),
+      // Hay dos formas de que OTRA persona consiga el Pro: pagándolo con
+      // Stripe, o con un código que reparta el dueño. Con cualquiera de las
+      // dos, esto está resuelto; el aviso solo tiene sentido si no hay ninguna.
+      proCodeConfigured: Boolean(process.env.PRO_ACCESS_CODE) || stripeAvailable(),
     },
   });
 }

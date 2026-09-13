@@ -415,10 +415,13 @@ export default function SettingsDialog({
               label="Generación de imágenes"
               hint="Falta GOOGLE_API_KEY u OPENAI_API_KEY"
             />
+            {/* Esto NO afecta a tu propio plan: es la forma de que otras
+                personas consigan el Pro. Decía "Falta PRO_ACCESS_CODE" a secas
+                y parecía que algo estaba roto. */}
             <Row
               ok={capabilities.proCodeConfigured}
-              label="Activación del plan Pro"
-              hint="Falta PRO_ACCESS_CODE"
+              label="Dar el plan Pro a otras personas"
+              hint="Define PRO_ACCESS_CODE (un código que repartes) o conecta Stripe para cobrarlo. Tu plan no depende de esto."
             />
           </ul>
         </div>
