@@ -122,16 +122,41 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
 
   const motivo = porQueNoSeVe(html, files);
 
-  // Sin enlaces reales detrás, que al tocarlos no parezca que se ha roto algo.
+  /*
+    Navegación dentro de la vista previa.
+
+    La página se pinta con `srcdoc`, y ahí las direcciones relativas se
+    resuelven contra la dirección del documento de arriba, no contra la vista
+    previa. Así que un `href="#contacto"` no bajaba a la sección: cargaba
+    eclipse-ia.vercel.app dentro del recuadro, y parecía que la página hecha
+    llevaba a ECLIPSE. Por eso los anclajes se resuelven aquí a mano, buscando
+    el destino y desplazándose hasta él.
+
+    Lo demás se queda quieto: no hay servidor detrás que sirva otra página, y
+    al pulsarlo parecería que algo se ha roto.
+  */
   const completo = `${html}
 <script>
-  document.addEventListener("click", function (e) {
-    var a = e.target instanceof Element ? e.target.closest("a[href]") : null;
-    if (!a) return;
-    var destino = a.getAttribute("href") || "";
-    if (destino.charAt(0) === "#") return;
-    e.preventDefault();
-  }, true);
+  (function () {
+    function irA(destino) {
+      if (destino === "#" || destino === "") return window.scrollTo({ top: 0, behavior: "smooth" });
+      var id = decodeURIComponent(destino.slice(1));
+      var objetivo = document.getElementById(id) || document.getElementsByName(id)[0];
+      if (objetivo && objetivo.scrollIntoView) objetivo.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    document.addEventListener("click", function (e) {
+      var a = e.target instanceof Element ? e.target.closest("a[href]") : null;
+      if (!a) return;
+      var destino = a.getAttribute("href") || "";
+      e.preventDefault();
+      if (destino.charAt(0) === "#") irA(destino);
+    }, true);
+
+    // Un formulario sin servidor detrás haría lo mismo que los anclajes: irse
+    // a la dirección de arriba y cargar ECLIPSE dentro del recuadro.
+    document.addEventListener("submit", function (e) { e.preventDefault(); }, true);
+  })();
 </script>`;
 
   return { html: completo, funciona: motivo === null, motivo: motivo ?? undefined };
