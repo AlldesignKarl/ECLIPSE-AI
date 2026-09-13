@@ -17,7 +17,7 @@ import ThinkingBar from "./ThinkingBar";
 import UpgradeDialog, { type Billing } from "./UpgradeDialog";
 import Welcome from "./Welcome";
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
-import { extractFiles, leerRetoque, projectName } from "@/lib/project";
+import { archivosEjecutables, extractFiles, leerRetoque, projectName } from "@/lib/project";
 import { readSSE } from "@/lib/sse";
 import {
   clearEnCurso,
@@ -505,7 +505,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       // La marca de retoque no se le enseña a nadie: es un encargo para el
       // motor de imagen, y el texto tiene que leerse igual sin ella.
       const { limpio: text, encargo } = leerRetoque(bufferRef.current.text);
-      const files = currentMode === "code" ? extractFiles(text) : [];
+      const files = currentMode === "code" ? extractFiles(text) : archivosEjecutables(text);
 
       const reply = makeMessage("assistant", text, {
         thinking: thinking || undefined,

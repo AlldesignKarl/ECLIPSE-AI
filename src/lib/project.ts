@@ -189,3 +189,25 @@ export function leerRetoque(texto: string): { limpio: string; encargo?: string }
   if (!encargo || /^(no|nada|ninguno|none|n\/a)\b/i.test(encargo)) return { limpio };
   return { limpio, encargo };
 }
+
+/**
+ * Los archivos de una respuesta del chat normal, no de ECLIPSE CODE.
+ *
+ * En CODE todo bloque de código es parte del proyecto y se guarda. En una
+ * conversación no: ahí la mitad de los bloques son un ejemplo de tres líneas, un
+ * comando para pegar en la terminal o un trozo suelto para explicar algo, y
+ * convertir cada uno en un "proyecto" con su panel y su ZIP llenaría la
+ * conversación de ruido.
+ *
+ * La frontera es si lo escrito se abre y funciona por sí solo: un documento HTML
+ * completo sí —una animación, una escena 3D, un juego, una página—, y eso es
+ * justo lo que alguien quiere ver funcionando y descargarse. Un fragmento, no.
+ */
+export function archivosEjecutables(markdown: string): GeneratedFile[] {
+  const archivos = extractFiles(markdown);
+  const hayPagina = archivos.some((f) => {
+    const inicio = f.content.trimStart().slice(0, 400).toLowerCase();
+    return inicio.startsWith("<!doctype html") || inicio.startsWith("<html");
+  });
+  return hayPagina ? archivos : [];
+}
