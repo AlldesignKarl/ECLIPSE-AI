@@ -1,4 +1,5 @@
 import { rankSources } from "../sources";
+import { envolverAjeno } from "./ajeno";
 import type { Herramienta, Resultado } from "./tipos";
 
 /**
@@ -153,7 +154,12 @@ export async function buscarEnLaWeb(
   const texto = fuentes
     .map((f, i) => {
       const h = porUrl.get(f.url);
-      return `[${i + 1}] ${f.title}\nFuente: ${f.domain} (${f.label}, fiabilidad ${f.trust}/100)\nURL: ${f.url}\n${h?.extracto ?? ""}`;
+      // El título y el extracto los escribe quien hizo esa página, así que van
+      // marcados como ajenos. Lo de fuera de la etiqueta lo ponemos nosotros.
+      return `[${i + 1}] ${f.domain} · ${f.label}, fiabilidad ${f.trust}/100\nURL: ${f.url}\n${envolverAjeno(
+        f.domain,
+        `${f.title}\n${h?.extracto ?? ""}`,
+      )}`;
     })
     .join("\n\n");
 

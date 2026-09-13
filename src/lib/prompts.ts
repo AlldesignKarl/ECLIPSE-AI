@@ -1,6 +1,7 @@
 import type { Mode, Plan } from "./types";
 
 import { textoTopes } from "./limites-tabla";
+import { REGLA_CONTENIDO_EXTERNO } from "./tools/ajeno";
 
 export type Engine = "groq" | "google" | "openrouter" | "anthropic" | null;
 
@@ -278,6 +279,9 @@ function herramientasTexto(nombres: string[]): string {
 
   if (nombres.includes("buscar_web"))
     lineas.push(
+      "",
+      REGLA_CONTENIDO_EXTERNO,
+      "",
       "- Al buscar, lee de verdad los extractos y fíjate en la fiabilidad que trae cada",
       "  fuente. Si dos fuentes se contradicen, dilo en vez de quedarte con una.",
       "- Cita de forma natural (el organismo y el año). Los enlaces se enseñan aparte.",
