@@ -327,6 +327,8 @@ async function runCompat(
     speed: Speed;
     plan: "free" | "pro";
     signal: AbortSignal;
+    /** Última pasada: aunque no pueda con las fotos, que conteste igual. */
+    sinAbandonar?: boolean;
   },
 ) {
   let wrote = false;
@@ -348,7 +350,8 @@ async function runCompat(
     blanco, que es peor que la explicación de por qué no se ve la foto. Así que
     en ese caso se deja seguir: al menos contesta y le dice qué hacer.
   */
-  const hayOtroConOjos = (await motoresConOjos(opts.provider)).length > 0;
+  const hayOtroConOjos =
+    !opts.sinAbandonar && (await motoresConOjos(opts.provider)).length > 0;
   send({ t: "status", v: "pensando" });
 
   const herramientas = await herramientasPara(opts.mode, opts.plan);
@@ -506,7 +509,19 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      /*
+        Nadie se queda mirando una burbuja vacía.
+
+        Por muchas vueltas que dé la respuesta —cambios de motor, reintentos,
+        fotos que un modelo no traga—, si al final no se ha escrito ni una
+        palabra hay que decir algo. Una burbuja en blanco parece que la
+        aplicación se ha colgado, y encima no da ninguna pista de qué hacer.
+      */
+      let escritoAlgo = false;
+
       const send = (e: StreamEvent) => {
+        if (e.t === "text" && String(e.v).trim()) escritoAlgo = true;
+        if (e.t === "error") escritoAlgo = true;
         try {
           controller.enqueue(sseChunk(e));
         } catch {
@@ -600,15 +615,42 @@ export async function POST(req: NextRequest) {
           lo que ya sabe hacer. Con tres motores puestos, alguno ve.
         */
         if ("sinVista" in result && result.sinVista) {
+          let resuelto = false;
+
           for (const conOjos of await motoresConOjos(provider)) {
             send({ t: "status", v: "pensando" });
             const intento = await correr(conOjos).catch(() => null);
             if (intento && !("sinVista" in intento && intento.sinVista)) {
               result = intento;
+              resuelto = true;
               break;
             }
           }
+
+          /*
+            Ninguno ha podido con la foto. Entonces se vuelve al de siempre y se
+            le deja contestar SIN ella.
+
+            Sin esto, el usuario se quedaba mirando una burbuja vacía: el primer
+            motor se abandonaba antes de escribir nada —para no gastar palabras
+            en una respuesta que iba a repetirse—, los recambios tampoco daban
+            resultado, y nadie escribía. Silencio. Peor que cualquier respuesta.
+          */
+          if (!resuelto && provider !== "google" && provider !== "anthropic") {
+            send({ t: "status", v: "pensando" });
+            result = await runCompat(send, {
+              ...shared,
+              provider: provider as CompatProvider,
+              sinAbandonar: true,
+            });
+          }
         }
+
+        if (!escritoAlgo && !req.signal.aborted)
+          send({
+            t: "error",
+            v: "No he podido responder a esto. Vuelve a intentarlo con Reintentar; si se repite, prueba a decírmelo de otra forma.",
+          });
 
         if (result.sources.length) send({ t: "sources", v: rankSources(result.sources) });
         send({

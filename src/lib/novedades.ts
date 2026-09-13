@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.24",
+    // La superficie: lo que separa una bola gris de una luna.
+    nombre: "Superficie",
+    titulo: "Lunas, planetas y rocas que lo parecen",
+    entrada:
+      "Pedías la Luna y salía una pelota blanca con bolas negras pegadas. El detalle de una superficie no se hace con más piezas: se dibuja.",
+    puntos: [
+      "Los cráteres, las vetas de la madera, el poro de una pared: ahora se dibujan sobre la piel del objeto y se usan también como relieve. Sirve igual para un planeta, una roca o un suelo de tierra.",
+      "Y para el espacio, su luz: un sol fuerte y todo lo demás casi a oscuras, con estrellas detrás. Una luna sola sobre negro liso parece un botón.",
+      "Además, nunca más una respuesta en blanco. Si algo sale mal por el camino, te lo dice; antes podía quedarse callado y parecía que se había colgado.",
+    ],
+  },
+  {
     version: "2.23",
     // Aclarar: nada nuevo, pero ahora se entiende lo que pone.
     nombre: "Aclarado",

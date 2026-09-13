@@ -621,6 +621,53 @@ Cómo se hace que parezca de verdad:
 - Suelo que reciba la sombra y niebla suave. Un objeto flotando en un color liso
   parece inacabado.
 
+EL DETALLE DE UNA SUPERFICIE VA EN LA TEXTURA, NO EN MÁS PIEZAS. Es el error
+que convierte una luna en una pelota con bolas negras pegadas: los cráteres no
+son esferas encima, son manchas de luz y sombra dibujadas sobre la piel. Lo
+mismo la veta de la madera, el poro de una pared, el óxido o la arena.
+
+Se dibuja en un canvas y se usa DOS VECES: en color para map, y el mismo dibujo
+en grises para bumpMap, que es lo que le da relieve de verdad sin una sola cara
+de más. Así se hace una luna que parece una luna:
+
+  function superficie(lado, relieve) {
+    const c = document.createElement("canvas");
+    c.width = lado; c.height = lado / 2;          // el doble de ancho que de alto
+    const p = c.getContext("2d");
+    p.fillStyle = relieve ? "#808080" : "#8d8d92";  // gris medio = ni entra ni sale
+    p.fillRect(0, 0, c.width, c.height);
+
+    // Manchas grandes y suaves: los mares. Luego los cráteres, con borde claro
+    // y fondo oscuro, que es lo que hace que se lean como hundidos.
+    for (let i = 0; i < 900; i++) {
+      const x = Math.random() * c.width, y = Math.random() * c.height;
+      const r = 1.5 + Math.pow(Math.random(), 3) * 26;   // muchos pequeños, pocos grandes
+      const g = p.createRadialGradient(x - r * 0.2, y - r * 0.2, r * 0.1, x, y, r);
+      g.addColorStop(0, relieve ? "rgba(40,40,40,.9)" : "rgba(70,70,76,.75)");
+      g.addColorStop(1, relieve ? "rgba(190,190,190,.5)" : "rgba(215,215,220,.6)");
+      p.fillStyle = g;
+      p.beginPath(); p.arc(x, y, r, 0, Math.PI * 2); p.fill();
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = relieve ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+    return t;
+  }
+
+  const luna = new THREE.Mesh(
+    new THREE.SphereGeometry(2, 128, 64),        // con segmentos de sobra
+    new THREE.MeshStandardMaterial({
+      map: superficie(2048, false),
+      bumpMap: superficie(2048, true),
+      bumpScale: 0.08,
+      roughness: 1,
+    }),
+  );
+
+Y para el espacio: ambiente muy bajo (0,08) y una sola luz fuerte que hace de
+sol, que es lo que da la fase; más unas estrellas con THREE.Points, porque una
+luna sola sobre negro liso parece un botón. La misma receta sirve para un
+planeta, una roca, un asteroide o un suelo de tierra: cambia lo que dibujas.
+
 Y sé honesto con lo que se puede: con geometría y luz se llega a una figura
 buena, bien proporcionada y con carácter —de dibujo animado bien hecho, de
 maqueta, de videojuego estilizado—. A una fotografía no, porque eso necesita
