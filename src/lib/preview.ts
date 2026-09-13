@@ -89,6 +89,54 @@ const LIBRERIAS: Record<string, string> = {
   tone: "https://cdn.jsdelivr.net/npm/tone@14.7.77/build/esm/index.js",
 };
 
+/**
+ * Direcciones de CDN escritas a mano por el modelo, corregidas.
+ *
+ * El mapa de importaciones arregla `import ... from "three"`, pero no la otra
+ * forma de traer una librería: una etiqueta <script src="..."> con una
+ * dirección inventada. Y se inventan constantemente, porque el modelo recuerda
+ * una versión que existía cuando aprendió y esa carpeta ya no está: r152 de
+ * three.js en cdnjs devuelve 404, y con ella no arranca nada.
+ *
+ * Aquí se sustituye por una dirección comprobada. Las versiones no salen de la
+ * memoria de nadie: se han mirado los paquetes publicados uno por uno.
+ *
+ * Para los módulos se usa la 0.160, que trae los complementos en examples/jsm.
+ * Para las etiquetas clásicas hace falta la 0.147, la última que publicó a la
+ * vez el archivo de toda la vida (build/three.min.js) y los controles en
+ * examples/js. Mezclarlas rompería, así que cada estilo va con la suya.
+ */
+const CLASICO_THREE = "https://cdn.jsdelivr.net/npm/three@0.147.0";
+
+const CORRECCIONES: { detecta: RegExp; destino: string }[] = [
+  { detecta: /three(\.module)?(\.min)?\.js(\?.*)?$/i, destino: `${CLASICO_THREE}/build/three.min.js` },
+  {
+    detecta: /(OrbitControls|TrackballControls|FlyControls)\.js(\?.*)?$/i,
+    destino: `${CLASICO_THREE}/examples/js/controls/OrbitControls.js`,
+  },
+  { detecta: /gsap(\.min)?\.js(\?.*)?$/i, destino: "https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" },
+  { detecta: /matter(\.min)?\.js(\?.*)?$/i, destino: "https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js" },
+  { detecta: /chart(\.umd)?(\.min)?\.js(\?.*)?$/i, destino: "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" },
+  { detecta: /\bd3(\.v\d+)?(\.min)?\.js(\?.*)?$/i, destino: "https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" },
+];
+
+/**
+ * Cambia las direcciones de las librerías por las comprobadas.
+ *
+ * Solo toca las que reconoce: una dirección de otra cosa —una fuente, un icono,
+ * un script propio— se queda como está. Vale más una librería que no carga que
+ * una vista previa que reescribe lo que no entiende.
+ */
+function corregirDirecciones(html: string): string {
+  return html.replace(
+    /(<script\b[^>]*\bsrc\s*=\s*["'])(https?:\/\/[^"']+)(["'])/gi,
+    (entero, antes: string, url: string, despues: string) => {
+      const arreglo = CORRECCIONES.find((c) => c.detecta.test(url));
+      return arreglo ? `${antes}${arreglo.destino}${despues}` : entero;
+    },
+  );
+}
+
 /** ¿Sabemos de dónde sacar esta librería sin instalar nada? */
 function resoluble(nombre: string): boolean {
   return Object.keys(LIBRERIAS).some((clave) =>
@@ -182,6 +230,8 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
     },
   );
 
+
+  html = corregirDirecciones(html);
 
   const motivo = porQueNoSeVe(html, files);
 
