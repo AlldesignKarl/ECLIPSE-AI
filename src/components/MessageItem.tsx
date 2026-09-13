@@ -79,7 +79,7 @@ export default function MessageItem({
             </div>
           )}
           {message.content && (
-            <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md border border-line bg-panel px-4 py-2.5 text-[14.5px] leading-relaxed text-ink">
+            <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md border border-tuyo-borde bg-tuyo px-4 py-2.5 text-[15.5px] leading-relaxed text-ink">
               {message.content}
             </div>
           )}

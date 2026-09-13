@@ -12,6 +12,11 @@
   --color-faint: #5d6474;
   --color-halo: #cfd6e6;
   --color-pro: #b8a6ff;
+  /* El bocadillo de quien escribe. Azul para distinguirlo de un vistazo del de
+     ECLIPSE, pero apagado: un azul de sistema a todo trapo sobre este fondo
+     casi negro deslumbra y se come la conversación. */
+  --color-tuyo: #1e3a6f;
+  --color-tuyo-borde: #2f5699;
   --color-danger: #ff6b6b;
   --color-ok: #4ade80;
 
@@ -169,8 +174,8 @@ body {
 
 /* ---------- Markdown ---------- */
 .prose-eclipse {
-  font-size: 0.9375rem;
-  line-height: 1.72;
+  font-size: 1rem;
+  line-height: 1.7;
   color: var(--color-ink);
   word-break: break-word;
 }
