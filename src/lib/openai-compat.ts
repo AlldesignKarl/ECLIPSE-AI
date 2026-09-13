@@ -131,7 +131,7 @@ function toMessages(
     if (turn.role === "user" && images.length && !vision) {
       out.push({
         role: "user",
-        content: `${written}\n\n(AVISO DEL SISTEMA, no del usuario: se han adjuntado ${images.length} imagen(es) y el motor de ahora las ha rechazado, así que NO las tienes. Díselo tal cual —que este motor no puede ver imágenes— y dile que en Ajustes puede cambiar el motor a Google, que sí las ve. No le pidas que te describa la imagen: eso es hacerle a él el trabajo.)`,
+        content: `${written}\n\n(AVISO DEL SISTEMA, no del usuario: se han adjuntado ${images.length} imagen(es) y ninguno de los motores disponibles ha podido con ellas, así que NO las tienes. Dilo en UNA frase, como un fallo nuestro y no suyo, y sigue ayudándole con lo que sí puedas. No le mandes cambiar ajustes ni configurar nada, y no le pidas que te describa su propia imagen.)`,
       });
     } else if (turn.role === "user" && images.length) {
       out.push({
@@ -339,11 +339,18 @@ async function listModels(preset: Preset, key: string): Promise<string[]> {
  */
 const PREFERENCIA_CHAT: RegExp[] = [
   /llama-4|maverick|scout/i,
+  // Los de Mistral para conversar. Sin estas líneas, en una cuenta de Mistral
+  // ninguna preferencia encajaba y se acababa cogiendo "el primero que haya",
+  // que resultó ser Codestral: un modelo de completar código contestando a
+  // "¿de dónde son estos edificios?". De ahí salía todo lo demás.
+  /pixtral/i,
+  /mistral-large|magistral|mistral-medium/i,
   /kimi|k2/i,
   /70b|72b/i,
   /gpt-oss.*120/i,
   /qwen.*3/i,
   /versatile/i,
+  /mistral-small/i,
 ];
 
 const PREFERENCIA_CODIGO: RegExp[] = [
@@ -441,9 +448,23 @@ async function elegirModelo(
     }
   }
 
-  // Ninguno encaja con lo que se busca: el de siempre si está, y si no, el
-  // primero que haya, que es mejor que no responder.
-  const elegido = disponibles.includes(preset.model) ? preset.model : candidatos[0];
+  /*
+    Ninguno encaja: el de siempre si está, y si no, el primero que haya.
+
+    Con una salvedad para conversar: los modelos de completar código —los que
+    llevan "code" o "codestral" en el nombre— son los peores posibles para una
+    conversación, y son justo los que suelen quedar los primeros de la lista
+    cuando no encaja ninguna preferencia. Se dejan para el final.
+  */
+  const ultimoRecurso =
+    modo === "code"
+      ? candidatos
+      : [
+          ...candidatos.filter((id) => !/code|codestral/i.test(id)),
+          ...candidatos.filter((id) => /code|codestral/i.test(id)),
+        ];
+
+  const elegido = disponibles.includes(preset.model) ? preset.model : ultimoRecurso[0];
   if (modo === "code") resueltoCodigo[provider] = elegido;
   else resolved[provider] = elegido;
   return elegido;

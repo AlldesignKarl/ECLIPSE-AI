@@ -2,14 +2,20 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { getClient, humanError, MODEL, tuning } from "@/lib/anthropic";
 import { GeminiError, streamChat } from "@/lib/gemini";
-import { keyAvailable, keySource, resolveKey } from "@/lib/keys";
+import { keySource, resolveKey } from "@/lib/keys";
 import { gastar } from "@/lib/limites";
 import { CompatError, type CompatProvider } from "@/lib/openai-compat";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { herramientasPara } from "@/lib/tools/registro";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt, partes3D, SEGUIR } from "@/lib/prompts";
-import { activeProvider, providerForTurn, providerSearches, siguienteMotor } from "@/lib/provider";
+import {
+  activeProvider,
+  motoresConOjos,
+  providerForTurn,
+  providerSearches,
+  siguienteMotor,
+} from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
 import { priceLabelLive, stripeAvailable } from "@/lib/stripe";
 import { SSE_HEADERS, sseChunk, type StreamEvent } from "@/lib/sse";
@@ -342,7 +348,7 @@ async function runCompat(
     blanco, que es peor que la explicación de por qué no se ve la foto. Así que
     en ese caso se deja seguir: al menos contesta y le dice qué hacer.
   */
-  const hayOtroConOjos = await keyAvailable("google");
+  const hayOtroConOjos = (await motoresConOjos(opts.provider)).length > 0;
   send({ t: "status", v: "pensando" });
 
   const herramientas = await herramientasPara(opts.mode, opts.plan);
@@ -584,9 +590,24 @@ export async function POST(req: NextRequest) {
           está aquí porque quien decide de verdad si un modelo puede con una
           imagen es el proveedor, no nosotros.
         */
-        if ("sinVista" in result && result.sinVista && (await keyAvailable("google"))) {
-          send({ t: "status", v: "pensando" });
-          result = await correr("google");
+        /*
+          Se ha quedado sin las fotos: se prueban los demás motores hasta que
+          uno pueda verlas.
+
+          Antes solo se probaba Google, y si no había clave suya el usuario
+          recibía un "cambia el motor a Google en Ajustes". Eso no es una
+          respuesta: es pedirle que configure algo para que la aplicación haga
+          lo que ya sabe hacer. Con tres motores puestos, alguno ve.
+        */
+        if ("sinVista" in result && result.sinVista) {
+          for (const conOjos of await motoresConOjos(provider)) {
+            send({ t: "status", v: "pensando" });
+            const intento = await correr(conOjos).catch(() => null);
+            if (intento && !("sinVista" in intento && intento.sinVista)) {
+              result = intento;
+              break;
+            }
+          }
         }
 
         if (result.sources.length) send({ t: "sources", v: rankSources(result.sources) });

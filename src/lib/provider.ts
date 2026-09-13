@@ -103,6 +103,27 @@ export async function providerForTurn(
  * mundo a la vez, y el día que se acabe no puede caerse la aplicación entera.
  * Con esto, se pasa al siguiente que tenga clave y la conversación sigue.
  */
+/**
+ * Todos los motores con clave, en el orden en que conviene probarlos cuando el
+ * de turno no puede con una imagen.
+ *
+ * Google va delante porque sus modelos miran imágenes siempre; los demás
+ * dependen de lo que tenga la cuenta ese día. Pero van TODOS: decirle al
+ * usuario "cambia el motor a Google" cuando hay otros tres con clave puestos es
+ * mandarle a hacer a mano algo que aquí se hace en una línea.
+ */
+export async function motoresConOjos(excepto: Provider | null): Promise<Provider[]> {
+  const orden: Provider[] = ["google", ...FREE_ORDER.filter((p) => p !== "google")];
+  const salida: Provider[] = [];
+
+  for (const p of orden) {
+    if (p === excepto) continue;
+    if (await keyAvailable(p as KeyProvider)) salida.push(p);
+  }
+  if (excepto !== "anthropic" && process.env.ANTHROPIC_API_KEY) salida.push("anthropic");
+  return salida;
+}
+
 export async function siguienteMotor(agotado: Provider | null): Promise<Provider | null> {
   for (const p of FREE_ORDER) {
     if (p === agotado) continue;

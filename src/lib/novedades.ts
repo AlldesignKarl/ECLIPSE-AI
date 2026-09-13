@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.22",
+    // Mirada: lo que hacía falta para que las fotos se vean a la primera.
+    nombre: "Mirada",
+    titulo: "Las fotos, a la primera y sin excusas",
+    entrada:
+      "Mandabas una foto y te decía que cambiaras el motor a Google. Eso ya no existe: si el motor de turno no puede verla, se pasa a otro y ya está.",
+    puntos: [
+      "Prueba todos los motores que tengas puestos hasta que uno vea la imagen, no solo Google.",
+      "Y en el chat ya no contesta un modelo de programar. Con una cuenta de Mistral acababa respondiendo Codestral —que es para completar código en un editor— a preguntas como «¿de dónde son estos edificios?». De ahí venía todo.",
+      "Si aun así ninguno pudiera, lo dice en una frase y sigue ayudando, sin mandarte a configurar nada.",
+    ],
+  },
+  {
     version: "2.21",
     // Los seis colores, cada uno en su cara.
     nombre: "Seis caras",
