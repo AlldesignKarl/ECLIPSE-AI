@@ -632,8 +632,21 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       if (encargo && original && !failure)
         await retocar(conversationId, reply.id, original, encargo);
 
-      if (formato && original && !failure)
-        await convertir(conversationId, reply.id, original, formato);
+      /*
+        La conversión se decide aquí, no en el modelo.
+
+        Pasar una imagen a PNG o a PDF no necesita entender nada: es una orden
+        con una respuesta única. Dejársela al modelo era lo que hacía que a la
+        primera contestara "no puedo" y a la segunda sí, según le diera por
+        escribir la marca. Así que se mira lo que ha pedido el usuario y se
+        hace; la marca del modelo se queda como segundo camino, por si lo pide
+        de una forma que aquí no se reconozca.
+      */
+      const { formatoPedido } = await import("@/lib/convertir");
+      const pedido = formato ?? formatoPedido(history.at(-1)?.content ?? "");
+
+      if (pedido && original && !failure)
+        await convertir(conversationId, reply.id, original, pedido);
 
       setStatus("idle");
       abortRef.current = null;

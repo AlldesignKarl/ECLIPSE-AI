@@ -30,6 +30,42 @@ export function leerFormato(texto: string): Formato | null {
   return null;
 }
 
+/**
+ * ¿Está pidiendo convertir la imagen, y a qué?
+ *
+ * Esto se mira directamente sobre lo que escribe el usuario, sin pasar por el
+ * modelo. Convertir no necesita entender nada ni mirar la foto: es una orden
+ * con una respuesta única. Dejárselo al modelo era la causa de que a la primera
+ * contestara "no puedo" y a la segunda sí: unas veces escribía la marca y otras
+ * se liaba pensando que hacía falta ver la imagen para cambiarle el formato.
+ *
+ * Hace falta las dos cosas —un formato y una intención de convertir— para no
+ * confundirlo con "créame una imagen png", que es otra cosa.
+ */
+export function formatoPedido(texto: string): Formato | null {
+  const t = texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const formato = /\b(png|jpe?g|webp|pdf)\b/.exec(t);
+  if (!formato) return null;
+
+  const quiereConvertir =
+    /\b(pasa|pasala|pasalo|pasamela|pasamelo|convierte|conviertela|conviertelo|conviertemela|convertir|conversion|exporta|exportala|transforma|transformala|guarda|guardala|guardamela|descargala|ponla|ponlo|dejala|dejamela|hazla|hazmela)\b/.test(
+      t,
+    ) ||
+    // "esta foto en pdf", "la imagen a png": la preposición delante del
+    // formato ya dice que se quiere ESA imagen en ese formato.
+    /\b(a|en|como|formato)\s+(png|jpe?g|webp|pdf)\b/.test(t);
+
+  // Y que no esté pidiendo una imagen NUEVA, que eso es crear, no convertir.
+  const quiereUnaNueva = /\b(crea|creame|crear|genera|generame|generar|dibuja|dibujame|imaginate|inventa)\b/.test(t);
+
+  if (!quiereConvertir || quiereUnaNueva) return null;
+  return leerFormato(formato[1]);
+}
+
 export function nombreDe(formato: Formato): string {
   return NOMBRES[formato];
 }

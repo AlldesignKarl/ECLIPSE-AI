@@ -32,6 +32,8 @@ export default function MessageItem({
   const [copied, setCopied] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const [openThinking, setOpenThinking] = useState(false);
+  /** La imagen que se está mirando a pantalla completa, si hay alguna. */
+  const [ampliada, setAmpliada] = useState<string | null>(null);
 
   /**
    * En modo bot el texto lleva los archivos dentro. Se enseña solo la
@@ -122,7 +124,8 @@ export default function MessageItem({
   }
 
   return (
-    <div className="animate-fade-up px-4 py-3">
+    <>
+      <div className="animate-fade-up px-4 py-3">
       <div className="flex gap-3">
         <EclipseLogo size={26} className="mt-0.5 shrink-0" active={streaming} />
 
@@ -188,12 +191,18 @@ export default function MessageItem({
             if (art.type === "image" && art.url)
               return (
                 <figure key={i} className="mt-3.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={art.url}
-                    alt={art.prompt ?? "Imagen generada"}
-                    className="w-full max-w-lg rounded-xl border border-line-soft"
-                  />
+                  {/* Pulsando se ve en grande. En un móvil, una imagen buena
+                      dentro de una burbuja de conversación se queda en un
+                      sello; y no había forma de mirarla sin descargarla. */}
+                  <button
+                    type="button"
+                    onClick={() => setAmpliada(art.url ?? null)}
+                    className="block w-full max-w-lg overflow-hidden rounded-xl border border-line-soft transition hover:border-halo/40"
+                    aria-label="Ver la imagen en grande"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={art.url} alt={art.prompt ?? "Imagen generada"} className="w-full" />
+                  </button>
                   <figcaption className="mt-1.5 flex items-center gap-3 text-[11.5px] text-faint">
                     <a href={art.url} download="eclipse-imagen.png" className="hover:text-ink">
                       Descargar
@@ -287,6 +296,26 @@ export default function MessageItem({
           )}
         </div>
       </div>
-    </div>
+      </div>
+
+      {ampliada && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-void/95 p-4"
+          onClick={() => setAmpliada(null)}
+          role="dialog"
+          aria-label="Imagen en grande"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ampliada} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
+          <button
+            onClick={() => setAmpliada(null)}
+            className="absolute right-4 top-4 rounded-lg bg-panel/80 p-2 text-muted backdrop-blur transition hover:text-ink"
+            aria-label="Cerrar"
+          >
+            <Icon.Close width={18} height={18} />
+          </button>
+        </div>
+      )}
+    </>
   );
 }

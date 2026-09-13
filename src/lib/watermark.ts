@@ -17,14 +17,17 @@ function marcaSVG(lado: number): Buffer {
   // Debajo del trazo blanco va el mismo trazo en negro y más grueso. Sin él, el
   // logo desaparece sobre un cielo claro; con él se lee sobre cualquier fondo,
   // y no hace falta ningún desenfoque, que no todos los servidores saben pintar.
+  // El disco va MACIZO, no como un anillo. Con el anillo se veía el fondo por
+  // el agujero del medio y la marca se leía como un donut sucio en vez de como
+  // un eclipse; encima, sobre un cielo con nubes, por el hueco asomaba de todo.
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${lado}" height="${lado}" viewBox="0 0 240 240">
   <g opacity="0.45">
-    <circle cx="120" cy="120" r="58" fill="none" stroke="#000" stroke-width="19"/>
+    <circle cx="120" cy="120" r="63" fill="#000"/>
     <path d="${flare}" fill="#000" stroke="#000" stroke-width="9" stroke-linejoin="round"/>
     <path d="${flare}" fill="#000" stroke="#000" stroke-width="9" stroke-linejoin="round" transform="translate(240,0) scale(-1,1)"/>
   </g>
-  <g opacity="0.92">
-    <circle cx="120" cy="120" r="58" fill="none" stroke="#fff" stroke-width="10"/>
+  <g opacity="0.95">
+    <circle cx="120" cy="120" r="58" fill="#fff"/>
     <path d="${flare}" fill="#fff"/>
     <path d="${flare}" fill="#fff" transform="translate(240,0) scale(-1,1)"/>
   </g>

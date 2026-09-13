@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.16",
+    // El disco: el sol tapado entero, sin agujeros. Como el logo ahora.
+    nombre: "Disco",
+    titulo: "Convertir a la primera, y un logo como debe ser",
+    entrada:
+      "Le pedías pasar una foto a PDF y te decía que no podía; se lo repetías y lo hacía. Eso se acabó.",
+    puntos: [
+      "Convertir ya no depende de que la IA lo entienda: la app reconoce «pásala a pdf» y lo hace. Da igual lo que conteste el modelo, el archivo aparece.",
+      "El logo de las imágenes ya no tiene el agujero del medio: es un disco blanco macizo, que es lo que parece un eclipse de verdad.",
+      "Y las imágenes se pueden ver en grande. Pulsa una y ocupa la pantalla entera; antes había que descargarla para verla bien.",
+    ],
+  },
+  {
     version: "2.15",
     // El encuadre: lo que separa una foto de un recorte mal hecho.
     nombre: "Encuadre",

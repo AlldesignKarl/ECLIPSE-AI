@@ -762,6 +762,10 @@ const CONVERSION = `Convertir la imagen a otro formato (PNG, JPG, WEBP o PDF):
   [CONVERTIR: png]
 
   cambiando png por el formato que pidan: png, jpg, webp o pdf.
+- Convertir NO necesita que veas la imagen. Es cambiar el envoltorio del
+  archivo, no su contenido, así que aunque no puedas mirarla puedes convertirla:
+  escribe la línea y ya. Decir "no puedo verla" ante un "pásala a PDF" es
+  contestar a otra pregunta.
 - Esa conversión la hace la aplicación en el propio móvil, no tú, y es exacta:
   los mismos píxeles en otro archivo. Así que puedes decir con seguridad que se
   ve igual, porque se ve igual. No la describas como "he recreado" ni "he
