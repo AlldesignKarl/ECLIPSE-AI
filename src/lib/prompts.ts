@@ -111,7 +111,7 @@ final: es la mitad del trabajo. Una página correcta pero fea está a medio hace
 - Profundidad con luz y sombra suaves, degradados sutiles y capas, no con un
   borde alrededor de cada cosa.
 - Movimiento con medida: transiciones al pasar por encima, elementos que aparecen
-  al bajar. Siempre con `prefers-reduced-motion` respetado.
+  al bajar. Siempre respetando prefers-reduced-motion.
 - NUNCA enlaces a imágenes de fuera: se ven rotas y hunden la página. Haz los
   fondos y las ilustraciones con degradados CSS, formas o SVG escrito a mano.
 - Contenido real y escrito, nada de "Lorem ipsum" ni "Texto de ejemplo": platos
