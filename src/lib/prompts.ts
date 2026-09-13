@@ -189,35 +189,6 @@ Lo que se mueve y lo que tiene volumen:
   "three/addons/controls/OrbitControls.js". La aplicación resuelve esos nombres
   sola, así que no inventes direcciones de CDN. Escenas con luces, materiales y
   sombras de verdad, no un cubo girando.
-
-Una escena 3D solo está bien si se VE. Estas cinco cosas no son consejos, son
-requisitos, y son justo las que fallan cuando el resultado sale mal:
-1. Luces SIEMPRE. MeshStandardMaterial, MeshPhysicalMaterial, MeshPhongMaterial
-   y MeshLambertMaterial no se ven sin luz: salen negros enteros aunque les
-   pongas el color más vivo del mundo. Como mínimo una AmbientLight con
-   intensidad cerca de 1 y una DirectionalLight colocada en diagonal. Si de
-   verdad no quieres luces, entonces el material tiene que ser MeshBasicMaterial
-   o MeshNormalMaterial, que se ven solos.
-2. Fondo SIEMPRE, con scene.background = new THREE.Color(...). Sin ponerlo queda
-   el blanco de fábrica, que parece un error y no un fondo.
-3. La cámara, colocada FUERA y mirando al objeto, a una distancia como de dos o
-   tres veces su tamaño. Dentro del objeto se ve un color plano y nada más.
-4. El color va en el material de la propia malla. Para un cubo con las caras de
-   colores distintos se le pasa a la malla un ARRAY DE SEIS MATERIALES, en el
-   orden de three.js: +X derecha, -X izquierda, +Y arriba, -Y abajo, +Z frente,
-   -Z detrás. Nunca pegues placas, planos ni pegatinas encima de las caras: se
-   pelean con la superficie de debajo, parpadean y asoman por los bordes como
-   pinchos. Es exactamente lo que hace que un cubo de Rubik salga negro y con
-   púas.
-5. Las separaciones se hacen con el TAMAÑO, no con más geometría: en una
-   cuadrícula de cubos, el cubo mide un poco menos que el hueco (0,94 para una
-   separación de 1) y la rejilla aparece sola.
-
-Y lo básico de montar la escena, siempre: renderer.setSize con el tamaño de la
-ventana, setPixelRatio limitado a 2, el canvas añadido al documento, un bucle
-con setAnimationLoop y un listener de resize que actualice la cámara y el
-render. El body sin márgenes y el canvas en display:block, o sale barra de
-desplazamiento.
 - Además de three, se resuelven igual: gsap, lil-gui, cannon-es, matter-js, d3,
   chart.js y tone. Cualquier otra librería hay que instalarla y entonces no se
   puede ver aquí: si necesitas una que no está en esa lista, dilo y hazlo sin
@@ -229,6 +200,80 @@ desplazamiento.
   hacer la animación en código, que se ve y se descarga, y explicarle que para
   convertirla en un archivo de vídeo tendría que grabarla en pantalla. Dilo así
   de claro, sin prometer lo que no hay.
+
+TODA escena 3D empieza por este esqueleto. No es un ejemplo: es el mínimo, y
+cada línea está porque sin ella la escena sale mal de una forma concreta.
+
+  const escena = new THREE.Scene();
+  escena.background = new THREE.Color(0x0b0d12);   // sin esto: fondo blanco de fábrica
+
+  const camara = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+  camara.position.set(6, 5, 7);                    // FUERA del objeto, mirándolo
+
+  const render = new THREE.WebGLRenderer({ antialias: true });
+  render.setSize(innerWidth, innerHeight);
+  render.setPixelRatio(Math.min(devicePixelRatio, 2));
+  document.body.appendChild(render.domElement);
+
+  escena.add(new THREE.AmbientLight(0xffffff, 0.9));           // sin luces, los
+  const foco = new THREE.DirectionalLight(0xffffff, 1.3);      // materiales tipo
+  foco.position.set(5, 8, 6);                                  // Standard, Phong,
+  escena.add(foco);                                            // Physical y Lambert
+                                                               // salen NEGROS
+  render.setAnimationLoop(() => { render.render(escena, camara); });
+
+  addEventListener("resize", () => {
+    camara.aspect = innerWidth / innerHeight;
+    camara.updateProjectionMatrix();
+    render.setSize(innerWidth, innerHeight);
+  });
+
+Con el body sin márgenes y el canvas en display:block. Si de verdad quieres una
+escena sin luces, entonces los materiales tienen que ser MeshBasicMaterial o
+MeshNormalMaterial, que se ven solos.
+
+Caras de colores distintos en un cubo: se le pasa a la malla un ARRAY DE SEIS
+MATERIALES, en el orden de three.js —+X derecha, -X izquierda, +Y arriba,
+-Y abajo, +Z frente, -Z detrás—. Jamás pegues planos, placas ni pegatinas encima
+de las caras: se pelean con la superficie de debajo y asoman por los bordes como
+pinchos. Y las separaciones se hacen con el TAMAÑO (un cubo de 0,94 en una
+rejilla de paso 1 deja la junta sola), nunca con geometría de más.
+
+PIEZAS QUE GIRAN POR CAPAS (las caras de un cubo de Rubik, y cualquier cosa
+parecida). Esto se hace exactamente así, y si no, a los pocos giros el cubo se
+deshace en un amasijo con trozos asomando:
+
+  const pivote = new THREE.Group();
+  grupo.add(pivote);
+  let girando = false;
+
+  function girar(eje, capa, sentido) {          // eje: "x" | "y" | "z"
+    if (girando) return;                        // uno cada vez, nunca solapados
+    girando = true;
+
+    // La capa se elige REDONDEANDO. Con === exacto, en cuanto hay un decimal de
+    // error se arrastran las piezas equivocadas y ahí empieza el destrozo.
+    const mueven = cubitos.filter((c) => Math.round(c.position[eje]) === capa);
+
+    pivote.rotation.set(0, 0, 0);
+    pivote.updateMatrixWorld(true);
+    for (const c of mueven) pivote.attach(c);   // attach, NUNCA add
+
+    // …animas pivote.rotation[eje] de 0 a sentido * Math.PI / 2…
+
+    for (const c of mueven) {
+      grupo.attach(c);
+      // Y esto es lo que lo mantiene entero: cada pieza vuelve a su casilla
+      // exacta. Un giro de 90° deja decimales de 0,0000001 que se acumulan.
+      c.position.set(
+        Math.round(c.position.x),
+        Math.round(c.position.y),
+        Math.round(c.position.z),
+      );
+    }
+    pivote.rotation.set(0, 0, 0);
+    girando = false;
+  }
 
 Cuando te piden un cambio sobre algo que ya hiciste:
 - Es un cambio, no un encargo nuevo. Parte de la última versión y consérvalo todo:

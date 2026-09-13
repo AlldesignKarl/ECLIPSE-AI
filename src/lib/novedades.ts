@@ -37,6 +37,7 @@ export const NOVEDADES: Novedad[] = [
     puntos: [
       "Luces y fondo siempre. Un material sin luz sale negro entero, y eso era lo que pasaba: el cubo tenía sus colores puestos, pero no había con qué verlos.",
       "Los colores van en las caras del propio cubo, no en placas pegadas encima. Esas placas eran los pinchos que asomaban por los bordes.",
+      "Y cuando las caras giran para resolverse, el cubo aguanta entero: cada pieza vuelve a su casilla exacta después de cada giro, en vez de ir descuadrándose hasta romperse.",
       "Si una escena sale de un solo color, la vista previa te lo dice y puedes pedirle que lo arregle en un toque, en vez de quedarte mirando un cuadro negro.",
       "Y para programar elige siempre el modelo más grande que tenga tu cuenta: uno pequeño responde rápido, pero entrega escenas a medias.",
     ],
