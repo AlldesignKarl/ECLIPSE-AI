@@ -17,7 +17,13 @@ import ThinkingBar from "./ThinkingBar";
 import UpgradeDialog, { type Billing } from "./UpgradeDialog";
 import Welcome from "./Welcome";
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
-import { archivosEjecutables, extractFiles, leerRetoque, projectName } from "@/lib/project";
+import {
+  aligerarHistorial,
+  archivosEjecutables,
+  extractFiles,
+  leerRetoque,
+  projectName,
+} from "@/lib/project";
 import { readSSE } from "@/lib/sse";
 import {
   clearEnCurso,
@@ -401,11 +407,16 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
             mode: currentMode,
             speed: prefs.speed,
             deepSearch: prefs.deepSearch,
-            messages: history.map((m) => ({
-              role: m.role,
-              content: m.content,
-              attachments: m.attachments?.filter((a) => a.data),
-            })),
+            // Sin adelgazar, cada archivo generado se vuelve a mandar entero
+            // en todos los mensajes siguientes y la conversación choca con el
+            // límite por minuto del proveedor.
+            messages: aligerarHistorial(
+              history.map((m) => ({
+                role: m.role,
+                content: m.content,
+                attachments: m.attachments?.filter((a) => a.data),
+              })),
+            ),
           }),
         });
 

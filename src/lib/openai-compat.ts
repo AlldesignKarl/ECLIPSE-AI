@@ -154,6 +154,43 @@ function maxTokens(speed: Speed, modo: Mode = "chat"): number {
   return 4096;
 }
 
+/**
+ * El cupo por minuto: el proveedor cuenta la conversación entera MÁS el hueco
+ * que se reserva para la respuesta, y si la suma pasa del tope no contesta.
+ *
+ * Pasa en modo código después de unos cuantos mensajes: cada respuesta lleva un
+ * archivo completo, la conversación los arrastra todos y la cuenta sube sola.
+ * El error dice literalmente "Limit 8000, Requested 8568", así que no hay que
+ * adivinar nada: se lee cuánto sobra y se recorta exactamente eso.
+ */
+function esPeticionEnorme(detalle: string): boolean {
+  if (/request too large/i.test(detalle)) return true;
+
+  // Ojo con confundirlo con el otro: "Rate limit reached … Used 7500,
+  // Requested 1000" no dice que la petición no quepa, dice que el cupo de este
+  // minuto ya está gastado. Eso se arregla esperando o cambiando de modelo, y
+  // recortar la respuesta no serviría de nada.
+  if (/\bused\b/i.test(detalle)) return false;
+
+  return /tokens per minute|\bTPM\b/i.test(detalle) && /requested\s+[\d.,]+/i.test(detalle);
+}
+
+/** Cuántos tokens sobran, si el proveedor los dice. */
+function excesoPorMinuto(detalle: string): number | null {
+  const limite = /limit\s+([\d.,]+)/i.exec(detalle);
+  const pedido = /requested\s+([\d.,]+)/i.exec(detalle);
+  if (!limite || !pedido) return null;
+
+  const n = (t: string) => Number(t.replace(/[.,]/g, ""));
+  const exceso = n(pedido[1]) - n(limite[1]);
+  return Number.isFinite(exceso) && exceso > 0 ? exceso : null;
+}
+
+/** Por debajo de esto la respuesta ya no sirve: sobra la conversación, no el hueco. */
+const MINIMO_UTIL = 1024;
+/** Un poco de aire: el proveedor cuenta los tokens de forma algo distinta. */
+const MARGEN = 256;
+
 async function readError(res: Response): Promise<string> {
   const raw = await res.text().catch(() => "");
   try {
@@ -363,8 +400,11 @@ export async function* streamCompat(opts: {
       }),
     });
 
+  /** La petición no cupo en el cupo por minuto, aunque se recortara. */
+  let peticionEnorme = false;
+
   /**
-   * Pide la respuesta y, si el 400 va del tamaño y no del modelo, insiste.
+   * Pide la respuesta y, si lo que falla es el tamaño y no el modelo, insiste.
    *
    * Aquí se juntaban dos cosas que no tienen nada que ver. En modo código se
    * piden 16.384 tokens de respuesta, y hay modelos que no llegan a tanto o que
@@ -377,18 +417,37 @@ export async function* streamCompat(opts: {
    * Así que ante un 400 se mira de qué habla: si habla de tokens, se reintenta
    * con el otro nombre del parámetro y bajando el tope a la mitad. Solo si el
    * error no va de eso se da el modelo por perdido.
+   *
+   * Y lo mismo con el cupo por minuto: ahí no sobra el tope, sobra la suma de
+   * la conversación y el tope. Se recorta lo justo y se reintenta, porque
+   * cambiar de modelo por esto sería dejar de usar el bueno sin motivo.
    */
   const pedir = async (model: string) => {
     let tope = maxTokens(opts.speed, opts.modo);
     let nombreNuevo = false;
     let res = await open(model, tope, nombreNuevo);
 
-    for (let intento = 0; intento < 3 && res.status === 400; intento++) {
+    for (let intento = 0; intento < 4 && !res.ok; intento++) {
       const detalle = await res.clone().text().catch(() => "");
-      if (!/token/i.test(detalle)) break;
+
+      // No cabe la petición entera en el cupo por minuto. Se recorta el hueco
+      // de la respuesta justo lo que sobra y se vuelve a intentar; si ni
+      // dejándole el mínimo cabe, es la conversación la que ya no entra y no
+      // hay recorte que lo arregle.
+      if (esPeticionEnorme(detalle)) {
+        peticionEnorme = true;
+        const exceso = excesoPorMinuto(detalle);
+        const recortado = exceso === null ? Math.floor(tope / 2) : tope - exceso - MARGEN;
+        if (recortado < MINIMO_UTIL) break;
+        tope = recortado;
+        res = await open(model, tope, nombreNuevo);
+        continue;
+      }
+
+      if (res.status !== 400 || !/token/i.test(detalle)) break;
 
       if (!nombreNuevo) nombreNuevo = true;
-      else tope = Math.max(2048, Math.floor(tope / 2));
+      else tope = Math.max(MINIMO_UTIL, Math.floor(tope / 2));
 
       res = await open(model, tope, nombreNuevo);
     }
@@ -409,6 +468,8 @@ export async function* streamCompat(opts: {
   // primero fue "has llegado al límite" y los respaldos fallan por otra cosa,
   // contar lo último es contar el síntoma y esconder la causa.
   const primerEstado = res.ok ? 0 : res.status;
+  // Y si lo que falló fue el tamaño: eso se le cuenta al usuario de otra manera.
+  const primeroEnorme = !res.ok && peticionEnorme;
 
   /**
    * Otros modelos que la cuenta tenga, para cuando el elegido no sirve.
@@ -446,7 +507,9 @@ export async function* streamCompat(opts: {
     retirado: el 429 se convertía en un 404 y la aplicación acababa diciendo
     que habían retirado todos los modelos. Ni era verdad ni ayudaba.
   */
-  if (res.status === 429) {
+  // El 413 entra aquí por lo mismo: en Groq el cupo por minuto es de cada
+  // modelo, así que otro modelo tiene su propio cupo entero sin gastar.
+  if (res.status === 429 || res.status === 413) {
     olvidarModelo(opts.provider, wanted);
     for (const candidato of (await alternativas()).slice(0, 4)) {
       res = await pedir(candidato);
@@ -459,6 +522,12 @@ export async function* streamCompat(opts: {
   }
 
   // Agotados los respaldos, se explica la causa PRIMERA, no la última.
+  if (!res.ok && primeroEnorme)
+    throw new CompatError(
+      "Esta conversación ya pesa demasiado para mandarla entera de una vez: entre lo hablado y los archivos creados no cabe en un solo mensaje. Abre una conversación nueva y cuéntale ahí solo lo que quieras seguir haciendo; irá igual de rápido y sin este tope.",
+      413,
+    );
+
   if (!res.ok && primerEstado === 429)
     throw new CompatError(
       `Has llegado al límite gratuito de ${preset.label.split(" ")[0]} por ahora. Se renueva solo en unos minutos. Mientras tanto puedes seguir en el chat normal, que gasta menos.`,

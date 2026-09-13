@@ -27,6 +27,20 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.3",
+    // La penumbra es la sombra de fuera, la que deja pasar parte de la luz:
+    // aquí es justo eso, dejar pasar solo lo que hace falta de lo hablado.
+    nombre: "Penumbra",
+    titulo: "Conversaciones largas que no se atascan",
+    entrada:
+      "Podías pedirle tres o cuatro proyectos seguidos y al quinto se paraba. Ya no: ahora se lleva de la conversación solo lo que necesita.",
+    puntos: [
+      "En ECLIPSE CODE ya no arrastra los archivos de todas las versiones anteriores, así que le queda mucho más sitio para escribir el nuevo entero.",
+      "Si la petición se pasa del cupo del minuto, recorta lo justo y lo reintenta sola, sin enseñarte un error.",
+      "Y cuando de verdad no cabe, te lo dice en cristiano y te propone qué hacer, en vez de soltarte el error en inglés del proveedor.",
+    ],
+  },
+  {
     version: "2.2",
     // La corona es el anillo de luz que solo se ve cuando hay eclipse: lo que
     // estaba ahí todo el rato y por fin se puede mirar.

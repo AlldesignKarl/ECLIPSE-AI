@@ -226,3 +226,39 @@ export function archivosEjecutables(markdown: string): GeneratedFile[] {
   });
   return hayPagina ? archivos : [];
 }
+
+/**
+ * Adelgaza la conversación antes de mandarla.
+ *
+ * Una charla de ECLIPSE CODE engorda muy deprisa: cada respuesta lleva un
+ * archivo entero dentro, y a los cuatro cubos de Rubik la conversación pesa
+ * más que todo lo demás junto. Como se manda entera en cada mensaje, se acaba
+ * chocando con el límite por minuto del proveedor —"Request too large"— y deja
+ * de responder justo cuando más contexto hay.
+ *
+ * Lo que se quita son las versiones viejas del código. La última se conserva
+ * entera, porque es sobre la que se pide el cambio; de las anteriores basta
+ * con saber que existieron. Nadie pide "vuelve a la versión de hace cuatro",
+ * y si lo pidiera, ahí está el panel de cada mensaje con sus archivos.
+ */
+export function aligerarHistorial<T extends { role: string; content: string }>(
+  mensajes: T[],
+): T[] {
+  const ultimoConCodigo = mensajes.reduce(
+    (ultimo, m, i) => (m.role === "assistant" && m.content.includes("\u0060\u0060\u0060") ? i : ultimo),
+    -1,
+  );
+
+  return mensajes.map((m, i) => {
+    if (m.role !== "assistant" || i === ultimoConCodigo) return m;
+    if (!m.content.includes("\u0060\u0060\u0060")) return m;
+
+    return {
+      ...m,
+      content: m.content.replace(
+        /^\u0060\u0060\u0060[^\n]*\n[\s\S]*?\n?^\u0060\u0060\u0060[ \t]*$/gm,
+        "[código de una versión anterior, omitido para no repetirlo]",
+      ),
+    };
+  });
+}
