@@ -779,6 +779,24 @@ const CONVERSION = `Convertir la imagen a otro formato (PNG, JPG, WEBP o PDF):
   Si te piden las dos cosas, retoca primero y avisa de que la conversión se
   pide sobre la imagen ya retocada.`;
 
+/**
+ * Las instrucciones para TERMINAR un archivo cortado, que son otras.
+ *
+ * Aquí no hace falta nada de lo de siempre: ni quién es, ni cómo se diseña una
+ * página, ni el manual de 3D. Lo único que tiene que hacer es seguir escribiendo
+ * donde se quedó. Y eso importa mucho más de lo que parece: el cupo por minuto
+ * se reparte entre lo que se manda y lo que se escribe, así que quitar cuatro
+ * mil tokens de instrucciones es dejar cuatro mil libres para terminar el
+ * archivo. Con el prompt entero, la continuación se cortaba otra vez.
+ */
+export const SEGUIR = `Estás terminando un archivo que se cortó a medias por falta de espacio.
+
+Continúa EXACTAMENTE donde se quedó: tu respuesta empieza por el carácter
+siguiente al último que se escribió, aunque sea a mitad de una palabra o de una
+etiqueta. No repitas nada de lo ya escrito. No vuelvas a abrir el bloque de
+código. No saludes, no expliques y no resumas. Solo el resto del archivo, hasta
+terminarlo y cerrar el bloque con tres acentos graves.`;
+
 export function buildSystemPrompt(opts: {
   mode: Mode;
   plan: Plan;

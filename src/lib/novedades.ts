@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.17",
+    // La corona completa: el anillo entero, sin el trozo que faltaba.
+    nombre: "Completa",
+    titulo: "Los archivos largos salen enteros",
+    entrada:
+      "Si el código era largo se quedaba a medias, y al darle a continuar empezaba otra vez desde cero. Ahora sigue donde lo dejó y lo termina en el mismo mensaje.",
+    puntos: [
+      "Ya no hace falta pulsar nada: si se queda a medias, sigue solo hasta terminarlo, hasta dos veces.",
+      "Y sigue de verdad: retoma por el carácter exacto donde se cortó y las dos mitades se cosen en un solo archivo. Antes volvía a empezar y se cortaba por el mismo sitio.",
+      "Para continuar usa instrucciones mínimas. Los cuatro mil tokens que se ahorra ahí son los que le faltaban para llegar al final del archivo.",
+    ],
+  },
+  {
     version: "2.16",
     // El disco: el sol tapado entero, sin agujeros. Como el logo ahora.
     nombre: "Disco",

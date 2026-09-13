@@ -22,6 +22,7 @@ import {
   archivosEjecutables,
   extractFiles,
   leerConversion,
+  pegarContinuacion,
   leerRetoque,
   projectName,
 } from "@/lib/project";
@@ -426,8 +427,32 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
     [upsert],
   );
 
+  /** Lo que se le dice para que termine lo que dejó a medias. */
+  const PIDE_SEGUIR =
+    "Continúa exactamente donde se cortó tu respuesta anterior, sin repetir nada " +
+    "y sin reabrir el bloque de código, hasta terminar el archivo.";
+
+  const runChatRef = useRef<
+    ((c: string, h: Message[], m: Mode, d?: string, v?: number) => Promise<void>) | null
+  >(null);
+
   const runChat = useCallback(
-    async (conversationId: string, history: Message[], currentMode: Mode) => {
+    async (
+      conversationId: string,
+      history: Message[],
+      currentMode: Mode,
+      /*
+        El id del mensaje que hay que TERMINAR, si esto es una continuación.
+
+        Sin esto, "que siga" era un mensaje más: el modelo empezaba de cero,
+        volvía a quedarse sin espacio por el mismo sitio y quedaban dos medias
+        respuestas en vez de una entera. Con esto, lo que escriba se cose al
+        final del mensaje cortado y el archivo sale completo donde estaba.
+      */
+      continuarDe?: string,
+      /** Cuántas veces se ha continuado ya sola. Para no encadenarlo sin fin. */
+      vuelta = 0,
+    ) => {
       const controller = new AbortController();
       abortRef.current = controller;
       bufferRef.current = { text: "", thinking: "" };
@@ -460,6 +485,9 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
             mode: currentMode,
             speed: prefs.speed,
             deepSearch: prefs.deepSearch,
+            // Continuar va con instrucciones mínimas: lo que no se manda en
+            // instrucciones queda libre para terminar el archivo.
+            continuar: Boolean(continuarDe),
             // Sin adelgazar, cada archivo generado se vuelve a mandar entero
             // en todos los mensajes siguientes y la conversación choca con el
             // límite por minuto del proveedor.
@@ -616,7 +644,49 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       document.removeEventListener("visibilitychange", alOcultarse);
       clearEnCurso();
 
-      upsert(conversationId, (c) => ({ ...c, messages: [...c.messages, reply] }));
+      // Si la continuación falló sin escribir nada, el mensaje se queda como
+      // estaba: cortado, con su botón. Pintar un error encima sería peor.
+      if (continuarDe && failure && !text.trim()) {
+        setStream({ text: "", thinking: "" });
+        setPasosVivos([]);
+        setStatus("idle");
+        abortRef.current = null;
+        return;
+      }
+
+      if (continuarDe) {
+        upsert(conversationId, (c) => ({
+          ...c,
+          messages: c.messages.map((m) => {
+            if (m.id !== continuarDe) return m;
+
+            const entero = pegarContinuacion(m.content, text);
+            const trozos = currentMode === "code" ? extractFiles(entero) : archivosEjecutables(entero);
+
+            return {
+              ...m,
+              content: entero,
+              cortado: cortado || undefined,
+              error: failure,
+              // Los archivos se rehacen sobre el texto ya cosido: es lo que
+              // convierte las dos mitades en un proyecto entero.
+              artifacts: trozos.length
+                ? [
+                    {
+                      type: "code" as const,
+                      files: trozos,
+                      title:
+                        m.artifacts?.find((a) => a.type === "code")?.title ?? "proyecto",
+                    },
+                    ...(m.artifacts ?? []).filter((a) => a.type !== "code"),
+                  ]
+                : m.artifacts,
+            };
+          }),
+        }));
+      } else {
+        upsert(conversationId, (c) => ({ ...c, messages: [...c.messages, reply] }));
+      }
       setStream({ text: "", thinking: "" });
       setPasosVivos([]);
 
@@ -648,11 +718,39 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       if (pedido && original && !failure)
         await convertir(conversationId, reply.id, original, pedido);
 
+      /*
+        Se ha quedado a medias: se sigue solo, sin que haya que pedirlo.
+
+        El botón de "que siga" funciona, pero tener que pulsarlo es un fallo de
+        la aplicación asomando: lo que se pidió fue un archivo entero. Así que
+        se continúa aquí mismo, con las instrucciones mínimas, y el usuario ve
+        el archivo completarse. Como mucho dos veces seguidas: si a la tercera
+        sigue sin caber, se deja el botón y que decida él.
+      */
+      const quedaCortado = cortado && !failure;
+      const aQuienTerminar = continuarDe ?? reply.id;
+      const yaEscrito = continuarDe ? undefined : reply;
+
+      if (quedaCortado && vuelta < 2) {
+        const peticion = makeMessage("user", PIDE_SEGUIR);
+        const base = yaEscrito ? [...history, yaEscrito] : history;
+        await runChatRef.current?.(
+          conversationId,
+          [...base, peticion],
+          currentMode,
+          aQuienTerminar,
+          vuelta + 1,
+        );
+        return;
+      }
+
       setStatus("idle");
       abortRef.current = null;
     },
     [convertir, plan, prefs.speed, prefs.deepSearch, retocar, scheduleFlush, upsert],
   );
+
+  runChatRef.current = runChat;
 
   const runImage = useCallback(
     /**
@@ -704,6 +802,33 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       }
     },
     [upsert],
+  );
+
+  /**
+   * Terminar una respuesta que se quedó a medias.
+   *
+   * No es un mensaje nuevo: la petición de seguir no se guarda en la
+   * conversación ni se le enseña a nadie, y lo que escriba se cose al final del
+   * mensaje cortado. Para el usuario es el mismo mensaje, que se completa.
+   */
+  const continuar = useCallback(
+    async (messageId: string) => {
+      if (busy || !active) return;
+
+      const hasta = active.messages.findIndex((m) => m.id === messageId);
+      if (hasta === -1) return;
+
+      const peticion = makeMessage("user", PIDE_SEGUIR);
+
+      stickToBottom.current = true;
+      await runChat(
+        active.id,
+        [...active.messages.slice(0, hasta + 1), peticion],
+        active.messages[hasta].mode ?? mode,
+        messageId,
+      );
+    },
+    [active, busy, mode, runChat],
   );
 
   const send = useCallback(
@@ -906,11 +1031,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
                         ? retry
                         : undefined
                     }
-                    onContinuar={() =>
-                      void send(
-                        "Se ha cortado. Continúa y devuélveme el archivo entero y terminado, no solo la parte que falta.",
-                      )
-                    }
+                    onContinuar={() => void continuar(m.id)}
                     onArreglar={(fallo) =>
                       void send(
                         `Al abrir la vista previa da este error:\n\n${fallo}\n\nArréglalo y devuélveme el archivo completo y corregido.`,

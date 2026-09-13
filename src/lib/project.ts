@@ -245,6 +245,68 @@ export function leerRetoque(texto: string): { limpio: string; encargo?: string }
 }
 
 /**
+ * Pega la continuación de una respuesta cortada con lo que ya había.
+ *
+ * Cuando una respuesta se corta por falta de espacio, lo que hacía falta era
+ * seguir, no volver a empezar: pedirle el archivo entero otra vez lo único que
+ * consigue es que se corte por el mismo sitio. Así que se le pide que siga
+ * exactamente donde estaba y aquí se cosen las dos mitades, que es lo que
+ * convierte dos respuestas a medias en un archivo entero.
+ *
+ * Dos cosas hay que limpiar por el camino, porque los modelos las hacen casi
+ * siempre: volver a abrir el bloque de código que estaba abierto, y repetir las
+ * últimas líneas por si acaso.
+ */
+export function pegarContinuacion(anterior: string, continuacion: string): string {
+  if (!continuacion.trim()) return anterior;
+
+  let nuevo = continuacion;
+  const bloqueAbierto = (anterior.match(/^```/gm) ?? []).length % 2 === 1;
+
+  // Lo que hay que quitar, si está: la frase de cortesía y la reapertura del
+  // bloque. Dos pasadas, porque suelen venir las dos seguidas y quitar una deja
+  // la otra al principio.
+  if (bloqueAbierto) {
+    for (let i = 0; i < 2; i++) {
+      nuevo = nuevo
+        .replace(/^\s*[^\n]{0,80}(contin[úu]o|sigo|aqu[íi] va|retomo|prosigo)[^\n]{0,40}\n+/i, "")
+        .replace(/^\s*```[^\n]*\n/, "");
+    }
+  }
+
+  /*
+    Y aquí un detalle que costó una prueba: los espacios del principio NO se
+    quitan siempre.
+
+    Si lo anterior se cortó a mitad de una línea, el primer carácter de la
+    continuación es la letra siguiente, y quitarle un espacio o un salto pega
+    dos palabras que no iban juntas. Solo se limpian cuando lo anterior ya
+    terminaba en un salto de línea y por tanto no falta nada en medio.
+  */
+  if (/\n[ \t]*$/.test(anterior)) {
+    // Lo anterior terminó en línea nueva: delante no falta nada.
+    nuevo = nuevo.replace(/^\s+/, "");
+  } else {
+    // Se cortó a mitad de línea. Un salto de línea aquí es el modelo
+    // empezando renglón por su cuenta y sobra; un espacio suelto, en cambio,
+    // puede ser parte del código —"camera, {" y " left: -80"— y se respeta.
+    nuevo = nuevo.replace(/^[ \t]*[\r\n]+\s*/, "").replace(/^[ \t]{2,}/, " ");
+  }
+
+  // Repetición: si el final de lo anterior vuelve a aparecer al principio de lo
+  // nuevo, sobra una de las dos copias. Del solape más largo al más corto.
+  const cola = anterior.slice(-400);
+  for (let largo = cola.length; largo >= 24; largo--) {
+    if (nuevo.startsWith(cola.slice(-largo))) {
+      nuevo = nuevo.slice(largo);
+      break;
+    }
+  }
+
+  return anterior + nuevo;
+}
+
+/**
  * Lee la petición de convertir la imagen a otro formato.
  *
  * Igual que el retoque, pero para algo que no tiene nada de artístico: pasar la

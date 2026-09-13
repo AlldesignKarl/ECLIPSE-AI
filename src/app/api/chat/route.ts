@@ -8,7 +8,7 @@ import { CompatError, type CompatProvider } from "@/lib/openai-compat";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { herramientasPara } from "@/lib/tools/registro";
 import { currentPlan } from "@/lib/plan-server";
-import { buildSystemPrompt, partes3D } from "@/lib/prompts";
+import { buildSystemPrompt, partes3D, SEGUIR } from "@/lib/prompts";
 import { activeProvider, providerForTurn, providerSearches } from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
 import { priceLabelLive, stripeAvailable } from "@/lib/stripe";
@@ -32,6 +32,8 @@ interface Body {
   speed: Speed;
   /** Fuerza la búsqueda web aunque el modo sea conversación. */
   deepSearch?: boolean;
+  /** Esto no es una respuesta nueva: es terminar una que se cortó. */
+  continuar?: boolean;
 }
 
 const PRO_MODES: Mode[] = ["code"];
@@ -177,15 +179,17 @@ async function runAnthropic(
       system: [
         {
           type: "text",
-          text: buildSystemPrompt({
-            ...(await product("anthropic")),
-            mode: opts.mode,
-            plan: opts.plan,
-            web: opts.wantsWeb,
-            engine: "anthropic",
-            conImagen: ultimaConImagen(opts.body.messages),
-            tres3D: partes3D(opts.body.messages),
-          }),
+          text: opts.body.continuar
+            ? SEGUIR
+            : buildSystemPrompt({
+                ...(await product("anthropic")),
+                mode: opts.mode,
+                plan: opts.plan,
+                web: opts.wantsWeb,
+                engine: "anthropic",
+                conImagen: ultimaConImagen(opts.body.messages),
+                tres3D: partes3D(opts.body.messages),
+              }),
           cache_control: { type: "ephemeral" },
         },
       ],
@@ -269,15 +273,17 @@ async function runGoogle(
   send({ t: "status", v: opts.wantsWeb ? "buscando" : "pensando" });
 
   const key = await resolveKey("google");
-  const sistema = buildSystemPrompt({
-    ...(await product("google")),
-    mode: opts.mode,
-    plan: opts.plan,
-    web: opts.wantsWeb,
-    engine: "google",
-    conImagen: ultimaConImagen(opts.body.messages),
-    tres3D: partes3D(opts.body.messages),
-  });
+  const sistema = opts.body.continuar
+    ? SEGUIR
+    : buildSystemPrompt({
+        ...(await product("google")),
+        mode: opts.mode,
+        plan: opts.plan,
+        web: opts.wantsWeb,
+        engine: "google",
+        conImagen: ultimaConImagen(opts.body.messages),
+        tres3D: partes3D(opts.body.messages),
+      });
 
   for await (const event of streamChat({
     system: sistema,
@@ -349,16 +355,18 @@ async function runCompat(
   const stream = conversarConHerramientas({
     provider: opts.provider,
     key: await resolveKey(opts.provider),
-    system: buildSystemPrompt({
-      ...(await product(opts.provider)),
-      mode: opts.mode,
-      plan: opts.plan,
-      web: puedeBuscar,
-      engine: opts.provider,
-      conImagen: ultimaConImagen(opts.body.messages),
-      tres3D: partes3D(opts.body.messages),
-      conHerramientas: herramientas.map((h) => h.nombre),
-    }),
+    system: opts.body.continuar
+      ? SEGUIR
+      : buildSystemPrompt({
+          ...(await product(opts.provider)),
+          mode: opts.mode,
+          plan: opts.plan,
+          web: puedeBuscar,
+          engine: opts.provider,
+          conImagen: ultimaConImagen(opts.body.messages),
+          tres3D: partes3D(opts.body.messages),
+          conHerramientas: herramientas.map((h) => h.nombre),
+        }),
     turns: opts.body.messages,
     speed: opts.speed,
     mode: opts.mode,
