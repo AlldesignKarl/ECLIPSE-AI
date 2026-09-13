@@ -38,7 +38,94 @@ export interface Grabacion {
   cancelar: () => void;
 }
 
-export async function grabar(): Promise<Grabacion> {
+export interface OpcionesGrabacion {
+  /**
+   * Se llama cuando la persona lleva un rato callada después de haber hablado.
+   * Sirve para cerrar la grabación sola, sin tener que volver a pulsar.
+   */
+  alCallar?: () => void;
+  /** Cuánto silencio hay que oír para darlo por terminado. */
+  silencioMs?: number;
+  /** Tope de seguridad: si el micro se queda abierto, se cierra igualmente. */
+  maximoMs?: number;
+}
+
+/**
+ * Escucha el volumen del micrófono y avisa cuando se hace el silencio.
+ *
+ * Mide el nivel real de la onda, no si hay "voz": distinguir voz de ruido
+ * necesitaría bastante más maquinaria y aquí no hace falta. Lo que sí hace
+ * falta es no cortar antes de que la persona empiece a hablar, así que hasta
+ * que no se supera el umbral una vez, el silencio no cuenta.
+ *
+ * Los dos umbrales no son el mismo a propósito: se entra en "hablando" con uno
+ * alto y se sale con otro más bajo. Con un único umbral, las pausas normales
+ * entre palabras harían que el nivel lo cruzara sin parar en los dos sentidos.
+ */
+function vigilarSilencio(stream: MediaStream, opciones: OpcionesGrabacion): () => void {
+  const { alCallar, silencioMs = 2500, maximoMs = 120000 } = opciones;
+  if (!alCallar) return () => {};
+
+  const Audio = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Audio) return () => {};
+
+  let ctx: AudioContext;
+  try {
+    ctx = new Audio();
+  } catch {
+    return () => {};
+  }
+
+  const analizador = ctx.createAnalyser();
+  analizador.fftSize = 1024;
+  ctx.createMediaStreamSource(stream).connect(analizador);
+
+  const muestras = new Float32Array(analizador.fftSize);
+  const HABLANDO = 0.022;
+  const CALLADO = 0.012;
+
+  let haHablado = false;
+  let calladoDesde = 0;
+  let terminado = false;
+  const inicio = Date.now();
+
+  const rematar = () => {
+    if (terminado) return;
+    terminado = true;
+    alCallar();
+  };
+
+  const reloj = window.setInterval(() => {
+    if (terminado) return;
+
+    analizador.getFloatTimeDomainData(muestras);
+    let suma = 0;
+    for (const v of muestras) suma += v * v;
+    const nivel = Math.sqrt(suma / muestras.length);
+
+    const ahora = Date.now();
+    if (ahora - inicio > maximoMs) return rematar();
+
+    if (nivel > HABLANDO) {
+      haHablado = true;
+      calladoDesde = 0;
+      return;
+    }
+
+    if (!haHablado || nivel > CALLADO) return;
+
+    if (!calladoDesde) calladoDesde = ahora;
+    else if (ahora - calladoDesde >= silencioMs) rematar();
+  }, 120);
+
+  return () => {
+    terminado = true;
+    window.clearInterval(reloj);
+    void ctx.close().catch(() => {});
+  };
+}
+
+export async function grabar(opciones: OpcionesGrabacion = {}): Promise<Grabacion> {
   if (!grabacionDisponible())
     throw new VozError("Este navegador no sabe grabar audio.");
 
@@ -66,7 +153,12 @@ export async function grabar(): Promise<Grabacion> {
   };
   rec.start();
 
-  const soltar = () => stream.getTracks().forEach((t) => t.stop());
+  const dejarDeVigilar = vigilarSilencio(stream, opciones);
+
+  const soltar = () => {
+    dejarDeVigilar();
+    stream.getTracks().forEach((t) => t.stop());
+  };
 
   return {
     parar: () =>

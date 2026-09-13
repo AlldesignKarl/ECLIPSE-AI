@@ -33,6 +33,16 @@ interface Body {
 
 const PRO_MODES: Mode[] = ["bot"];
 
+/**
+ * ¿El último mensaje del usuario trae una foto? De eso depende que se le
+ * explique al modelo que puede devolverla retocada. Solo se mira el último:
+ * ofrecer retocar una imagen de hace veinte mensajes confunde más que ayuda.
+ */
+function ultimaConImagen(messages: Turn[]): boolean {
+  const ultimo = [...messages].reverse().find((m) => m.role === "user");
+  return Boolean(ultimo?.attachments?.some((a) => a.kind === "image"));
+}
+
 /** Lo que ECLIPSE tiene que saber de su propia app: precio, pago y clave. */
 async function product(provider: Awaited<ReturnType<typeof activeProvider>>) {
   return {
@@ -161,6 +171,7 @@ async function runAnthropic(
             plan: opts.plan,
             web: opts.wantsWeb,
             engine: "anthropic",
+            conImagen: ultimaConImagen(opts.body.messages),
           }),
           cache_control: { type: "ephemeral" },
         },
@@ -251,6 +262,7 @@ async function runGoogle(
       plan: opts.plan,
       web: opts.wantsWeb,
       engine: "google",
+      conImagen: ultimaConImagen(opts.body.messages),
     }),
     turns: opts.body.messages,
     speed: opts.speed,
@@ -302,6 +314,7 @@ async function runCompat(
       plan: opts.plan,
       web: false,
       engine: opts.provider,
+      conImagen: ultimaConImagen(opts.body.messages),
     }),
     turns: opts.body.messages,
     speed: opts.speed,

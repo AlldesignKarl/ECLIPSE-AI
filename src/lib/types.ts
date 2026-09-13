@@ -79,6 +79,7 @@ export type Status =
   | "procesando"
   | "escribiendo"
   | "generando_imagen"
+  | "retocando_imagen"
   | "programando"
   | "esperando";
 
@@ -91,6 +92,7 @@ export const STATUS_LABEL: Record<Status, string> = {
   procesando: "Procesando",
   escribiendo: "Escribiendo",
   generando_imagen: "Creando la imagen",
+  retocando_imagen: "Retocando tu imagen",
   programando: "Escribiendo código",
   esperando: "Sin cuota ahora mismo, reintentando solo",
 };

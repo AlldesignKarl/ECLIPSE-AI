@@ -192,6 +192,72 @@ async function cloudflareImage(prompt: string): Promise<ImageResult> {
   return { dataUrl: `data:image/jpeg;base64,${image}`, provider: `cloudflare/${model}` };
 }
 
+/**
+ * Retocar una imagen que ya existe, en vez de dibujar una nueva.
+ *
+ * Es "imagen a imagen": el modelo parte de la foto original y la vuelve a
+ * pintar siguiendo una instrucción. `strength` manda más que el prompt: es
+ * cuánto se le permite alejarse del original. Bajo retoca la luz y el detalle
+ * dejando la escena donde está; alto devuelve otra imagen distinta que solo se
+ * parece de lejos, y entonces ya no es un retoque.
+ *
+ * Solo lo hace Cloudflare. Los otros motores gratuitos dibujan desde cero y no
+ * saben partir de una imagen dada, así que aquí no hay cadena de respaldo: si
+ * Cloudflare no está configurado, se dice y ya.
+ */
+export async function editImage(opts: {
+  /** La imagen original, en base64 y sin la cabecera `data:`. */
+  b64: string;
+  /** Qué hay que cambiar, en inglés y concreto. */
+  prompt: string;
+  /** Entre 0 y 1. Por defecto, un retoque conservador. */
+  fuerza?: number;
+}): Promise<ImageResult> {
+  if (!cloudflareConfigured())
+    throw new MediaError(
+      "Para retocar imágenes hace falta Cloudflare configurado en el servidor.",
+      501,
+    );
+
+  const model = process.env.CLOUDFLARE_EDIT_MODEL || "@cf/runwayml/stable-diffusion-v1-5-img2img";
+  const fuerza = Math.min(0.85, Math.max(0.1, opts.fuerza ?? 0.42));
+
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/${model}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        prompt: opts.prompt,
+        image_b64: opts.b64,
+        strength: fuerza,
+        guidance: 7.5,
+        num_steps: 20,
+      }),
+      signal: AbortSignal.timeout(48000),
+    },
+  );
+
+  if (!res.ok) throw new MediaError(`Cloudflare: ${await readError(res)}`, res.status);
+
+  const mime = res.headers.get("content-type") ?? "";
+  if (mime.startsWith("image/")) {
+    const bytes = Buffer.from(await res.arrayBuffer());
+    return {
+      dataUrl: `data:${mime.split(";")[0]};base64,${bytes.toString("base64")}`,
+      provider: `cloudflare/${model}`,
+    };
+  }
+
+  const json = (await res.json()) as { result?: { image?: string } };
+  const image = json.result?.image;
+  if (!image) throw new MediaError("Cloudflare no ha devuelto la imagen retocada.", 502);
+  return { dataUrl: `data:image/png;base64,${image}`, provider: `cloudflare/${model}` };
+}
+
 async function openaiImage(prompt: string): Promise<ImageResult> {
   const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
   const res = await fetch("https://api.openai.com/v1/images/generations", {

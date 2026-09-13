@@ -167,3 +167,25 @@ function quitarBloqueSinCerrar(markdown: string): string {
 
 /** Como FENCE, pero sin estado: `proseOnly` puede llamarse en cualquier orden. */
 const FENCE_ANY = /^```[^\n`]*\n[\s\S]*?\n?^```[ \t]*$/gm;
+
+/**
+ * La línea con la que el modelo pide que se retoque la imagen adjunta.
+ *
+ * Va al final de su respuesta, sola, con el formato `[EDITAR: ...]`. Se saca de
+ * ahí y se borra del texto: es una instrucción para el motor de imagen, no algo
+ * que nadie tenga que leer. Si el modelo no la escribe, es que la foto ya
+ * estaba bien y no hay nada que hacer.
+ */
+export function leerRetoque(texto: string): { limpio: string; encargo?: string } {
+  const marca = /\[\s*EDITAR\s*:\s*([\s\S]+?)\]\s*$/i;
+  const hallazgo = texto.match(marca);
+  if (!hallazgo) return { limpio: texto };
+
+  const encargo = hallazgo[1].trim();
+  const limpio = texto.slice(0, hallazgo.index).trimEnd();
+
+  // "no", "ninguno" y compañía: el modelo ha contestado a la marca en vez de
+  // omitirla. Es lo mismo que no pedir nada.
+  if (!encargo || /^(no|nada|ninguno|none|n\/a)\b/i.test(encargo)) return { limpio };
+  return { limpio, encargo };
+}

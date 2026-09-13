@@ -79,8 +79,17 @@ export default function Composer({
 }: Props) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const galleryInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+
+  /**
+   * Lo que hay escrito ahora mismo. La grabación puede cerrarse sola desde un
+   * temporizador, y allí `value` sería el de cuando empezó a hablar: al añadir
+   * lo dictado se borraría todo lo escrito mientras tanto.
+   */
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   /* ------------------------------ Voz ------------------------------ */
   /**
@@ -123,14 +132,28 @@ export default function Composer({
   const añadir = (texto: string) => {
     const limpio = texto.trim();
     if (!limpio) return;
-    const previo = value.trimEnd();
-    onChange(previo ? `${previo} ${limpio}` : limpio);
+    const previo = valueRef.current.trimEnd();
+    const junto = previo ? `${previo} ${limpio}` : limpio;
+    valueRef.current = junto;
+    onChange(junto);
   };
+
+  /**
+   * El cierre por silencio llega desde un temporizador que se creó al empezar a
+   * grabar, así que apunta a la función de aquel render. Guardando la última
+   * aquí, el temporizador siempre llama a la buena.
+   */
+  const terminarRef = useRef<() => void>(() => {});
 
   const empezarGrabacion = async () => {
     setAvisoVoz(null);
     try {
-      grabacionRef.current = await grabar();
+      grabacionRef.current = await grabar({
+        // Dos segundos y medio de silencio: lo justo para no cortar en una
+        // pausa de pensar, y poco para no dejar a nadie esperando.
+        silencioMs: 2500,
+        alCallar: () => terminarRef.current(),
+      });
       setEscuchando(true);
     } catch (err) {
       setAvisoVoz(err instanceof VozError ? err.message : "No se ha podido abrir el micrófono.");
@@ -153,14 +176,18 @@ export default function Composer({
     }
   };
 
+  terminarRef.current = () => void terminarGrabacion();
+
   const empezarDictado = () => {
     setAvisoVoz(null);
-    baseRef.current = value ? `${value.trimEnd()} ` : "";
+    baseRef.current = valueRef.current ? `${valueRef.current.trimEnd()} ` : "";
 
     const sesion = dictar({
       onTexto: ({ firme, parcial }) => {
         if (firme) baseRef.current += firme;
-        onChange((baseRef.current + parcial).replace(/\s+/g, " ").trimStart());
+        const junto = (baseRef.current + parcial).replace(/\s+/g, " ").trimStart();
+        valueRef.current = junto;
+        onChange(junto);
       },
       onFin: () => {
         dictadoRef.current = null;
@@ -320,7 +347,7 @@ export default function Composer({
             }}
             placeholder={
               escuchando
-                ? "Te escucho… pulsa el micrófono al terminar"
+                ? "Te escucho… cuando calles, lo paso a texto"
                 : transcribiendo
                   ? "Pasando tu voz a texto…"
                   : PLACEHOLDERS[mode]
@@ -329,12 +356,30 @@ export default function Composer({
           />
 
           <div className="flex items-center gap-1.5 px-2.5 pb-2.5">
-            {/* Galería y archivos. El móvil pide permiso a las fotos al abrirlo. */}
+            {/*
+              Tres entradas y no una sola con todo mezclado. El móvil decide qué
+              selector abre mirando los tipos que se le piden: en cuanto aparece
+              un PDF en la lista, Android abre el explorador de archivos, y ahí
+              las fotos quedan enterradas en carpetas. Pidiendo solo imágenes y
+              vídeos abre la galería directamente, que es de donde sale casi
+              todo lo que se adjunta.
+            */}
+            <input
+              ref={galleryInput}
+              type="file"
+              multiple
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={(e) => {
+                onFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
             <input
               ref={fileInput}
               type="file"
               multiple
-              accept="image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif,video/*,application/pdf,text/*,.md,.csv,.json,.ts,.tsx,.js,.py,.yml,.yaml"
+              accept="application/pdf,text/*,.md,.csv,.json,.ts,.tsx,.js,.py,.yml,.yaml"
               className="hidden"
               onChange={(e) => {
                 onFiles(e.target.files);
@@ -354,12 +399,12 @@ export default function Composer({
               }}
             />
             <button
-              onClick={() => fileInput.current?.click()}
+              onClick={() => galleryInput.current?.click()}
               className="rounded-lg p-2 text-muted transition hover:bg-raised hover:text-ink"
-              aria-label="Adjuntar de la galería"
-              title="Fotos, vídeos, PDF o texto"
+              aria-label="Fotos y vídeos de la galería"
+              title="Fotos y vídeos de la galería"
             >
-              <Icon.Paperclip width={17} height={17} />
+              <Icon.Image width={21} height={21} />
             </button>
             <button
               onClick={() => cameraInput.current?.click()}
@@ -367,7 +412,15 @@ export default function Composer({
               aria-label="Escanear con la cámara"
               title="Escanear con la cámara"
             >
-              <Icon.Camera width={17} height={17} />
+              <Icon.Camera width={21} height={21} />
+            </button>
+            <button
+              onClick={() => fileInput.current?.click()}
+              className="rounded-lg p-2 text-muted transition hover:bg-raised hover:text-ink"
+              aria-label="Adjuntar un archivo"
+              title="PDF, documentos y texto"
+            >
+              <Icon.Paperclip width={21} height={21} />
             </button>
 
             <button
@@ -381,8 +434,8 @@ export default function Composer({
                 transcribiendo
                   ? "Pasando tu voz a texto…"
                   : escuchando
-                    ? "Parar y pasar a texto"
-                    : "Hablar en vez de escribir"
+                    ? "Se para solo al callar, o púlsalo para cortar ya"
+                    : "Hablar en vez de escribir (se añade a lo que ya hay escrito)"
               }
               className={`relative rounded-lg p-2 transition ${
                 escuchando
@@ -392,7 +445,7 @@ export default function Composer({
                     : "text-muted hover:bg-raised hover:text-ink"
               }`}
             >
-              <Icon.Mic width={17} height={17} className={transcribiendo ? "animate-pulse" : ""} />
+              <Icon.Mic width={21} height={21} className={transcribiendo ? "animate-pulse" : ""} />
               {escuchando && (
                 <span className="mic-latido absolute inset-0 rounded-lg border border-danger/50" />
               )}

@@ -16,7 +16,7 @@ import ThinkingBar from "./ThinkingBar";
 import UpgradeDialog, { type Billing } from "./UpgradeDialog";
 import Welcome from "./Welcome";
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
-import { extractFiles, projectName } from "@/lib/project";
+import { extractFiles, leerRetoque, projectName } from "@/lib/project";
 import { readSSE } from "@/lib/sse";
 import {
   clearEnCurso,
@@ -309,6 +309,46 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
   );
 
   /* ------------------------------- Envío ------------------------------- */
+  /**
+   * Pide la versión retocada de una imagen que adjuntó el usuario y la cuelga
+   * del mensaje que ya está en pantalla.
+   *
+   * Si falla, se queda la explicación sin imagen y se dice por qué: haber
+   * contado qué mejorarías sigue valiendo aunque el retoque no salga.
+   */
+  const retocar = useCallback(
+    async (conversationId: string, messageId: string, original: Attachment, encargo: string) => {
+      setStatus("retocando_imagen");
+      try {
+        const res = await fetch("/api/image/edit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imagen: original.data, prompt: encargo }),
+        });
+        const data = (await res.json()) as { dataUrl?: string; error?: string };
+        if (!res.ok || !data.dataUrl) throw new Error(data.error ?? "No se ha podido retocar.");
+
+        upsert(conversationId, (c) => ({
+          ...c,
+          messages: c.messages.map((m) =>
+            m.id === messageId
+              ? { ...m, artifacts: [...(m.artifacts ?? []), { type: "image" as const, url: data.dataUrl!, prompt: encargo }] }
+              : m,
+          ),
+        }));
+      } catch (err) {
+        const motivo = err instanceof Error ? err.message : "No se ha podido retocar la imagen.";
+        upsert(conversationId, (c) => ({
+          ...c,
+          messages: c.messages.map((m) =>
+            m.id === messageId ? { ...m, content: `${m.content}\n\n_(No he podido dejarte la versión retocada: ${motivo})_` } : m,
+          ),
+        }));
+      }
+    },
+    [upsert],
+  );
+
   const runChat = useCallback(
     async (conversationId: string, history: Message[], currentMode: Mode) => {
       const controller = new AbortController();
@@ -392,8 +432,10 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         rafRef.current = null;
       }
 
-      const text = bufferRef.current.text;
       const thinking = bufferRef.current.thinking;
+      // La marca de retoque no se le enseña a nadie: es un encargo para el
+      // motor de imagen, y el texto tiene que leerse igual sin ella.
+      const { limpio: text, encargo } = leerRetoque(bufferRef.current.text);
       const files = currentMode === "bot" ? extractFiles(text) : [];
 
       const reply = makeMessage("assistant", text, {
@@ -418,10 +460,17 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
 
       upsert(conversationId, (c) => ({ ...c, messages: [...c.messages, reply] }));
       setStream({ text: "", thinking: "" });
+
+      // La explicación ya está a la vista; la imagen retocada llega detrás, que
+      // tarda lo suyo. Al revés se quedaría la pantalla en blanco esperando.
+      const original = history.at(-1)?.attachments?.find((a) => a.kind === "image");
+      if (encargo && original && !failure)
+        await retocar(conversationId, reply.id, original, encargo);
+
       setStatus("idle");
       abortRef.current = null;
     },
-    [prefs.speed, prefs.deepSearch, scheduleFlush, upsert],
+    [prefs.speed, prefs.deepSearch, retocar, scheduleFlush, upsert],
   );
 
   const runImage = useCallback(
