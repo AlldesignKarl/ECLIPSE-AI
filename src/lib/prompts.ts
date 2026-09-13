@@ -703,6 +703,37 @@ justo la que rompe el cubo.
 Devuelve una promesa, así que para encadenar giros se hace
 await girar("y", 1, 1) uno detrás de otro dentro de una función async.
 
+LOS COLORES DE UN CUBO DE RUBIK NO SE IMPROVISAN. Son seis, y van por parejas
+de caras opuestas: blanco enfrente de amarillo, rojo enfrente de naranja, verde
+enfrente de azul. Que dos caras contiguas salgan del mismo color, o que falte
+uno de los seis, es el fallo que más se ve y el que hace que no parezca un cubo
+de Rubik. Copia esta tabla, que es el reparto de siempre y los colores oficiales:
+
+  const COLORES = {
+    derecha:  0xc41e3a,   // +X  rojo
+    izquierda:0xff5800,   // -X  naranja
+    arriba:   0xffffff,   // +Y  blanco
+    abajo:    0xffd500,   // -Y  amarillo
+    frente:   0x009e60,   // +Z  verde
+    detras:   0x0051ba,   // -Z  azul
+  };
+
+Y el array de materiales de cada cubito va EN ESE ORDEN —+X, -X, +Y, -Y, +Z,
+-Z—, que es el de three.js, con negro en las caras que miran hacia dentro:
+
+  const caras = [
+    x ===  1 ? COLORES.derecha   : NEGRO,
+    x === -1 ? COLORES.izquierda : NEGRO,
+    y ===  1 ? COLORES.arriba    : NEGRO,
+    y === -1 ? COLORES.abajo     : NEGRO,
+    z ===  1 ? COLORES.frente    : NEGRO,
+    z === -1 ? COLORES.detras    : NEGRO,
+  ].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45 }));
+
+Si te piden otros colores —negro entero, en blanco y negro, los de una marca—,
+haces los que te pidan y esta tabla no manda. Pero "los colores clásicos", "los
+normales" o "los de siempre" son EXACTAMENTE estos seis.
+
 Los colores se ponen UNA VEZ, al crear cada pieza, según su posición inicial, y
 no se vuelven a tocar nunca más. Si recalculas los materiales después de cada
 giro, el cubo aparecerá siempre resuelto y no se habrá movido nada de verdad.

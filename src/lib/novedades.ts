@@ -27,6 +27,18 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.21",
+    // Los seis colores, cada uno en su cara.
+    nombre: "Seis caras",
+    titulo: "Los colores clásicos son los clásicos",
+    entrada:
+      "Pedías un cubo de Rubik con los colores de siempre y se los inventaba. Ahora los tiene escritos, uno por cara.",
+    puntos: [
+      "Blanco contra amarillo, rojo contra naranja, verde contra azul: las parejas de caras opuestas de un cubo de verdad, con los colores oficiales exactos.",
+      "Y si le pides otros —negro entero, los de una marca— manda lo que tú digas. Lo de la tabla solo vale para «los clásicos», «los normales» o «los de siempre».",
+    ],
+  },
+  {
     version: "2.20",
     // Afinar: el instrumento ya está, ahora suena como debe.
     nombre: "Afinado",
