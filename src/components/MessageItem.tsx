@@ -17,6 +17,8 @@ interface Props {
   onRetry?: () => void;
   /** Mandarle a ECLIPSE el error de la vista previa para que lo corrija. */
   onArreglar?: (fallo: string) => void;
+  /** Pedirle que continúe una respuesta que se quedó a medias. */
+  onContinuar?: () => void;
 }
 
 export default function MessageItem({
@@ -25,6 +27,7 @@ export default function MessageItem({
   showThinking,
   onRetry,
   onArreglar,
+  onContinuar,
 }: Props) {
   const [copied, setCopied] = useState(false);
   const [abierto, setAbierto] = useState(false);
@@ -151,6 +154,25 @@ export default function MessageItem({
           {message.error && (
             <div className="mt-2 rounded-xl border border-danger/30 bg-danger/8 px-3.5 py-2.5 text-[13px] text-danger">
               {message.error}
+            </div>
+          )}
+
+          {/*
+            Se quedó a medias por longitud. Sin decirlo, el archivo incompleto
+            parece un fallo cualquiera; dicho, es un botón.
+          */}
+          {!streaming && message.cortado && onContinuar && (
+            <div className="mt-3 rounded-xl border border-line bg-panel/50 px-3.5 py-3">
+              <p className="text-[12.5px] leading-snug text-muted">
+                La respuesta se ha quedado a medias porque era muy larga.
+              </p>
+              <button
+                onClick={onContinuar}
+                className="mt-2 flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12.5px] text-ink transition hover:border-halo/40"
+              >
+                <Icon.Refresh width={13} height={13} />
+                Que siga desde donde lo dejó
+              </button>
             </div>
           )}
 

@@ -386,6 +386,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       let sources: Source[] = [];
       let elapsedMs: number | undefined;
       let modelo: string | undefined;
+      let cortado = false;
       const pasos: Paso[] = [];
       const archivos: Artifact[] = [];
       setPasosVivos([]);
@@ -480,8 +481,9 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
                 failure = event.v;
                 break;
               case "meta": {
-                const v = event.v as { modelo?: string };
+                const v = event.v as { modelo?: string; cortado?: boolean };
                 if (v.modelo) modelo = v.modelo;
+                if (v.cortado) cortado = true;
                 break;
               }
               case "done":
@@ -524,6 +526,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         elapsedMs,
         mode: currentMode,
         modelo,
+        cortado: cortado || undefined,
         pasos: pasos.length ? pasos : undefined,
         artifacts:
           files.length || archivos.length
@@ -812,6 +815,11 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
                       m.role === "assistant" && i === active.messages.length - 1 && !busy
                         ? retry
                         : undefined
+                    }
+                    onContinuar={() =>
+                      void send(
+                        "Se ha cortado. Continúa y devuélveme el archivo entero y terminado, no solo la parte que falta.",
+                      )
                     }
                     onArreglar={(fallo) =>
                       void send(

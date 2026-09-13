@@ -45,7 +45,22 @@ function extensionFor(lang: string): string {
  * Acepta ```lang ruta/archivo.ext y también una línea con la ruta justo antes
  * del bloque (`**src/app.ts**`, `// src/app.ts`, `Archivo: src/app.ts`).
  */
-export function extractFiles(markdown: string): GeneratedFile[] {
+/**
+ * Cierra el último bloque si se quedó abierto.
+ *
+ * Cuando una respuesta se corta por ser demasiado larga, el bloque de código
+ * se queda sin su línea de cierre. Y sin cierre no hay archivo: el panel con
+ * la vista previa y el ZIP no aparecía, y quedaba el código en crudo, que es
+ * justo lo que no queríamos. Con el cierre puesto, el archivo existe —aunque
+ * esté a medias— y se puede ver, descargar y pedir que lo continúe.
+ */
+function cerrarBloqueAbierto(markdown: string): string {
+  const aperturas = (markdown.match(/^```/gm) ?? []).length;
+  return aperturas % 2 === 1 ? `${markdown}\n\u0060\u0060\u0060` : markdown;
+}
+
+export function extractFiles(texto: string): GeneratedFile[] {
+  const markdown = cerrarBloqueAbierto(texto);
   const files: GeneratedFile[] = [];
   const used = new Map<string, number>();
   FENCE.lastIndex = 0;

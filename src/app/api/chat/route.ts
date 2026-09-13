@@ -369,6 +369,7 @@ async function runCompat(
     if (event.archivo) send({ t: "file", v: event.archivo });
     if (event.imagen) send({ t: "artifact", v: event.imagen });
     if (event.pensando) send({ t: "thinking", v: event.pensando });
+    if (event.cortado) send({ t: "meta", v: { cortado: true } });
     if (event.modelo) {
       modelo = event.modelo;
       send({ t: "meta", v: { modelo } });

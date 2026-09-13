@@ -308,6 +308,8 @@ function envModel(provider: CompatProvider): string {
 
 export interface CompatEvent {
   text?: string;
+  /** El proveedor ha parado por quedarse sin espacio, no por terminar. */
+  cortado?: boolean;
   /** Su deliberación, que va a otro sitio y no a la respuesta. */
   pensando?: string;
   /** Qué modelo acabó respondiendo. Se manda una vez, al abrir. */
@@ -518,6 +520,7 @@ export async function* streamCompat(opts: {
       try {
         const chunk = JSON.parse(payload) as {
           choices?: {
+            finish_reason?: string | null;
             delta?: {
               content?: string;
               tool_calls?: {
@@ -530,6 +533,11 @@ export async function* streamCompat(opts: {
           error?: { message?: string };
         };
         if (chunk.error?.message) throw new CompatError(chunk.error.message);
+
+        // "length" quiere decir que se ha quedado a medias, no que haya
+        // terminado: sin avisar, el usuario ve un archivo incompleto y no sabe
+        // que solo hace falta pedirle que siga.
+        if (chunk.choices?.[0]?.finish_reason === "length") yield { cortado: true };
 
         const delta = chunk.choices?.[0]?.delta;
         if (delta?.content) {

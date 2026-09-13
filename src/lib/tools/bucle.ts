@@ -39,6 +39,8 @@ export interface EventoBucle {
   modelo?: string;
   /** Su deliberación, para el panel de razonamiento. */
   pensando?: string;
+  /** Se quedó a medias por falta de espacio. */
+  cortado?: boolean;
 }
 
 /** Cuántas rondas de herramientas se permiten según lo que pida el usuario. */
@@ -83,6 +85,7 @@ export async function* conversarConHerramientas(opts: {
     for await (const e of streamCompat({ ...opts, modo: opts.mode })) {
       if (e.text) yield { texto: e.text };
       if (e.pensando) yield { pensando: e.pensando };
+      if (e.cortado) yield { cortado: true };
       if (e.modelo) yield { modelo: e.modelo };
     }
     return;
@@ -121,6 +124,7 @@ export async function* conversarConHerramientas(opts: {
           yield { texto: e.text };
         }
         if (e.pensando) yield { pensando: e.pensando };
+        if (e.cortado) yield { cortado: true };
         if (e.modelo && vuelta === 0) yield { modelo: e.modelo };
         if (e.llamadas) llamadas = e.llamadas;
       }

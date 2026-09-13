@@ -94,6 +94,8 @@ export interface Message {
   pasos?: Paso[];
   /** Qué modelo escribió esta respuesta. Sirve para saber por qué salió así. */
   modelo?: string;
+  /** Se quedó a medias por longitud: se le puede pedir que siga. */
+  cortado?: boolean;
 }
 
 export interface Conversation {
