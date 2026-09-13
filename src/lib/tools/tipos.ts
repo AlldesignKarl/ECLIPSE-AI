@@ -36,6 +36,8 @@ export interface Resultado {
   fuentes?: Source[];
   /** Un archivo generado, listo para descargar. */
   archivo?: { nombre: string; mime: string; contenido: string; base64?: boolean };
+  /** Una imagen creada o retocada, ya en data URL y con su marca de agua. */
+  imagen?: { url: string; prompt: string };
   /** Si la herramienta no pudo hacer su trabajo, y por qué en cristiano. */
   error?: string;
 }

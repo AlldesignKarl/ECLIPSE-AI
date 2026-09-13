@@ -21,7 +21,6 @@ interface Props {
   onStop: () => void;
   busy: boolean;
   mode: Mode;
-  onModeChange: (m: Mode) => void;
   plan: Plan;
   speed: Speed;
   onSpeedChange: (s: Speed) => void;
@@ -35,19 +34,6 @@ interface Props {
   restantes?: number | null;
 }
 
-const MODES: {
-  id: Mode;
-  label: string;
-  icon: typeof Icon.Search;
-  pro: boolean;
-  hint: string;
-}[] = [
-  { id: "chat", label: "Chat", icon: Icon.Sparkle, pro: false, hint: "Conversación general" },
-  { id: "search", label: "Investigar", icon: Icon.Search, pro: false, hint: "Busca y contrasta fuentes" },
-  { id: "image", label: "Imagen", icon: Icon.Image, pro: false, hint: "Crear una imagen" },
-  { id: "bot", label: "Bot", icon: Icon.Bot, pro: true, hint: "Bots de Discord, Telegram…" },
-];
-
 const SPEEDS: { id: Speed; label: string; icon: typeof Icon.Bolt }[] = [
   { id: "rapido", label: "Rápido", icon: Icon.Bolt },
   { id: "equilibrado", label: "Equilibrado", icon: Icon.Sparkle },
@@ -56,9 +42,7 @@ const SPEEDS: { id: Speed; label: string; icon: typeof Icon.Bolt }[] = [
 
 const PLACEHOLDERS: Record<Mode, string> = {
   chat: "Pregunta lo que quieras…",
-  search: "¿Qué quieres que investigue?",
-  image: "Describe la imagen que quieres crear…",
-  bot: "Describe el bot que quieres: qué plataforma y qué tiene que hacer…",
+  code: "Describe lo que quieres que programe…",
 };
 
 export default function Composer({
@@ -68,7 +52,6 @@ export default function Composer({
   onStop,
   busy,
   mode,
-  onModeChange,
   plan,
   speed,
   onSpeedChange,
@@ -244,30 +227,6 @@ export default function Composer({
   return (
     <div className="px-3 pb-3 safe-bottom sm:px-4 sm:pb-4">
       <div className="mx-auto w-full max-w-3xl">
-        {/* Selector de modo */}
-        <div className="scroll-thin mb-2 flex gap-1.5 overflow-x-auto pb-1">
-          {MODES.map((m) => {
-            const locked = m.pro && plan !== "pro";
-            const active = mode === m.id;
-            return (
-              <button
-                key={m.id}
-                title={locked ? `${m.hint} · Plan Pro` : m.hint}
-                onClick={() => (locked ? onProNeeded() : onModeChange(m.id))}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] transition ${
-                  active
-                    ? "border-halo/35 bg-raised text-ink"
-                    : "border-line-soft bg-panel/50 text-muted hover:border-line hover:text-ink"
-                }`}
-              >
-                <m.icon width={14} height={14} className={locked ? "text-pro" : undefined} />
-                {m.label}
-                {locked && <span className="text-[10px] font-semibold text-pro">PRO</span>}
-              </button>
-            );
-          })}
-        </div>
-
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -471,7 +430,7 @@ export default function Composer({
               ))}
             </div>
 
-            {mode !== "image" && (
+            {mode === "chat" && (
               <button
                 onClick={() => onDeepSearch(!deepSearch)}
                 title="Obligar a buscar en la web y priorizar fuentes académicas"
@@ -491,7 +450,7 @@ export default function Composer({
             {busy ? (
               <button
                 onClick={onStop}
-                className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-raised text-ink transition hover:border-danger/50 hover:text-danger"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-raised text-ink transition hover:border-danger/50 hover:text-danger"
                 aria-label="Detener"
               >
                 <Icon.Stop width={15} height={15} />
@@ -500,7 +459,7 @@ export default function Composer({
               <button
                 onClick={submit}
                 disabled={!value.trim() && attachments.length === 0}
-                className="grid h-9 w-9 place-items-center rounded-xl bg-ink text-void transition disabled:cursor-not-allowed disabled:bg-line disabled:text-faint"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-ink text-void transition disabled:cursor-not-allowed disabled:bg-line disabled:text-faint"
                 aria-label="Enviar"
               >
                 <Icon.Send width={17} height={17} />

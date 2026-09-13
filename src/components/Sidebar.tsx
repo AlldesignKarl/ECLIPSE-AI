@@ -14,6 +14,8 @@ interface Props {
   plan: Plan;
   onSelect: (id: string) => void;
   onNew: () => void;
+  /** Abre una conversación nueva de ECLIPSE CODE. */
+  onCode: () => void;
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onUpgrade: () => void;
@@ -32,6 +34,7 @@ export default function Sidebar({
   plan,
   onSelect,
   onNew,
+  onCode,
   onDelete,
   onRename,
   onUpgrade,
@@ -114,6 +117,24 @@ export default function Sidebar({
           >
             <Icon.Plus width={17} height={17} />
             Nueva conversación
+          </button>
+
+          {/*
+            ECLIPSE CODE vive aquí y no entre los modos del chat porque no es
+            una forma de conversar: lo que devuelve son archivos de un proyecto.
+            Metido en la caja de escribir era una pestaña más que había que
+            acordarse de pulsar; aquí es lo que es, un sitio al que se entra.
+          */}
+          <button
+            onClick={() => {
+              onCode();
+              onClose();
+            }}
+            className="flex w-full items-center gap-2.5 rounded-xl border border-pro/25 bg-gradient-to-r from-pro/10 to-transparent px-3.5 py-2.5 text-sm font-medium text-ink transition hover:border-pro/45"
+          >
+            <Icon.Code width={17} height={17} className="text-pro" />
+            <span className="flex-1 text-left tracking-[0.04em]">ECLIPSE CODE</span>
+            {plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>}
           </button>
 
           <div className="relative">

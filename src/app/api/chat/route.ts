@@ -34,7 +34,7 @@ interface Body {
   deepSearch?: boolean;
 }
 
-const PRO_MODES: Mode[] = ["bot"];
+const PRO_MODES: Mode[] = ["code"];
 
 /**
  * ¿El último mensaje del usuario trae una foto? De eso depende que se le
@@ -143,7 +143,9 @@ async function runAnthropic(
         {
           type: "web_search_20260209",
           name: "web_search",
-          max_uses: opts.mode === "search" ? 8 : 4,
+          // Con la búsqueda forzada se le dan más usos: es cuando de verdad
+          // se le está pidiendo que contraste, no que mire una cosa.
+          max_uses: opts.body.deepSearch ? 8 : 4,
         },
         { type: "web_fetch_20260209", name: "web_fetch", max_uses: 4, citations: { enabled: true } },
       ]
@@ -348,7 +350,15 @@ async function runCompat(
 
     if (event.herramienta) {
       send({ t: "tool", v: event.herramienta });
-      send({ t: "status", v: event.herramienta.nombre === "buscar_web" ? "buscando" : "procesando" });
+      send({
+        t: "status",
+        v:
+          event.herramienta.nombre === "buscar_web"
+            ? "buscando"
+            : event.herramienta.nombre === "crear_imagen"
+              ? "generando_imagen"
+              : "procesando",
+      });
     }
     if (event.hecha) send({ t: "tool_done", v: event.hecha });
     if (event.fuentes) {
@@ -356,6 +366,7 @@ async function runCompat(
       send({ t: "sources", v: fuentes });
     }
     if (event.archivo) send({ t: "file", v: event.archivo });
+    if (event.imagen) send({ t: "artifact", v: event.imagen });
   }
 
   // Las fuentes ya se han ido mandando clasificadas durante el bucle, así que
@@ -409,7 +420,7 @@ export async function POST(req: NextRequest) {
   }
 
   const wantsWeb =
-    providerSearches(provider) && (mode === "search" || body.deepSearch === true || mode === "chat");
+    providerSearches(provider) && (mode === "chat" || body.deepSearch === true);
   const started = Date.now();
 
   const stream = new ReadableStream<Uint8Array>({

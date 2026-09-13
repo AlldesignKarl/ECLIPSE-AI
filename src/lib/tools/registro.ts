@@ -1,6 +1,7 @@
 import type { Mode, Plan } from "../types";
 import { herramientaBuscar } from "./buscar";
 import { herramientaDocumento } from "./documentos";
+import { herramientaImagen } from "./imagen";
 import type { Contexto, Herramienta, Resultado } from "./tipos";
 
 /**
@@ -9,14 +10,18 @@ import type { Contexto, Herramienta, Resultado } from "./tipos";
  * Añadir una es escribir su archivo y meterla en esta lista. Nada más: ni el
  * bucle, ni la ruta del chat, ni la interfaz saben cuántas hay ni cuáles son.
  */
-const TODAS: Herramienta[] = [herramientaBuscar, herramientaDocumento];
+const TODAS: Herramienta[] = [herramientaBuscar, herramientaImagen, herramientaDocumento];
 
-/** Qué herramientas puede usar cada modo. Lo que no está aquí, no se ofrece. */
+/**
+ * Qué herramientas puede usar cada modo. Lo que no está aquí, no se ofrece.
+ *
+ * En `code` no hay ninguna a propósito: ahí la respuesta son archivos de un
+ * proyecto, y un modelo con herramientas delante se distrae buscando en vez de
+ * escribir el código que le han pedido.
+ */
 const POR_MODO: Record<Mode, string[]> = {
-  chat: ["buscar_web", "crear_archivo"],
-  search: ["buscar_web", "crear_archivo"],
-  image: [],
-  bot: [],
+  chat: ["buscar_web", "crear_imagen", "crear_archivo"],
+  code: [],
 };
 
 /**

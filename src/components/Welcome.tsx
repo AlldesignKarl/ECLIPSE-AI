@@ -1,41 +1,37 @@
 "use client";
 
 import EclipseMark from "./EclipseMark";
-import type { Mode, Plan } from "@/lib/types";
+import type { Plan } from "@/lib/types";
 
 interface Props {
   plan: Plan;
-  onPick: (prompt: string, mode: Mode) => void;
+  onPick: (prompt: string) => void;
 }
 
-const SUGGESTIONS: { text: string; prompt: string; mode: Mode; tag: string }[] = [
+const SUGGESTIONS: { text: string; prompt: string; tag: string }[] = [
   {
     tag: "Investigar",
     text: "¿Qué dice la evidencia científica sobre dormir 8 horas?",
     prompt:
-      "¿Qué dice la evidencia científica actual sobre cuántas horas hay que dormir? Busca estudios universitarios recientes y dime qué hay de consenso y qué está en discusión.",
-    mode: "search",
+      "¿Qué dice la evidencia científica actual sobre cuántas horas hay que dormir? Busca estudios recientes y dime qué hay de consenso y qué está en discusión.",
+  },
+  {
+    tag: "Crear",
+    text: "Una imagen de un eclipse solar sobre el mar",
+    prompt:
+      "Créame una imagen de un eclipse solar total sobre un mar en calma, corona blanca muy definida, cielo casi negro y reflejo en el agua.",
   },
   {
     tag: "Explicar",
     text: "Explícame los agujeros negros como si tuviera 15 años",
     prompt:
       "Explícame qué es un agujero negro como si tuviera 15 años, con una analogía buena, y luego añade la versión rigurosa.",
-    mode: "chat",
-  },
-  {
-    tag: "Crear",
-    text: "Una imagen de un eclipse solar sobre el mar",
-    prompt:
-      "Un eclipse solar total sobre un mar en calma, corona blanca muy definida, cielo casi negro, reflejo en el agua, fotografía nítida, alto contraste.",
-    mode: "image",
   },
   {
     tag: "Escribir",
     text: "Un correo para negociar una subida de sueldo",
     prompt:
       "Escríbeme un correo breve y profesional para pedirle a mi jefe una reunión sobre una subida de sueldo. Llevo dos años en el puesto y he asumido más responsabilidades.",
-    mode: "chat",
   },
 ];
 
@@ -56,7 +52,7 @@ export default function Welcome({ plan, onPick }: Props) {
         {SUGGESTIONS.map((s) => (
           <button
             key={s.text}
-            onClick={() => onPick(s.prompt, s.mode)}
+            onClick={() => onPick(s.prompt)}
             className="group rounded-xl border border-line-soft bg-panel/40 p-3.5 text-left transition hover:border-line hover:bg-panel"
           >
             <span className="text-[10.5px] uppercase tracking-[0.14em] text-faint">{s.tag}</span>
@@ -67,7 +63,7 @@ export default function Welcome({ plan, onPick }: Props) {
 
       {plan === "free" && (
         <p className="mt-6 text-center text-[11.5px] text-faint">
-          Con el plan Pro se añaden la creación de bots y el modo Profundo.
+          Pídele lo que quieras: busca, crea imágenes y escribe archivos sin cambiar de sitio.
         </p>
         )}
       </div>

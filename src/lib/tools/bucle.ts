@@ -33,6 +33,8 @@ export interface EventoBucle {
   fuentes?: Source[];
   /** Un archivo listo para descargar. */
   archivo?: { nombre: string; mime: string; contenido: string };
+  /** Una imagen creada, ya con su marca de agua. */
+  imagen?: { url: string; prompt: string };
 }
 
 /** Cuántas rondas de herramientas se permiten según lo que pida el usuario. */
@@ -56,6 +58,7 @@ function leerArgumentos(crudo: string): Record<string, unknown> {
 function detalleDe(nombre: string, args: Record<string, unknown>): string {
   if (nombre === "buscar_web") return String(args.consulta ?? "");
   if (nombre === "crear_archivo") return String(args.nombre ?? "");
+  if (nombre === "crear_imagen") return String(args.descripcion ?? "").slice(0, 60);
   return "";
 }
 
@@ -146,6 +149,7 @@ export async function* conversarConHerramientas(opts: {
       }
 
       if (resultado.archivo) yield { archivo: resultado.archivo };
+      if (resultado.imagen) yield { imagen: resultado.imagen };
 
       yield {
         hecha: {

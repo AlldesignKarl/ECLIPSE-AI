@@ -43,6 +43,7 @@ import type {
   Source,
   Status,
 } from "@/lib/types";
+import { modoVigente } from "@/lib/types";
 
 const EMPTY_CAPS: Capabilities = {
   chat: true,
@@ -247,16 +248,23 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
     );
   }, []);
 
-  const newConversation = useCallback(() => {
-    if (busy) return;
-    const fresh = emptyConversation();
-    setConversations((list) => [fresh, ...list]);
-    setActiveId(fresh.id);
-    setInput("");
-    setAttachments([]);
-    setMode("chat");
-    return fresh;
-  }, [busy]);
+  const newConversation = useCallback(
+    (nuevoModo: Mode = "chat") => {
+      if (busy) return;
+      const fresh = emptyConversation();
+      // El título se pone ya: una conversación de CODE se reconoce en la lista
+      // sin tener que abrirla.
+      fresh.mode = nuevoModo;
+      if (nuevoModo === "code") fresh.title = "ECLIPSE CODE";
+      setConversations((list) => [fresh, ...list]);
+      setActiveId(fresh.id);
+      setInput("");
+      setAttachments([]);
+      setMode(nuevoModo);
+      return fresh;
+    },
+    [busy],
+  );
 
   const deleteConversation = (id: string) => {
     setConversations((list) => {
@@ -450,6 +458,11 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
                 setPasosVivos([...pasos]);
                 break;
               }
+              case "artifact": {
+                const v = event.v as { url: string; prompt: string };
+                archivos.push({ type: "image", url: v.url, prompt: v.prompt });
+                break;
+              }
               case "file": {
                 const v = event.v as { nombre: string; mime: string; contenido: string };
                 archivos.push({
@@ -486,7 +499,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       // La marca de retoque no se le enseña a nadie: es un encargo para el
       // motor de imagen, y el texto tiene que leerse igual sin ella.
       const { limpio: text, encargo } = leerRetoque(bufferRef.current.text);
-      const files = currentMode === "bot" ? extractFiles(text) : [];
+      const files = currentMode === "code" ? extractFiles(text) : [];
 
       const reply = makeMessage("assistant", text, {
         thinking: thinking || undefined,
@@ -609,9 +622,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
 
       if (conversation.messages.length === 0 && text) nameConversation(id, text);
 
-      if (currentMode === "image")
-        await runImage(id, text, ultimaImagen(conversation.messages));
-      else await runChat(id, history, currentMode);
+      await runChat(id, history, currentMode);
     },
     [
       input,
@@ -689,8 +700,18 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         conversations={conversations}
         activeId={activeId}
         plan={plan}
-        onSelect={setActiveId}
-        onNew={() => newConversation()}
+        onSelect={(id) => {
+          setActiveId(id);
+          // El modo viaja con la conversación: abrir una de CODE y que
+          // contestase como un chat normal sería desconcertante.
+          const elegida = conversations.find((c) => c.id === id);
+          setMode(modoVigente(elegida?.mode ?? elegida?.messages.at(-1)?.mode));
+        }}
+        onNew={() => newConversation("chat")}
+        onCode={() => {
+          if (plan !== "pro") return setUpgradeOpen(true);
+          newConversation("code");
+        }}
         onDelete={deleteConversation}
         onRename={(id, title) => upsert(id, (c) => ({ ...c, title }))}
         onUpgrade={() => setUpgradeOpen(true)}
@@ -760,10 +781,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
             {!active || active.messages.length === 0 ? (
               <Welcome
                 plan={plan}
-                onPick={(prompt, pickedMode) => {
-                  setMode(pickedMode);
-                  void send(prompt, pickedMode);
-                }}
+                onPick={(prompt) => void send(prompt)}
               />
             ) : (
               <>
@@ -820,7 +838,6 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           onStop={stop}
           busy={busy}
           mode={mode}
-          onModeChange={setMode}
           plan={plan}
           speed={prefs.speed}
           onSpeedChange={(speed) => setPrefs((p) => ({ ...p, speed }))}

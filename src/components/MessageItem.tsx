@@ -32,7 +32,7 @@ export default function MessageItem({
    * conversación se lee de un vistazo en vez de a base de scroll.
    */
   const enCodigo = streaming
-    ? message.mode === "bot"
+    ? message.mode === "code"
     : Boolean(message.artifacts?.some((a) => a.type === "code" && a.files?.length));
 
   const texto = useMemo(

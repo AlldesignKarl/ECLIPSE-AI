@@ -1,7 +1,29 @@
 export type Plan = "free" | "pro";
 
-/** Modos de trabajo del asistente. Los `pro` requieren plan Pro. */
-export type Mode = "chat" | "search" | "image" | "bot";
+/**
+ * Cómo trabaja el asistente.
+ *
+ * Solo dos, y a propósito. Antes había cuatro y había que elegir el correcto
+ * ANTES de escribir: pedir una imagen desde el modo Chat no creaba ninguna
+ * imagen. Eso obliga a la persona a saber cómo está hecha la aplicación por
+ * dentro. Ahora `chat` lo hace todo —busca, crea imágenes, escribe archivos—
+ * porque quien decide es el modelo con sus herramientas.
+ *
+ * `code` se queda aparte porque no es lo mismo: ahí la respuesta son archivos
+ * de un proyecto, no una conversación, y mezclarlo estorbaría a los dos.
+ *
+ * Los nombres viejos siguen en las conversaciones ya guardadas, así que se
+ * traducen al leerlas.
+ */
+export type Mode = "chat" | "code";
+
+/** Un modo de los de antes, tal y como quedó escrito en el móvil de alguien. */
+export type ModeGuardado = Mode | "search" | "image" | "bot";
+
+/** Traduce un modo antiguo al que existe hoy. */
+export function modoVigente(m: ModeGuardado | undefined): Mode {
+  return m === "bot" || m === "code" ? "code" : "chat";
+}
 
 export type Speed = "rapido" | "equilibrado" | "profundo";
 
@@ -79,6 +101,12 @@ export interface Conversation {
   createdAt: number;
   updatedAt: number;
   pinned?: boolean;
+  /**
+   * En qué modo vive esta conversación. Va aquí y no en el componente porque
+   * al cambiar de conversación tiene que cambiar con ella: si no, se abre una
+   * de ECLIPSE CODE y se contesta como si fuera un chat normal.
+   */
+  mode?: Mode;
 }
 
 /** Estados que se muestran junto al eclipse animado. */
