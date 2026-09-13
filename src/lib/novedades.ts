@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.27",
+    // Construir en vez de preguntar, y no inventarse lo que no se ve.
+    nombre: "Sin preguntas",
+    titulo: "Construye en vez de interrogarte",
+    entrada:
+      "Pedías una iglesia «como sea» y te soltaba treinta preguntas. Y al preguntar por una foto tuya, se inventaba otra. Las dos cosas, fuera.",
+    puntos: [
+      "En ECLIPSE CODE ya no se pregunta: se construye. Lo que falte lo decide él y te lo dice en una línea al final, para que lo cambies si no era eso.",
+      "Con una foto tuya delante ya no puede crear imágenes, salvo que se lo pidas. Antes podía devolverte una foto inventada de Nueva York como si fuera la respuesta a tu pregunta.",
+      "Y si se queda enganchado repitiendo la misma frase, se corta solo y te lo dice, en vez de llenar la pantalla mientras esperas.",
+    ],
+  },
+  {
     version: "2.26",
     // Preguntar antes, en vez de intentarlo y fallar.
     nombre: "Antes de mandar",

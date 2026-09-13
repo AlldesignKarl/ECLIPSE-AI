@@ -37,11 +37,42 @@ const POR_MODO: Record<Mode, string[]> = {
  * servidor. Ese último filtro es el que importa: ofrecerle una herramienta sin
  * su clave hace que la llame, falle y se quede sin respuesta que dar.
  */
-export async function herramientasPara(modo: Mode, plan: Plan): Promise<Herramienta[]> {
+/**
+ * ¿Está pidiendo una imagen NUEVA, o preguntando por la que ha adjuntado?
+ *
+ * Distinguirlo importa mucho más de lo que parece. Alguien manda una foto de
+ * unos edificios y pregunta de dónde son; si en ese momento se le ofrece la
+ * herramienta de crear imágenes, el modelo la usa —y devuelve una foto
+ * inventada de Nueva York como si fuera una respuesta—. Eso no es equivocarse:
+ * es fabricar algo que parece información y no lo es.
+ */
+function pideUnaImagenNueva(texto: string): boolean {
+  const t = texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  return (
+    /\b(crea|creame|crear|genera|generame|generar|dibuja|dibujame|haz|hazme|pinta|ilustra|quiero)\b/.test(t) &&
+    /\b(imagen|imagenes|foto|fotos|fotografia|ilustracion|dibujo|render|poster|logo|cartel)\b/.test(t)
+  );
+}
+
+export async function herramientasPara(
+  modo: Mode,
+  plan: Plan,
+  /** El último mensaje del usuario, para saber qué tiene sentido ofrecerle. */
+  ultimo?: { texto: string; conImagen: boolean },
+): Promise<Herramienta[]> {
   const permitidas = POR_MODO[modo] ?? [];
   const candidatas = TODAS.filter(
     (h) => permitidas.includes(h.nombre) && (!h.soloPro || plan === "pro"),
-  );
+  ).filter((h) => {
+    // Con una foto adjunta y sin pedir una nueva, crear imágenes se retira: lo
+    // que se quiere es que MIRE la suya, no que invente otra.
+    if (h.nombre !== "crear_imagen" || !ultimo?.conImagen) return true;
+    return pideUnaImagenNueva(ultimo.texto);
+  });
 
   const vivas = await Promise.all(
     candidatas.map(async (h) => ((await h.disponible()) ? h : null)),

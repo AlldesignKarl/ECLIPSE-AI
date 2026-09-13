@@ -1,3 +1,4 @@
+import { crearVigilanteDeBucle } from "./bucle-roto";
 import { crearSeparador } from "./pensamiento";
 import type { Attachment, Mode, Speed } from "./types";
 
@@ -445,8 +446,19 @@ async function elegirModelo(
     if (conOjos.length) return resueltoVista[provider] ?? (resueltoVista[provider] = conOjos[0]);
   }
 
+  /*
+    Lo que se resolvió antes, si sigue valiendo.
+
+    Con una salvedad: en una conversación NO puede contestar un modelo de
+    completar código. Se guarda por proveedor y vive mientras viva el servidor,
+    así que una elección mala hecha hace rato seguía contestando aunque las
+    preferencias ya se hubieran corregido. Y un modelo de completar contestando
+    en el chat no es solo peor: se engancha repitiendo la misma frase treinta
+    veces, que es lo que se vio.
+  */
   const guardado = modo === "code" ? resueltoCodigo[provider] : resolved[provider];
-  if (guardado) return guardado;
+  if (guardado && !(modo !== "code" && /code|codestral/i.test(guardado))) return guardado;
+  if (guardado) delete resolved[provider];
 
   // Los pequeños al final cuando hay que programar: así, entre dos que encajen
   // con el mismo patrón, gana el grande en vez de ganar el que salga antes.
@@ -843,6 +855,9 @@ export async function* streamCompat(opts: {
   const enObra = new Map<number, LlamadaCruda>();
   // Los modelos de razonamiento escriben su borrador entre <think> y </think>.
   const separador = crearSeparador();
+  // Y algunos se enganchan repitiendo la misma frase hasta gastar el turno.
+  const vigilante = crearVigilanteDeBucle();
+  let enBucle = false;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -884,7 +899,15 @@ export async function* streamCompat(opts: {
         if (delta?.content) {
           const { texto, pensando } = separador.trozo(delta.content);
           if (pensando) yield { pensando };
-          if (texto) yield { text: texto };
+          if (texto) {
+            yield { text: texto };
+            // Se ha enganchado: no va a decir nada nuevo, y cada palabra de más
+            // es presupuesto que se va y el usuario esperando.
+            if (vigilante.trozo(texto)) {
+              enBucle = true;
+              break;
+            }
+          }
         }
 
         for (const trozo of delta?.tool_calls ?? []) {
@@ -904,6 +927,12 @@ export async function* streamCompat(opts: {
         // Fragmento partido entre lecturas: seguimos.
       }
     }
+    if (enBucle) break;
+  }
+
+  if (enBucle) {
+    await reader.cancel().catch(() => {});
+    yield { text: "\n\n_(Me he quedado repitiéndome. Dale a Reintentar.)_" };
   }
 
   const final = separador.cerrar();

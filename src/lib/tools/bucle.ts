@@ -81,7 +81,11 @@ export async function* conversarConHerramientas(opts: {
   plan: Plan;
   signal?: AbortSignal;
 }): AsyncGenerator<EventoBucle> {
-  const herramientas = await herramientasPara(opts.mode, opts.plan);
+  const ultimoTurno = [...opts.turns].reverse().find((t) => t.role === "user");
+  const herramientas = await herramientasPara(opts.mode, opts.plan, {
+    texto: ultimoTurno?.content ?? "",
+    conImagen: Boolean(ultimoTurno?.attachments?.some((a) => a.kind === "image" && a.data)),
+  });
 
   // Sin herramientas que ofrecer, esto es una conversación normal y corriente.
   if (herramientas.length === 0) {

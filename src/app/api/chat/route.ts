@@ -354,7 +354,11 @@ async function runCompat(
     !opts.sinAbandonar && (await motoresConOjos(opts.provider)).length > 0;
   send({ t: "status", v: "pensando" });
 
-  const herramientas = await herramientasPara(opts.mode, opts.plan);
+  const ultimoTurno = [...opts.body.messages].reverse().find((m) => m.role === "user");
+  const herramientas = await herramientasPara(opts.mode, opts.plan, {
+    texto: ultimoTurno?.content ?? "",
+    conImagen: Boolean(ultimoTurno?.attachments?.some((a) => a.kind === "image" && a.data)),
+  });
   // Estos motores no navegan por su cuenta. Con un buscador configurado sí
   // pueden, pero a través de nuestra herramienta, así que lo que hay que
   // decirles cambia: sin ella, que no finjan haber buscado; con ella, cómo
