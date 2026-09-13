@@ -1,4 +1,4 @@
-import type { Attachment, Speed } from "./types";
+import type { Attachment, Mode, Speed } from "./types";
 
 /**
  * Motores que hablan el dialecto de OpenAI (`/chat/completions`). Con una sola
@@ -137,7 +137,17 @@ function toMessages(
   return out;
 }
 
-function maxTokens(speed: Speed): number {
+/**
+ * Cuánto se le deja escribir.
+ *
+ * Una conversación se responde de sobra con unos miles de tokens. Un proyecto
+ * de código, no: una página con diseño de verdad —tipografía, paleta, sus
+ * secciones con contenido escrito— pasa de las seiscientas líneas, y eso no
+ * cabe en 4.096 tokens. Con el presupuesto de charla, el modelo no es que
+ * escriba una página fea: escribe la página que le cabe.
+ */
+function maxTokens(speed: Speed, modo: Mode = "chat"): number {
+  if (modo === "code") return speed === "rapido" ? 8192 : 16384;
   if (speed === "rapido") return 2048;
   if (speed === "profundo") return 8192;
   return 4096;
@@ -203,6 +213,8 @@ export async function* streamCompat(opts: {
   tools?: unknown[];
   /** El ida y vuelta con las herramientas que ya ha ocurrido en esta respuesta. */
   extra?: TurnoExtra[];
+  /** De él depende cuánto se le deja escribir. */
+  modo?: Mode;
 }): AsyncGenerator<CompatEvent> {
   const preset = PRESETS[opts.provider];
   if (!opts.key)
@@ -215,7 +227,7 @@ export async function* streamCompat(opts: {
     JSON.stringify({
       model,
       messages: toMessages(opts.system, opts.turns, preset.vision.test(model), opts.extra ?? []),
-      max_tokens: maxTokens(opts.speed),
+      max_tokens: maxTokens(opts.speed, opts.modo),
       temperature: 0.7,
       stream: true,
       ...(opts.tools?.length ? { tools: opts.tools, tool_choice: "auto" } : {}),

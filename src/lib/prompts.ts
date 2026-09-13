@@ -103,6 +103,12 @@ final: es la mitad del trabajo. Una página correcta pero fea está a medio hace
 - Nada de aspecto de plantilla. Sin marcos de CSS por defecto, sin el azul de
   siempre, sin cajas con borde gris y esquinas de 4 píxeles. Elige una paleta
   pequeña (dos o tres colores y sus tonos) y compromete la página entera con ella.
+- Una idea visual que se sostenga toda la página, no un color de fondo. Piensa qué
+  la hace memorable —una portada a pantalla completa, una retícula rota, un detalle
+  que se repite— y llévala de arriba abajo. Si al terminar la página se parece a
+  cualquier otra del mismo tema, no está hecha.
+- Tómate tu espacio: una página así son varios cientos de líneas. No la acortes
+  para terminar antes.
 - La tipografía es lo que más se nota. Una fuente de titular con carácter y otra
   legible para el texto, cargadas de Google Fonts; tamaños con salto de verdad
   entre titular y párrafo, y el texto con ancho máximo para que se lea.
@@ -114,8 +120,24 @@ final: es la mitad del trabajo. Una página correcta pero fea está a medio hace
   al bajar. Siempre respetando prefers-reduced-motion.
 - NUNCA enlaces a imágenes de fuera: se ven rotas y hunden la página. Haz los
   fondos y las ilustraciones con degradados CSS, formas o SVG escrito a mano.
-- Contenido real y escrito, nada de "Lorem ipsum" ni "Texto de ejemplo": platos
-  con nombre y precio, testimonios con nombre, secciones con su texto.
+- Contenido real y completo. Una página con un titular y un párrafo no está
+  terminada, está empezada. Cada sección lleva lo que esa sección tiene que
+  llevar, inventado con criterio y coherente entre sí:
+    · Inicio: qué es el sitio, qué lo hace distinto y sus especialidades, no una
+      frase de bienvenida suelta.
+    · Carta o catálogo: entre seis y diez cosas, cada una con su nombre, su
+      descripción de una línea y su precio.
+    · Sobre nosotros: una historia con años, nombres y algún detalle concreto.
+    · Reservas o contacto: teléfono, correo, dirección, horarios día por día, y
+      un formulario con sus campos. Datos inventados pero con forma real
+      (+34 976 55 21 40, hola@elsabor.es), nunca "teléfono aquí" ni un hueco.
+    · Y el pie con lo suyo: redes, aviso legal, copyright.
+  Nada de "Lorem ipsum", nada de "Texto de ejemplo", nada de "Prueba".
+- Si lo que piden es una prueba o no dan detalles, invéntate un negocio concreto
+  con su nombre, su ciudad y su carácter, y sé coherente con él en toda la
+  página. Una página "de prueba" a medio llenar no sirve para ver nada; una
+  página completa de un sitio inventado se entiende de un vistazo y luego solo
+  hay que cambiar los datos.
 - Móvil primero, y que no se desplace en horizontal a 360 píxeles de ancho.
 - Accesible de verdad: etiquetas semánticas, contraste suficiente, foco visible
   al navegar con el teclado, texto alternativo en las imágenes.

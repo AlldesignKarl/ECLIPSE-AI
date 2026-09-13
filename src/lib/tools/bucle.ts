@@ -76,7 +76,8 @@ export async function* conversarConHerramientas(opts: {
 
   // Sin herramientas que ofrecer, esto es una conversación normal y corriente.
   if (herramientas.length === 0) {
-    for await (const e of streamCompat(opts)) if (e.text) yield { texto: e.text };
+    for await (const e of streamCompat({ ...opts, modo: opts.mode }))
+      if (e.text) yield { texto: e.text };
     return;
   }
 
@@ -103,6 +104,7 @@ export async function* conversarConHerramientas(opts: {
     try {
       for await (const e of streamCompat({
         ...opts,
+        modo: opts.mode,
         tools: ultima ? undefined : esquema,
         extra,
       })) {
@@ -118,7 +120,7 @@ export async function* conversarConHerramientas(opts: {
 
       // Primer intento fallido y sin una sola palabra escrita: se reintenta a
       // pelo. Si vuelve a fallar, ahí sí es un problema de verdad y sube.
-      for await (const e of streamCompat({ ...opts, tools: undefined })) {
+      for await (const e of streamCompat({ ...opts, modo: opts.mode, tools: undefined })) {
         if (e.text) yield { texto: e.text };
       }
       return;

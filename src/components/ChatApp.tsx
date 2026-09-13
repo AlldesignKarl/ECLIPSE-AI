@@ -781,6 +781,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
             {!active || active.messages.length === 0 ? (
               <Welcome
                 plan={plan}
+                mode={mode}
                 onPick={(prompt) => void send(prompt)}
               />
             ) : (
