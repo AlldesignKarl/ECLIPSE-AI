@@ -35,6 +35,8 @@ export interface EventoBucle {
   archivo?: { nombre: string; mime: string; contenido: string };
   /** Una imagen creada, ya con su marca de agua. */
   imagen?: { url: string; prompt: string };
+  /** El modelo que está respondiendo. */
+  modelo?: string;
 }
 
 /** Cuántas rondas de herramientas se permiten según lo que pida el usuario. */
@@ -76,8 +78,10 @@ export async function* conversarConHerramientas(opts: {
 
   // Sin herramientas que ofrecer, esto es una conversación normal y corriente.
   if (herramientas.length === 0) {
-    for await (const e of streamCompat({ ...opts, modo: opts.mode }))
+    for await (const e of streamCompat({ ...opts, modo: opts.mode })) {
       if (e.text) yield { texto: e.text };
+      if (e.modelo) yield { modelo: e.modelo };
+    }
     return;
   }
 
@@ -113,6 +117,7 @@ export async function* conversarConHerramientas(opts: {
           escritoAlgo = true;
           yield { texto: e.text };
         }
+        if (e.modelo && vuelta === 0) yield { modelo: e.modelo };
         if (e.llamadas) llamadas = e.llamadas;
       }
     } catch (err) {

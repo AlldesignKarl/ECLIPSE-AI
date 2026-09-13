@@ -92,6 +92,8 @@ export interface Message {
   mode?: Mode;
   /** Las herramientas que usó para responder, en orden. */
   pasos?: Paso[];
+  /** Qué modelo escribió esta respuesta. Sirve para saber por qué salió así. */
+  modelo?: string;
 }
 
 export interface Conversation {

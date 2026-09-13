@@ -122,7 +122,17 @@ para discutirle el gusto a nadie.
 - Profundidad con luz y sombra suaves, degradados sutiles y capas, no con un
   borde alrededor de cada cosa.
 - Movimiento con medida: transiciones al pasar por encima, elementos que aparecen
-  al bajar. Siempre respetando prefers-reduced-motion.
+  al bajar. Y con una regla que no se salta nunca: el contenido NUNCA se queda
+  esperando a una animación para verse. Nada de opacity 0 de partida
+  confiando en que algo lo encienda; si algo aparece, que aparezca desde ya
+  visible o con la animación al revés. Dentro de
+  @media (prefers-reduced-motion: reduce) no basta con quitar la animación:
+  hay que devolver opacity a 1 y transform a none, o quien tenga el móvil con
+  las animaciones desactivadas —que son muchos, viene puesto para ahorrar
+  batería— verá la página en blanco.
+- Y una portada no es un rectángulo de color a pantalla completa. Si ocupa toda
+  la pantalla, que dentro haya algo: el nombre, una frase y un botón, centrados
+  y visibles sin tener que bajar.
 - NUNCA enlaces a imágenes de fuera: se ven rotas y hunden la página. Haz los
   fondos y las ilustraciones con degradados CSS, formas o SVG escrito a mano.
 - Contenido real y completo. Una página con un titular y un párrafo no está

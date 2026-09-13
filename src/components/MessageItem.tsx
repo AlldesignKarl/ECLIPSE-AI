@@ -219,6 +219,16 @@ export default function MessageItem({
                   {(message.elapsedMs / 1000).toFixed(1)}s
                 </span>
               )}
+              {/* Qué modelo contestó. Cuando una respuesta sale floja, esto es
+                  la diferencia entre saberlo y adivinarlo. */}
+              {message.modelo && (
+                <span
+                  className="ml-1 max-w-[40%] truncate text-[11px] text-faint/70"
+                  title={`Respondido por ${message.modelo}`}
+                >
+                  · {message.modelo.split("/").pop()}
+                </span>
+              )}
             </div>
           )}
         </div>

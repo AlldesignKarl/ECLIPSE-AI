@@ -385,6 +385,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
 
       let sources: Source[] = [];
       let elapsedMs: number | undefined;
+      let modelo: string | undefined;
       const pasos: Paso[] = [];
       const archivos: Artifact[] = [];
       setPasosVivos([]);
@@ -478,6 +479,11 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
               case "error":
                 failure = event.v;
                 break;
+              case "meta": {
+                const v = event.v as { modelo?: string };
+                if (v.modelo) modelo = v.modelo;
+                break;
+              }
               case "done":
                 elapsedMs = (event.v.elapsedMs as number) ?? undefined;
                 break;
@@ -507,6 +513,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         error: failure,
         elapsedMs,
         mode: currentMode,
+        modelo,
         pasos: pasos.length ? pasos : undefined,
         artifacts:
           files.length || archivos.length

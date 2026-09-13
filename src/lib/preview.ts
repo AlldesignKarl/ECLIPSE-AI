@@ -156,6 +156,47 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
     // Un formulario sin servidor detrás haría lo mismo que los anclajes: irse
     // a la dirección de arriba y cargar ECLIPSE dentro del recuadro.
     document.addEventListener("submit", function (e) { e.preventDefault(); }, true);
+
+    /*
+      Red de seguridad contra la trampa más habitual de las apariciones.
+
+      El patrón de "aparecer al bajar" se escribe poniendo el elemento en
+      opacity: 0 y encendiéndolo con una animación. Cuando el móvil lleva las
+      animaciones desactivadas —viene puesto de fábrica en muchos para ahorrar
+      batería— la animación no corre y el contenido se queda invisible: se ve
+      un rectángulo de color enorme y vacío.
+
+      La señal no puede ser "tiene animación": cuando se desactivan, el propio
+      CSS suele escribir animation: none, así que el rastro desaparece
+      justo en el caso que hay que arreglar. Se usa dónde está el elemento:
+      lo que va en el flujo normal de la página y lleva texto dentro es
+      contenido, y el contenido no se esconde a propósito. Un menú
+      desplegable, en cambio, va colocado por encima —fixed o absolute— y ese
+      no se toca: si está oculto, es porque tiene que estarlo.
+    */
+    function rescatarInvisibles() {
+      var todos = document.body ? document.body.querySelectorAll("*") : [];
+      for (var i = 0; i < todos.length; i++) {
+        var el = todos[i];
+        var estilo = getComputedStyle(el);
+        if (estilo.opacity !== "0") continue;
+
+        var colocado = estilo.position === "fixed" || estilo.position === "absolute";
+        var conAnimacion = estilo.animationName !== "none";
+        var conTexto = (el.textContent || "").trim().length > 0;
+        if (colocado && !conAnimacion) continue;
+        if (!conAnimacion && !conTexto) continue;
+        if (!el.getBoundingClientRect().height) continue;
+
+        el.style.setProperty("opacity", "1", "important");
+        el.style.setProperty("transform", "none", "important");
+      }
+    }
+    // Una al asentarse la página y otra por si algo tardaba en pintarse.
+    window.addEventListener("load", function () {
+      setTimeout(rescatarInvisibles, 400);
+      setTimeout(rescatarInvisibles, 1600);
+    });
   })();
 </script>`;
 

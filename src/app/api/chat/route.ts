@@ -336,6 +336,7 @@ async function runCompat(
   });
 
   let fuentes: Source[] = [];
+  let modelo: string | undefined;
 
   for await (const event of stream) {
     if (opts.signal.aborted) break;
@@ -367,6 +368,10 @@ async function runCompat(
     }
     if (event.archivo) send({ t: "file", v: event.archivo });
     if (event.imagen) send({ t: "artifact", v: event.imagen });
+    if (event.modelo) {
+      modelo = event.modelo;
+      send({ t: "meta", v: { modelo } });
+    }
   }
 
   // Las fuentes ya se han ido mandando clasificadas durante el bucle, así que

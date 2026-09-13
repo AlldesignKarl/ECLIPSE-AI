@@ -246,6 +246,8 @@ function envModel(provider: CompatProvider): string {
 
 export interface CompatEvent {
   text?: string;
+  /** Qué modelo acabó respondiendo. Se manda una vez, al abrir. */
+  modelo?: string;
   /** El modelo ha pedido usar herramientas y ha dejado de escribir. */
   llamadas?: LlamadaCruda[];
 }
@@ -340,6 +342,11 @@ export async function* streamCompat(opts: {
   }
 
   if (!res.body) throw new CompatError("El proveedor no ha devuelto contenido.");
+
+  // Cuál contestó de verdad: con la búsqueda del mejor modelo para código y los
+  // respaldos, no tiene por qué ser el que se pidió, y sin esto no hay forma de
+  // saber por qué una respuesta salió floja.
+  yield { modelo: resolved[opts.provider] || wanted };
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
