@@ -272,6 +272,21 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
     }
     if (document.body) pintar();
     else document.addEventListener("DOMContentLoaded", pintar);
+
+    // Y se le cuenta a la aplicación de fuera, que es la única que puede hacer
+    // algo al respecto: pedirle a ECLIPSE que lo arregle.
+    //
+    // Se manda varias veces a propósito. Un error de sintaxis salta mientras la
+    // página todavía se está leyendo, antes de que nadie fuera pueda estar
+    // escuchando; repitiéndolo al terminar de cargar, el aviso llega igual.
+    var enviar = function () {
+      try {
+        parent.postMessage({ eclipse: "fallo-vista-previa", titulo: titulo, detalle: detalle }, "*");
+      } catch (e) {}
+    };
+    enviar();
+    window.addEventListener("load", enviar);
+    setTimeout(enviar, 800);
   }
 
   window.addEventListener("error", function (e) {

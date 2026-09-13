@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as Icon from "./Icons";
 import Markdown from "./Markdown";
 import { guessLanguage } from "@/lib/project";
@@ -10,6 +10,8 @@ import type { GeneratedFile } from "@/lib/types";
 interface Props {
   title: string;
   files: GeneratedFile[];
+  /** Pedirle a ECLIPSE que arregle lo que ha fallado al verlo. */
+  onArreglar?: (fallo: string) => void;
 }
 
 /**
@@ -19,7 +21,26 @@ interface Props {
  * dentro. Borrar esto dejaría un hueco donde antes había algo, así que se
  * queda para que lo de ayer se siga pudiendo abrir.
  */
-export default function ProjectPanel({ title, files }: Props) {
+export default function ProjectPanel({ title, files, onArreglar }: Props) {
+  /**
+   * Lo que ha fallado al abrir la vista previa, si ha fallado algo.
+   *
+   * Llega desde dentro del marco, que es quien lo ve. Un error en el código
+   * generado no lo puede arreglar el usuario a mano: lo tiene que arreglar
+   * quien lo escribió, así que aquí solo hace falta un botón que se lo diga.
+   */
+  const [fallo, setFallo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const alLlegar = (e: MessageEvent) => {
+      const d = e.data as { eclipse?: string; titulo?: string; detalle?: string };
+      if (d?.eclipse !== "fallo-vista-previa") return;
+      setFallo(`${d.titulo ?? "Error"}: ${d.detalle ?? ""}`.trim());
+    };
+    window.addEventListener("message", alLlegar);
+    return () => window.removeEventListener("message", alLlegar);
+  }, []);
+
   const [selected, setSelected] = useState(0);
   const [zipping, setZipping] = useState(false);
   const [viendo, setViendo] = useState(false);
@@ -94,6 +115,29 @@ export default function ProjectPanel({ title, files }: Props) {
             {zipping ? "Comprimiendo…" : "ZIP"}
           </button>
         </div>
+
+        {/*
+          El código ha fallado al abrirlo. Quien lo puede arreglar es quien lo
+          escribió, así que el botón manda el error de vuelta con el archivo.
+          Pedirle al usuario que abra el código y busque la línea 278 sería
+          pedirle que haga de programador para usar una aplicación que existe
+          justamente para que no tenga que serlo.
+        */}
+        {fallo && onArreglar && (
+          <div className="mt-2.5 rounded-xl border border-danger/30 bg-danger/8 p-3">
+            <p className="text-[12px] leading-snug text-danger">{fallo}</p>
+            <button
+              onClick={() => {
+                onArreglar(fallo);
+                setFallo(null);
+              }}
+              className="mt-2.5 flex items-center gap-1.5 rounded-lg border border-danger/40 px-2.5 py-1.5 text-[12px] text-ink transition hover:bg-danger/15"
+            >
+              <Icon.Refresh width={13} height={13} />
+              Pídele a ECLIPSE que lo arregle
+            </button>
+          </div>
+        )}
 
         {/* Por qué no se puede ver, entero y sin cortar: es lo que explica que
             no haya botón, y a medias no explica nada. */}

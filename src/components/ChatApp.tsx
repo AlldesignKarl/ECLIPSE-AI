@@ -813,6 +813,11 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
                         ? retry
                         : undefined
                     }
+                    onArreglar={(fallo) =>
+                      void send(
+                        `Al abrir la vista previa da este error:\n\n${fallo}\n\nArréglalo y devuélveme el archivo completo y corregido.`,
+                      )
+                    }
                   />
                 ))}
 

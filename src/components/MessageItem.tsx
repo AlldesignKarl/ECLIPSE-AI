@@ -15,6 +15,8 @@ interface Props {
   streaming?: boolean;
   showThinking: boolean;
   onRetry?: () => void;
+  /** Mandarle a ECLIPSE el error de la vista previa para que lo corrija. */
+  onArreglar?: (fallo: string) => void;
 }
 
 export default function MessageItem({
@@ -22,8 +24,10 @@ export default function MessageItem({
   streaming,
   showThinking,
   onRetry,
+  onArreglar,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [abierto, setAbierto] = useState(false);
   const [openThinking, setOpenThinking] = useState(false);
 
   /**
@@ -39,6 +43,17 @@ export default function MessageItem({
     () => (enCodigo ? proseOnly(message.content) : message.content),
     [enCodigo, message.content],
   );
+
+  /**
+   * A partir de dónde se recorta.
+   *
+   * Trescientas letras son cinco o seis líneas en un móvil: suficiente para
+   * reconocer lo que escribiste, y poco para que entierre la respuesta. El
+   * margen extra evita recortar un mensaje que se pasa por dos palabras y
+   * dejar un "Leer más" que casi no enseña nada nuevo.
+   */
+  const TOPE = 320;
+  const largo = message.role === "user" && message.content.length > TOPE + 120;
 
   const copy = async () => {
     try {
@@ -80,7 +95,22 @@ export default function MessageItem({
           )}
           {message.content && (
             <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md border border-tuyo-borde bg-tuyo px-4 py-2.5 text-[15.5px] leading-relaxed text-ink">
-              {message.content}
+              {/*
+                Un mensaje muy largo —un texto pegado para que lo revise, un
+                error entero— empujaba la respuesta fuera de la pantalla y
+                obligaba a hacer scroll para llegar a lo que importa. Se recorta
+                y se deja abrirlo, que es lo que hace todo el mundo.
+              */}
+              {largo && !abierto ? `${message.content.slice(0, TOPE).trimEnd()}…` : message.content}
+
+              {largo && (
+                <button
+                  onClick={() => setAbierto((v) => !v)}
+                  className="mt-1.5 block text-[13px] font-medium text-halo underline underline-offset-2 transition hover:text-ink"
+                >
+                  {abierto ? "Mostrar menos" : "Leer más"}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -190,6 +220,7 @@ export default function MessageItem({
                   key={i}
                   title={art.title ?? "proyecto"}
                   files={art.files}
+                  onArreglar={onArreglar}
                 />
               );
 
