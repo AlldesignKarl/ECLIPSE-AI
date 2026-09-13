@@ -27,7 +27,7 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
-    version: "2.9",
+    version: "2.10",
     // El anillo: cuando la luna está dentro del sol y se ve el borde entero.
     // Aquí, que ECLIPSE vuelva a tener ojos.
     nombre: "Anillo",
@@ -38,6 +38,7 @@ export const NOVEDADES: Novedad[] = [
       "Ya mira las fotos que le mandas: te las describe, te aconseja sobre ellas y te las retoca.",
       "Y ahora caben. Una foto del móvil pasa de los 3 MB con facilidad y se rechazaba entera; se reduce sola en tu teléfono antes de salir —de 9 MB a 700 KB en dos décimas de segundo— y se ve exactamente igual de bien.",
       "También dejan de comerse el sitio de la respuesta: una foto se contaba como si fuera un texto de doscientas mil palabras.",
+      "Y si el motor que tienes puesto no sabe mirar imágenes, ECLIPSE cambia solo al que sí sabe para ese mensaje. Antes te contestaba pidiéndote que le describieras la foto que le acababas de mandar.",
     ],
   },
   {

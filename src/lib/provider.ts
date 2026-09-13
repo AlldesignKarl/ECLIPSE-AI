@@ -39,3 +39,28 @@ export function providerLabel(p: Provider | null): string {
 export function providerSearches(p: Provider | null): boolean {
   return p === "google" || p === "anthropic";
 }
+
+/**
+ * El motor para ESTE mensaje, que no siempre es el de siempre.
+ *
+ * Si la persona manda una foto, lo único que importa es que el motor que
+ * conteste sepa mirarla. Google la mira siempre; Groq y OpenRouter dependen de
+ * qué modelos tenga la cuenta ese día, y eso cambia solo cada pocas semanas.
+ *
+ * Así que cuando hay una foto delante y hay clave de Google, contesta Google
+ * aunque en Ajustes ponga otra cosa. La alternativa era lo que pasaba antes:
+ * "descríbeme la imagen que me acabas de mandar", que es lo contrario de lo que
+ * se venía a hacer. La elección de Ajustes se respeta para todo lo demás.
+ */
+export async function providerForTurn(
+  base: Provider | null,
+  hayImagenes: boolean,
+): Promise<Provider | null> {
+  if (!hayImagenes || base === null) return base;
+  if (base === "google" || base === "anthropic") return base;
+
+  // Solo se cambia si el propio hosting no ha fijado un motor a la fuerza.
+  if ((process.env.AI_PROVIDER || "").toLowerCase()) return base;
+
+  return (await keyAvailable("google")) ? "google" : base;
+}

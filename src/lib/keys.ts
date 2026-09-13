@@ -45,13 +45,28 @@ function fromEnv(provider: KeyProvider): string {
   return "";
 }
 
+/**
+ * Las cookies de esta petición, si es que hay petición.
+ *
+ * Fuera del ciclo de una petición —una tarea de fondo, una prueba— pedir las
+ * cookies no devuelve vacío: lanza. Y una clave que no se puede leer es
+ * exactamente lo mismo que una clave que no está, así que se trata igual en
+ * vez de tumbar a quien llame.
+ */
+async function galleta(nombre: string): Promise<string> {
+  try {
+    return (await cookies()).get(nombre)?.value ?? "";
+  } catch {
+    return "";
+  }
+}
+
 /** La clave que toca usar en esta petición. */
 export async function resolveKey(provider: KeyProvider): Promise<string> {
   const env = fromEnv(provider);
   if (env) return env;
 
-  const jar = await cookies();
-  return jar.get(SLOTS[provider].cookie)?.value ?? "";
+  return galleta(SLOTS[provider].cookie);
 }
 
 export async function keyAvailable(provider: KeyProvider): Promise<boolean> {
@@ -61,8 +76,7 @@ export async function keyAvailable(provider: KeyProvider): Promise<boolean> {
 /** De dónde viene la clave, para poder explicárselo al usuario en Ajustes. */
 export async function keySource(provider: KeyProvider): Promise<KeySource> {
   if (fromEnv(provider)) return "entorno";
-  const jar = await cookies();
-  return jar.get(SLOTS[provider].cookie)?.value ? "dispositivo" : "ninguna";
+  return (await galleta(SLOTS[provider].cookie)) ? "dispositivo" : "ninguna";
 }
 
 /** El estado de todas las claves de golpe, para pintar Ajustes de una vez. */
@@ -82,8 +96,7 @@ export async function keySources(): Promise<Record<KeyProvider, KeySource>> {
 
 /** El motor que el usuario prefiere, si guardó alguno. */
 export async function preferredEngine(): Promise<KeyProvider | null> {
-  const jar = await cookies();
-  const value = jar.get(ENGINE_COOKIE)?.value;
+  const value = await galleta(ENGINE_COOKIE);
   return isKeyProvider(value) ? value : null;
 }
 

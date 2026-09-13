@@ -9,7 +9,7 @@ import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { herramientasPara } from "@/lib/tools/registro";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt, partes3D } from "@/lib/prompts";
-import { activeProvider, providerSearches } from "@/lib/provider";
+import { activeProvider, providerForTurn, providerSearches } from "@/lib/provider";
 import { rankSources } from "@/lib/sources";
 import { priceLabelLive, stripeAvailable } from "@/lib/stripe";
 import { SSE_HEADERS, sseChunk, type StreamEvent } from "@/lib/sse";
@@ -423,7 +423,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "No hay mensajes que responder." }, { status: 400 });
   }
 
-  const provider = await activeProvider();
+  // Con una foto delante manda quien sepa verla, no quien esté puesto.
+  const provider = await providerForTurn(
+    await activeProvider(),
+    body.messages.some((m) => m.attachments?.some((a) => a.kind === "image" && a.data)),
+  );
   if (!provider) {
     return Response.json(
       {

@@ -26,13 +26,25 @@ interface Preset {
   keyUrl: string;
 }
 
+/**
+ * Cómo se reconoce, por el nombre, un modelo que sabe mirar imágenes.
+ *
+ * Esta lista se queda corta cada dos por tres: las capas gratuitas retiran y
+ * estrenan modelos cada pocas semanas, y un nombre nuevo que no esté aquí hace
+ * que la aplicación crea que no tiene ojos cuando sí los tiene. Por eso, además
+ * de la lista, se intenta mandar la imagen igualmente (ver más abajo): la lista
+ * sirve para ELEGIR bien, no para decidir que no se puede.
+ */
+const OJOS =
+  /llama-4|scout|maverick|vision|multimodal|[-/]vl[-\d]|vl-|pixtral|llava|gemma-?3|internvl|molmo|qwen.*(vl|omni)|gemini|gpt-4o|gpt-5|claude|nova-(lite|pro)/i;
+
 export const PRESETS: Record<CompatProvider, Preset> = {
   groq: {
     label: "Groq · gratis, sin tarjeta",
     base: "https://api.groq.com/openai/v1",
     model: "llama-3.3-70b-versatile",
     prefer: /llama.*70b|llama.*versatile|gpt-oss/i,
-    vision: /llama-4|scout|maverick|vision/i,
+    vision: OJOS,
     keyUrl: "https://console.groq.com/keys",
   },
   openrouter: {
@@ -40,7 +52,7 @@ export const PRESETS: Record<CompatProvider, Preset> = {
     base: "https://openrouter.ai/api/v1",
     model: "meta-llama/llama-3.3-70b-instruct:free",
     prefer: /:free$/i,
-    vision: /llama-4|vision|-vl|gemini|gpt-4|gpt-5|claude/i,
+    vision: OJOS,
     keyUrl: "https://openrouter.ai/keys",
   },
 };
@@ -108,7 +120,7 @@ function toMessages(
     if (turn.role === "user" && images.length && !vision) {
       out.push({
         role: "user",
-        content: `${written}\n\n(El usuario ha adjuntado ${images.length} imagen(es). Este motor no puede verlas: dilo con naturalidad y pídele que te las describa.)`,
+        content: `${written}\n\n(AVISO DEL SISTEMA, no del usuario: se han adjuntado ${images.length} imagen(es) y el motor de ahora las ha rechazado, así que NO las tienes. Díselo tal cual —que este motor no puede ver imágenes— y dile que en Ajustes puede cambiar el motor a Google, que sí las ve. No le pidas que te describa la imagen: eso es hacerle a él el trabajo.)`,
       });
     } else if (turn.role === "user" && images.length) {
       out.push({
@@ -455,6 +467,24 @@ export async function* streamCompat(opts: {
   */
   let turnos = opts.turns;
 
+  /*
+    Si la conversación trae fotos, se mandan. Punto.
+
+    Antes esto lo decidía una lista de nombres de modelos: si el que había
+    tocado no estaba en la lista, la foto no salía y en su lugar iba una nota
+    pidiéndole al usuario que describiera su propia imagen. El problema es que
+    esa lista caduca sola —las capas gratuitas retiran y estrenan modelos cada
+    pocas semanas— y entonces la aplicación se declara ciega teniendo ojos.
+
+    Así que ahora se intenta siempre, y si el proveedor la rechaza, ahí sí se
+    repite sin ella. Preguntar y que te digan que no es mejor que dar por hecho
+    que no.
+  */
+  const hayFotos = opts.turns.some(
+    (t) => t.attachments?.some((a) => a.kind === "image" && a.data),
+  );
+  let mandarImagenes = hayFotos;
+
   const soltarLoMasViejo = () => {
     if (turnos.length <= 1) return false;
     // Se tira la mitad más antigua de golpe: ir de uno en uno serían cinco
@@ -480,7 +510,7 @@ export async function* streamCompat(opts: {
       signal: opts.signal,
       body: JSON.stringify({
         model,
-        messages: toMessages(opts.system, turnos, preset.vision.test(model), opts.extra ?? []),
+        messages: toMessages(opts.system, turnos, mandarImagenes, opts.extra ?? []),
         // Los modelos nuevos piden `max_completion_tokens`; los de siempre,
         // `max_tokens`. Mandar el que no toca es un 400 que no habla del modelo.
         ...(nombreNuevo ? { max_completion_tokens: tope } : { max_tokens: tope }),
@@ -556,6 +586,19 @@ export async function* streamCompat(opts: {
         continue;
       }
 
+      // El proveedor dice que este modelo no traga imágenes. Entonces sí: se
+      // repite sin ellas, y el usuario recibe la explicación de por qué.
+      if (
+        mandarImagenes &&
+        (res.status === 400 || res.status === 415 || res.status === 422) &&
+        /image|imagen|vision|multimodal|content.?type|not supported/i.test(detalle)
+      ) {
+        mandarImagenes = false;
+        res = await open(model, tope, nombreNuevo);
+        anotarCupo(opts.provider, res);
+        continue;
+      }
+
       if (res.status !== 400 || !/token/i.test(detalle)) break;
 
       if (!nombreNuevo) nombreNuevo = true;
@@ -567,14 +610,14 @@ export async function* streamCompat(opts: {
     return res;
   };
 
-  // Si en la conversación hay alguna imagen, el modelo tiene que saber mirarla.
-  const hayImagenes = opts.turns.some((t) => t.attachments?.some((a) => a.kind === "image" && a.data));
+  // Si en la conversación hay alguna imagen, se busca uno que sepa mirarla. Y
+  // si ninguno lo dice en su nombre, se prueba igual con el que toque.
   const wanted = await elegirModelo(
     opts.provider,
     preset,
     opts.key,
     opts.modo ?? "chat",
-    hayImagenes,
+    hayFotos,
   );
   let res = await pedir(wanted);
   // Por qué falló el PRIMER intento. Importa para el mensaje final: si el
