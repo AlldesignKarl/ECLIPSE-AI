@@ -2,10 +2,12 @@ import { NextRequest } from "next/server";
 import {
   CLEAR_ENGINE_COOKIE,
   clearKeyCookie,
+  codeEngineCookieHeader,
   engineCookieHeader,
   isKeyProvider,
   keyCookieHeader,
   keySources,
+  preferredCodeEngine,
   preferredEngine,
   verifyGoogleKey,
   type KeyProvider,
@@ -21,6 +23,7 @@ export async function GET() {
   return Response.json({
     sources,
     engine: await preferredEngine(),
+    engineCode: await preferredCodeEngine(),
     // El campo de siempre, para no romper nada que aún lo lea.
     source: sources.google,
   });
@@ -36,11 +39,30 @@ async function verify(provider: KeyProvider, key: string) {
  * Antes la comprueba contra el proveedor, para no guardar algo que no sirve.
  */
 export async function POST(req: NextRequest) {
-  const { key, provider, use } = (await req.json().catch(() => ({}))) as {
+  const { key, provider, use, paraCodigo } = (await req.json().catch(() => ({}))) as {
     key?: string;
     provider?: string;
     use?: boolean;
+    /** Elegir el motor de ECLIPSE CODE, no el del chat. */
+    paraCodigo?: boolean;
   };
+
+  // Elegir el motor de código no necesita clave: es decir cuál de los que ya
+  // hay se usa para programar. Y cadena vacía significa "el mismo que el chat".
+  if (paraCodigo) {
+    const sinMotor = !isKeyProvider(provider);
+    if (!sinMotor) {
+      const sources = await keySources();
+      if (sources[provider as KeyProvider] === "ninguna")
+        return Response.json({ error: "Ese motor todavía no tiene clave." }, { status: 400 });
+    }
+    const elegido = Response.json({ engineCode: sinMotor ? null : provider });
+    elegido.headers.append(
+      "Set-Cookie",
+      codeEngineCookieHeader(sinMotor ? "" : (provider as KeyProvider)),
+    );
+    return elegido;
+  }
 
   const engine: KeyProvider = isKeyProvider(provider) ? provider : "google";
   const clean = (key ?? "").trim();

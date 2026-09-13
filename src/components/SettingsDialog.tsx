@@ -67,6 +67,8 @@ interface Props {
   providerLabel: string;
   keySources: KeySources;
   engine: Engine | null;
+  /** El motor elegido para ECLIPSE CODE, si hay uno distinto. */
+  engineCode?: Engine | null;
   onKeysChange: () => void;
   showThinking: boolean;
   onShowThinking: (v: boolean) => void;
@@ -274,6 +276,78 @@ function EngineBox({
   );
 }
 
+/**
+ * Qué motor escribe el código, que puede no ser el del chat.
+ *
+ * Es el ajuste que más cambia lo largo que puede salir un archivo: las capas
+ * gratuitas reparten unos pocos miles de tokens por minuto entre lo que se
+ * manda y lo que se escribe, y cuando se acaban, el archivo se corta. Con un
+ * motor propio para programar, el chat se queda como está y el código deja de
+ * chocar con ese techo.
+ */
+function MotorCodigo({
+  sources,
+  elegido,
+  onChange,
+}: {
+  sources: KeySources;
+  elegido: Engine | null;
+  onChange: () => void;
+}) {
+  const configurados = ENGINES.filter((e) => sources[e.id] !== "ninguna");
+  const [guardando, setGuardando] = useState<string | null>(null);
+
+  if (configurados.length < 2) return null;
+
+  const elegir = async (id: Engine | "") => {
+    setGuardando(id || "mismo");
+    try {
+      await fetch("/api/key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paraCodigo: true, provider: id }),
+      });
+      onChange();
+    } finally {
+      setGuardando(null);
+    }
+  };
+
+  const Boton = ({ id, texto }: { id: Engine | ""; texto: string }) => {
+    const activo = id === "" ? !elegido : elegido === id;
+    return (
+      <button
+        onClick={() => void elegir(id)}
+        disabled={guardando !== null}
+        className={`rounded-lg border px-2.5 py-1.5 text-[12.5px] transition ${
+          activo ? "border-halo/45 bg-panel text-ink" : "border-line text-muted hover:text-ink"
+        }`}
+      >
+        {texto}
+      </button>
+    );
+  };
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">
+        Motor de ECLIPSE CODE
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <Boton id="" texto="El mismo que el chat" />
+        {configurados.map((e) => (
+          <Boton key={e.id} id={e.id} texto={e.name} />
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
+        Programar y conversar no piden lo mismo. Si los archivos largos se
+        cortan, el motor que uses aquí es lo que más lo cambia: cuanto más
+        margen por minuto tenga, más largo puede salir el archivo de una vez.
+      </p>
+    </div>
+  );
+}
+
 export default function SettingsDialog({
   open,
   onClose,
@@ -282,6 +356,7 @@ export default function SettingsDialog({
   providerLabel,
   keySources,
   engine,
+  engineCode,
   onKeysChange,
   showThinking,
   onShowThinking,
@@ -292,6 +367,12 @@ export default function SettingsDialog({
     <Modal open={open} onClose={onClose} title="Ajustes">
       <div className="space-y-5">
         <EngineBox sources={keySources} engine={engine} onChange={onKeysChange} />
+
+        <MotorCodigo
+          sources={keySources}
+          elegido={engineCode ?? null}
+          onChange={onKeysChange}
+        />
 
         <label className="flex cursor-pointer items-center gap-3">
           <input

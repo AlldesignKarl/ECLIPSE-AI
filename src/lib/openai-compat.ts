@@ -160,7 +160,13 @@ function toMessages(
  * escriba una página fea: escribe la página que le cabe.
  */
 function maxTokens(speed: Speed, modo: Mode = "chat"): number {
-  if (modo === "code") return speed === "rapido" ? 8192 : 16384;
+  // El techo de código va alto a propósito. No es lo que se pide siempre: es
+  // lo máximo que se pediría si hubiera sitio, porque justo antes de mandarlo
+  // se recorta a lo que quepa en el cupo del modelo. Con un motor de los que
+  // dan margen de sobra, este número es el que decide lo largo que puede salir
+  // un archivo de una sola vez; dejarlo corto era ponerle un techo de casa a
+  // quien ya había pagado uno más alto.
+  if (modo === "code") return speed === "rapido" ? 12288 : 32768;
   if (speed === "rapido") return 2048;
   if (speed === "profundo") return 8192;
   return 4096;
@@ -206,12 +212,29 @@ function excesoPorMinuto(detalle: string): number | null {
  * 8.000, ese primer intento está condenado antes de salir. Sabiéndolo, se pide
  * de entrada lo que cabe y no se gasta un viaje en aprenderlo cada vez.
  */
-const cupoPorMinuto: Partial<Record<CompatProvider, number>> = {};
+/*
+  El cupo se guarda POR MODELO, no por proveedor.
 
-function anotarCupo(provider: CompatProvider, res: Response) {
+  Cada modelo tiene el suyo y no se parecen: en el plan gratuito de Groq,
+  gpt-oss-120b da 8.000 tokens por minuto y llama-3.3-70b-versatile da 12.000.
+  Guardando un solo número por proveedor, el del último modelo usado pisaba al
+  del siguiente y las cuentas salían mal. Y sabiéndolo por modelo se puede hacer
+  algo mucho mejor: cuando hay que escribir un archivo largo, elegir el que más
+  sitio deja.
+*/
+const cupoPorMinuto: Record<string, number> = {};
+
+const claveCupo = (provider: CompatProvider, modelo: string) => `${provider}:${modelo}`;
+
+function anotarCupo(provider: CompatProvider, modelo: string, res: Response) {
   const bruto = res.headers.get("x-ratelimit-limit-tokens");
   const n = bruto ? Number(bruto) : NaN;
-  if (Number.isFinite(n) && n > 0) cupoPorMinuto[provider] = n;
+  if (Number.isFinite(n) && n > 0) cupoPorMinuto[claveCupo(provider, modelo)] = n;
+}
+
+/** Lo que sabemos del cupo de un modelo, si ya se ha usado alguna vez. */
+export function cupoDe(provider: CompatProvider, modelo: string): number | undefined {
+  return cupoPorMinuto[claveCupo(provider, modelo)];
 }
 
 /**
@@ -555,7 +578,7 @@ export async function* streamCompat(opts: {
     // plan gratuito de Groq —8.000 por minuto— cada petición de código nacía
     // pidiendo 16.384 y se gastaba un viaje entero en descubrirlo.
     const aMedida = () => {
-      const cupo = cupoPorMinuto[opts.provider];
+      const cupo = cupoDe(opts.provider, model);
       if (!cupo) return maximo;
       const ocupado = estimarTokens(
         toMessages(opts.system, turnos, preset.vision.test(model), opts.extra ?? []),
@@ -566,7 +589,7 @@ export async function* streamCompat(opts: {
     let tope = aMedida();
     let nombreNuevo = false;
     let res = await open(model, tope, nombreNuevo);
-    anotarCupo(opts.provider, res);
+    anotarCupo(opts.provider, model, res);
 
     for (let intento = 0; intento < 5 && !res.ok; intento++) {
       const detalle = await res.clone().text().catch(() => "");
@@ -588,7 +611,7 @@ export async function* streamCompat(opts: {
         }
 
         res = await open(model, tope, nombreNuevo);
-        anotarCupo(opts.provider, res);
+        anotarCupo(opts.provider, model, res);
         continue;
       }
 
@@ -601,7 +624,7 @@ export async function* streamCompat(opts: {
       ) {
         mandarImagenes = false;
         res = await open(model, tope, nombreNuevo);
-        anotarCupo(opts.provider, res);
+        anotarCupo(opts.provider, model, res);
         continue;
       }
 
@@ -611,7 +634,7 @@ export async function* streamCompat(opts: {
       else tope = Math.max(MINIMO_UTIL, Math.floor(tope / 2));
 
       res = await open(model, tope, nombreNuevo);
-      anotarCupo(opts.provider, res);
+      anotarCupo(opts.provider, model, res);
     }
     return res;
   };

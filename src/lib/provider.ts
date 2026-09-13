@@ -1,4 +1,4 @@
-import { keyAvailable, preferredEngine, type KeyProvider } from "./keys";
+import { keyAvailable, preferredCodeEngine, preferredEngine, type KeyProvider } from "./keys";
 
 export type Provider = KeyProvider | "anthropic";
 
@@ -55,7 +55,22 @@ export function providerSearches(p: Provider | null): boolean {
 export async function providerForTurn(
   base: Provider | null,
   hayImagenes: boolean,
+  /** En ECLIPSE CODE se puede usar un motor distinto al del chat. */
+  programando = false,
 ): Promise<Provider | null> {
+  /*
+    ECLIPSE CODE puede tener su propio motor.
+
+    Escribir un archivo largo y conversar no piden lo mismo: el cupo por minuto
+    se reparte entre lo que se manda y lo que se escribe, y ese reparto es el
+    techo de lo largo que puede salir un archivo. Quien quiera archivos más
+    largos pone aquí un motor con más sitio, y el chat se queda como estaba.
+  */
+  if (programando) {
+    const paraCodigo = await preferredCodeEngine();
+    if (paraCodigo && (await keyAvailable(paraCodigo))) return paraCodigo;
+  }
+
   if (!hayImagenes || base === null) return base;
   if (base === "google" || base === "anthropic") return base;
 

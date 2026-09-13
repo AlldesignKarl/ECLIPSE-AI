@@ -30,6 +30,16 @@ export const KEY_PROVIDERS = Object.keys(SLOTS) as KeyProvider[];
 
 /** Cookie con el motor que ha elegido el usuario en Ajustes. */
 export const ENGINE_COOKIE = "eclipse_engine";
+/**
+ * El motor de ECLIPSE CODE, que puede ser otro distinto al del chat.
+ *
+ * Escribir un archivo largo y conversar no piden lo mismo. Las capas gratuitas
+ * reparten unos pocos miles de tokens por minuto entre lo que se manda y lo que
+ * se escribe, y ese reparto es el techo de lo largo que puede salir un archivo.
+ * Quien quiera archivos más largos puede poner aquí un motor con más sitio sin
+ * tocar el del chat, que para conversar va de sobra.
+ */
+export const CODE_ENGINE_COOKIE = "eclipse_engine_code";
 
 const MAX_AGE = 60 * 60 * 24 * 365;
 
@@ -100,6 +110,12 @@ export async function preferredEngine(): Promise<KeyProvider | null> {
   return isKeyProvider(value) ? value : null;
 }
 
+/** El que haya elegido para ECLIPSE CODE, si eligió alguno distinto. */
+export async function preferredCodeEngine(): Promise<KeyProvider | null> {
+  const value = (process.env.CODE_PROVIDER || "").toLowerCase() || (await galleta(CODE_ENGINE_COOKIE));
+  return isKeyProvider(value) ? value : null;
+}
+
 function cookieLine(name: string, value: string, maxAge: number): string {
   return `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${
     process.env.NODE_ENV === "production" ? "; Secure" : ""
@@ -119,6 +135,12 @@ export function engineCookieHeader(provider: KeyProvider): string {
 }
 
 export const CLEAR_ENGINE_COOKIE = `${ENGINE_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`;
+
+export function codeEngineCookieHeader(provider: KeyProvider | ""): string {
+  return provider
+    ? cookieLine(CODE_ENGINE_COOKIE, provider, MAX_AGE)
+    : `${CODE_ENGINE_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`;
+}
 
 /** Comprueba contra Google que la clave sirve, antes de guardarla. */
 export async function verifyGoogleKey(

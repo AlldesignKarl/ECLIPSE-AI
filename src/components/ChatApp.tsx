@@ -100,6 +100,8 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
   const [billing, setBilling] = useState<Billing>({ enabled: false, price: "10,00 €" });
   const [keySources, setKeySources] = useState<KeySources>(EMPTY_KEY_SOURCES);
   const [engine, setEngine] = useState<Engine | null>(null);
+  /** El motor elegido para ECLIPSE CODE, si hay uno distinto al del chat. */
+  const [engineCode, setEngineCode] = useState<Engine | null>(null);
 
   const [sidebar, setSidebar] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -173,6 +175,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           billing?: Billing;
           keySources?: KeySources;
           engine?: Engine | null;
+          engineCode?: Engine | null;
         }) => {
           if (d.plan) setPlan(d.plan);
           setProRegalado(Boolean(d.proRegalado));
@@ -181,6 +184,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
           if (d.billing) setBilling(d.billing);
           if (d.keySources) setKeySources(d.keySources);
           setEngine(d.engine ?? null);
+          setEngineCode(d.engineCode ?? null);
         },
       )
       .catch(() => {});
@@ -1111,6 +1115,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         providerLabel={providerLabel}
         keySources={keySources}
         engine={engine}
+        engineCode={engineCode}
         onKeysChange={() => {
           // Con la clave puesta cambia lo que la aplicación puede hacer.
           void fetch("/api/pro")
@@ -1121,11 +1126,13 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
                 providerLabel?: string;
                 keySources?: KeySources;
                 engine?: Engine | null;
+                engineCode?: Engine | null;
               }) => {
                 if (d.capabilities) setCaps(d.capabilities);
                 if (d.providerLabel) setProviderLabel(d.providerLabel);
                 if (d.keySources) setKeySources(d.keySources);
                 setEngine(d.engine ?? null);
+                setEngineCode(d.engineCode ?? null);
               },
             )
             .catch(() => {});

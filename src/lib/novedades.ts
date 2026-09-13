@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.18",
+    // Dos soles: uno para conversar y otro para programar.
+    nombre: "Dos soles",
+    titulo: "ECLIPSE CODE puede tener su propio motor",
+    entrada:
+      "Programar y conversar no piden lo mismo. Ahora se puede poner un motor distinto para el código, y es lo que más cambia lo largo que sale un archivo.",
+    puntos: [
+      "En Ajustes, «Motor de ECLIPSE CODE»: eliges cuál de tus motores escribe el código, sin tocar el del chat.",
+      "El techo de lo que puede escribir de una vez sube al doble. Con el motor de siempre no cambia nada —manda su cupo por minuto—, pero con uno que tenga más margen, el archivo sale entero de una tacada.",
+      "Y las cuentas del cupo ahora son por modelo, no por motor. Cada modelo tiene el suyo y no se parecen: mezclarlos hacía que el hueco para escribir se calculara mal.",
+    ],
+  },
+  {
     version: "2.17",
     // La corona completa: el anillo entero, sin el trozo que faltaba.
     nombre: "Completa",

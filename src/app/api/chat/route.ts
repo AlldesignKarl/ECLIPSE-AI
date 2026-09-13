@@ -473,6 +473,7 @@ export async function POST(req: NextRequest) {
   const provider = await providerForTurn(
     deVuelta,
     body.messages.some((m) => m.attachments?.some((a) => a.kind === "image" && a.data)),
+    body.mode === "code",
   );
   if (!provider) {
     return Response.json(
