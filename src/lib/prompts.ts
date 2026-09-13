@@ -565,15 +565,33 @@ maqueta, de videojuego estilizado—. A una fotografía no, porque eso necesita
 modelos y texturas que aquí no se pueden cargar. Si alguien pide fotorrealismo,
 dilo en una frase, sin disculparte, y entrega lo mejor que sí se puede hacer.`;
 
-/** El giro de capas. Solo para cubos de Rubik y parecidos. */
-const CAPAS_3D = `PIEZAS QUE GIRAN POR CAPAS (un cubo de Rubik y cualquier cosa parecida):
+/**
+ * El giro de capas, entero y sin huecos que rellenar.
+ *
+ * Antes esto iba resumido, con un "…aquí animas la rotación…" en medio. Y ahí
+ * estaba el problema: al rellenar ese hueco, el modelo reordenaba las cosas y
+ * se dejaba por el camino el attach de vuelta. La pieza cambiaba de sitio sin
+ * llevarse su orientación, acababa enseñando hacia fuera una cara interior
+ * —que es negra— y el cubo salía con manchas que cambiaban en cada giro.
+ *
+ * Así que va la función completa y probada, para copiar tal cual. Un ejemplo
+ * sin huecos no se puede rellenar mal.
+ */
+const CAPAS_3D = `PIEZAS QUE GIRAN POR CAPAS (un cubo de Rubik y cualquier cosa parecida).
+
+Esta función está probada: aguanta sesenta giros seguidos con el cubo entero y
+sus colores en su sitio. CÓPIALA TAL CUAL, con sus comentarios. No la resumas,
+no la reordenes y no te inventes otra manera: cada línea evita un destrozo
+distinto, y la manera "obvia" —mover cada pieza a mano con senos y cosenos— es
+justo la que rompe el cubo.
 
   const pivote = new THREE.Group();
   grupo.add(pivote);
   let girando = false;
 
-  function girar(eje, capa, sentido) {          // eje: "x" | "y" | "z"
-    if (girando) return;                        // uno cada vez, nunca solapados
+  // eje: "x" | "y" | "z".  capa: -1 | 0 | 1.  sentido: 1 | -1.
+  function girar(eje, capa, sentido) {
+    if (girando) return Promise.resolve();   // uno cada vez, nunca solapados
     girando = true;
 
     // REDONDEANDO. Con === exacto, en cuanto hay un decimal de error se
@@ -582,35 +600,55 @@ const CAPAS_3D = `PIEZAS QUE GIRAN POR CAPAS (un cubo de Rubik y cualquier cosa 
 
     pivote.rotation.set(0, 0, 0);
     pivote.updateMatrixWorld(true);
+    // attach y no add: add coloca la pieza donde le da la gana, attach la deja
+    // donde estaba, CON SU GIRO. Sin esto salen las manchas negras.
     for (const c of mueven) pivote.attach(c);
 
-    // …animas pivote.rotation[eje] de 0 a sentido * Math.PI / 2…
+    const destino = (sentido * Math.PI) / 2;
+    const inicio = performance.now();
+    const DURACION = 260;
 
-    for (const c of mueven) {
-      grupo.attach(c);                          // attach, JAMÁS add
-      c.position.set(                           // y a su casilla exacta
-        Math.round(c.position.x),
-        Math.round(c.position.y),
-        Math.round(c.position.z),
-      );
-    }
-    pivote.rotation.set(0, 0, 0);
-    girando = false;
+    return new Promise((listo) => {
+      function paso(ahora) {
+        const t = Math.min(1, (ahora - inicio) / DURACION);
+        const suave = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        pivote.rotation[eje] = destino * suave;
+
+        if (t < 1) return requestAnimationFrame(paso);
+
+        pivote.rotation[eje] = destino;
+        pivote.updateMatrixWorld(true);
+
+        for (const c of mueven) {
+          grupo.attach(c);                    // attach otra vez, JAMÁS add
+          // Y a su casilla exacta: un giro de 90° deja decimales de 0,0000001
+          // que se acumulan giro a giro hasta romperlo todo.
+          c.position.set(
+            Math.round(c.position.x),
+            Math.round(c.position.y),
+            Math.round(c.position.z),
+          );
+        }
+
+        pivote.rotation.set(0, 0, 0);
+        girando = false;
+        listo();
+      }
+      requestAnimationFrame(paso);
+    });
   }
 
-Los dos attach son lo que hace que esto funcione, y cada uno evita un destrozo
-distinto. "add" coloca la pieza donde le da la gana; "attach" la deja donde
-estaba, con su giro incluido. Si la pieza cambia de sitio sin llevarse su
-orientación, acaba enseñando hacia fuera una cara interior —que es negra— y el
-cubo sale lleno de manchas negras aunque las piezas estén bien colocadas. Y el
-redondeo de la posición evita que el error decimal se acumule giro a giro hasta
-que ya no se reconoce qué piezas son de cada capa.
+Devuelve una promesa, así que para encadenar giros se hace
+await girar("y", 1, 1) uno detrás de otro dentro de una función async.
 
-La rotación de cada pieza NO hay que tocarla: attach ya la deja bien. Y si
-alguna vez la tocas, ojo, que aquí se equivoca todo el mundo: pieza.rotation
-es un Euler y se cambia con rotation.set(x, y, z). rotation.setFromEuler NO
-existe y revienta la página entera: setFromEuler es de Quaternion, y se usaría
-como pieza.quaternion.setFromEuler(unEuler).`;
+Los colores se ponen UNA VEZ, al crear cada pieza, según su posición inicial, y
+no se vuelven a tocar nunca más. Si recalculas los materiales después de cada
+giro, el cubo aparecerá siempre resuelto y no se habrá movido nada de verdad.
+
+La rotación de las piezas NO hay que tocarla: los dos attach ya la llevan. Y si
+alguna vez la tocas, ojo, que aquí se equivoca todo el mundo: pieza.rotation es
+un Euler y se cambia con rotation.set(x, y, z). rotation.setFromEuler NO existe
+y revienta la página entera: setFromEuler es de Quaternion.`;
 
 /**
  * Qué partes del manual de 3D hacen falta para este encargo.

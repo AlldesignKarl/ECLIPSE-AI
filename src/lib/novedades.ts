@@ -27,6 +27,20 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.8",
+    // La banda de sombra: las franjas de luz y oscuridad que cruzan el suelo
+    // justo antes de la totalidad. Aquí, que los colores dejen de bailar.
+    nombre: "Bandas",
+    titulo: "Los colores se quedan donde están",
+    entrada:
+      "Cada giro cambiaba los colores de sitio. No era el azar: había un hueco en las instrucciones y cada modelo lo rellenaba a su manera.",
+    puntos: [
+      "La función que gira las caras va ahora entera y probada, sin huecos que rellenar. Aguanta sesenta giros seguidos con el cubo entero y cada color en su sitio.",
+      "Las piezas se llevan su orientación al moverse. Sin eso enseñaban hacia fuera una cara interior, que es negra, y de ahí las manchas que cambiaban solas.",
+      "Y el nombre del archivo ya no se cuela dentro de la página. Salía escrito arriba del todo, encima del diseño.",
+    ],
+  },
+  {
     version: "2.7",
     // El primer contacto: el instante en que la luna toca el sol y empieza el
     // eclipse. Aquí, que ECLIPSE CODE deje de quedarse a medias.

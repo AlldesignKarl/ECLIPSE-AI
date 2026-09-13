@@ -60,6 +60,30 @@ function cerrarBloqueAbierto(markdown: string): string {
   return aperturas % 2 === 1 ? `${markdown}\n\u0060\u0060\u0060` : markdown;
 }
 
+/**
+ * Quita la ruta cuando el modelo la repite DENTRO del bloque.
+ *
+ * La ruta va en la línea de apertura del bloque. Algunos modelos la escriben
+ * además en la primera línea del contenido, y entonces el archivo empieza por
+ * "index.html" y ese texto se pinta arriba del todo de la página, encima del
+ * diseño. Fuera: una página HTML no empieza nunca por el nombre de sí misma.
+ */
+function sinLaRutaRepetida(contenido: string, ruta: string): string {
+  const salto = contenido.indexOf("\n");
+  const primera = (salto === -1 ? contenido : contenido.slice(0, salto)).trim();
+  if (!primera) return contenido;
+
+  const nombre = ruta.split("/").pop() ?? ruta;
+  const esLaRuta =
+    primera === ruta ||
+    primera === nombre ||
+    primera === `// ${ruta}` ||
+    primera === `<!-- ${ruta} -->` ||
+    primera === `# ${ruta}`;
+
+  return esLaRuta && salto !== -1 ? contenido.slice(salto + 1) : contenido;
+}
+
 export function extractFiles(texto: string): GeneratedFile[] {
   const markdown = cerrarBloqueAbierto(texto);
   const files: GeneratedFile[] = [];
@@ -96,12 +120,14 @@ export function extractFiles(texto: string): GeneratedFile[] {
 
     path = path.replace(/^\.\//, "").replace(/^\/+/, "");
 
+    const limpio = sinLaRutaRepetida(content, path);
+
     // Si el modelo repite una ruta, nos quedamos con la última versión.
     if (used.has(path)) {
-      files[used.get(path)!].content = content;
+      files[used.get(path)!].content = limpio;
     } else {
       used.set(path, files.length);
-      files.push({ path, content });
+      files.push({ path, content: limpio });
     }
   }
 
