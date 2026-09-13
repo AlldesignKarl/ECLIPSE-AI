@@ -403,44 +403,71 @@ export async function* streamCompat(opts: {
     hayImagenes,
   );
   let res = await pedir(wanted);
+  // Por qué falló el PRIMER intento. Importa para el mensaje final: si el
+  // primero fue "has llegado al límite" y los respaldos fallan por otra cosa,
+  // contar lo último es contar el síntoma y esconder la causa.
+  const primerEstado = res.ok ? 0 : res.status;
 
-  // Modelo desconocido o retirado: buscamos uno disponible en la cuenta.
-  // El elegido ya no sirve (retirado, o sin acceso con esta clave): se olvida,
-  // se pide el catálogo de nuevo —el guardado puede ser justo el que caducó— y
-  // se prueban varios antes de rendirse. Es la diferencia entre una conversación
-  // que sigue y un error rojo en pantalla.
+  /**
+   * Otros modelos que la cuenta tenga, para cuando el elegido no sirve.
+   * Siempre salen del catálogo: un nombre escrito en el código puede llevar
+   * meses retirado, y entonces el respaldo falla peor que el intento original.
+   */
+  const alternativas = async () =>
+    (await modelosDeLaCuenta(opts.provider, preset, opts.key)).filter((m) => m !== wanted);
+
+  // Modelo desconocido o retirado: se olvida, se pide el catálogo de nuevo —el
+  // guardado puede ser justo el que caducó— y se prueban varios antes de
+  // rendirse.
   if (res.status === 404 || res.status === 400) {
     olvidarModelo(opts.provider, wanted);
     delete catalogo[opts.provider];
 
-    for (const candidate of (await modelosDeLaCuenta(opts.provider, preset, opts.key)).slice(0, 8)) {
-      if (candidate === wanted) continue;
-      res = await pedir(candidate);
+    for (const candidato of (await alternativas()).slice(0, 8)) {
+      res = await pedir(candidato);
       if (res.ok) {
-        if (opts.modo === "code") resueltoCodigo[opts.provider] = candidate;
-        else resolved[opts.provider] = candidate;
+        if (opts.modo === "code") resueltoCodigo[opts.provider] = candidato;
+        else resolved[opts.provider] = candidato;
         break;
       }
     }
   }
 
-  // El modelo bueno para código suele tener un límite gratuito más apretado.
-  // Si está saturado, se responde con el de siempre en vez de dejar al usuario
-  // sin nada: un proyecto algo más flojo es mejor que ninguno.
-  if (res.status === 429 && opts.modo === "code" && wanted !== preset.model) {
-    delete resueltoCodigo[opts.provider];
-    const otro = resolved[opts.provider] || preset.model;
-    if (otro !== wanted) res = await pedir(otro);
+  /*
+    Límite gratuito agotado en ese modelo.
+
+    Los modelos grandes —los que se eligen para código— tienen el cupo más
+    apretado, y se acaba antes. Aquí se prueba con otro que la cuenta tenga: un
+    proyecto escrito por un modelo algo más flojo es mejor que ninguno.
+
+    Antes el respaldo era el nombre escrito en el código, que Groq ya había
+    retirado: el 429 se convertía en un 404 y la aplicación acababa diciendo
+    que habían retirado todos los modelos. Ni era verdad ni ayudaba.
+  */
+  if (res.status === 429) {
+    olvidarModelo(opts.provider, wanted);
+    for (const candidato of (await alternativas()).slice(0, 4)) {
+      res = await pedir(candidato);
+      if (res.ok) {
+        if (opts.modo === "code") resueltoCodigo[opts.provider] = candidato;
+        else resolved[opts.provider] = candidato;
+        break;
+      }
+    }
   }
 
-  // Cuando ni con los respaldos hay modelo, el volcado del proveedor no ayuda a
-  // nadie: dice el nombre de un modelo que la persona no ha elegido nunca.
-  if (res.status === 404 || res.status === 400) {
+  // Agotados los respaldos, se explica la causa PRIMERA, no la última.
+  if (!res.ok && primerEstado === 429)
     throw new CompatError(
-      `${preset.label.split(" ")[0]} ha retirado los modelos que esta aplicación conocía. Prueba en unos minutos, o pon otro motor en Ajustes.`,
+      `Has llegado al límite gratuito de ${preset.label.split(" ")[0]} por ahora. Se renueva solo en unos minutos. Mientras tanto puedes seguir en el chat normal, que gasta menos.`,
+      429,
+    );
+
+  if (res.status === 404 || res.status === 400)
+    throw new CompatError(
+      `${preset.label.split(" ")[0]} no tiene ahora mismo ningún modelo que esta aplicación pueda usar. Prueba en unos minutos, o pon otro motor en Ajustes.`,
       res.status,
     );
-  }
 
   if (!res.ok) {
     const detail = await readError(res);
