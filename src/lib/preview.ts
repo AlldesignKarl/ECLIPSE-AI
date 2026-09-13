@@ -127,7 +127,72 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
     },
   );
 
+
   const motivo = porQueNoSeVe(html, files);
+
+  /*
+    El vigilante de errores va ANTES que nada, no al final.
+
+    Puesto al final, cuando se ejecuta ya han pasado los errores que tenía que
+    recoger: el <script> de la librería externa falló hace rato y no había
+    nadie escuchando. Arriba lo oye todo desde la primera línea.
+
+    Y hace falta, porque una vista previa que falla se queda en un rectángulo
+    negro, y un rectángulo negro no dice si el código está mal, si falta una
+    librería o si la página tarda. Lo más habitual con diferencia es lo
+    segundo: Three.js y compañía no llegan a descargarse, la variable se queda
+    sin definir y el código revienta en su primera línea.
+  */
+  const vigilante = `<script>
+(function () {
+  var avisado = false;
+  function avisar(titulo, detalle) {
+    if (avisado) return;
+    avisado = true;
+    function pintar() {
+      var caja = document.createElement("div");
+      caja.setAttribute("style",
+        "position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483647;" +
+        "background:#1a1014;border:1px solid #6b2230;border-radius:12px;padding:12px 14px;" +
+        "font:13px/1.5 system-ui,sans-serif;color:#ffd9df;box-shadow:0 10px 40px rgba(0,0,0,.6)");
+      var t = document.createElement("strong");
+      t.textContent = titulo;
+      t.setAttribute("style", "display:block;margin-bottom:4px;color:#ff9aa8");
+      var d = document.createElement("span");
+      d.textContent = detalle;
+      d.setAttribute("style", "opacity:.85;word-break:break-word");
+      caja.appendChild(t);
+      caja.appendChild(d);
+      document.body.appendChild(caja);
+    }
+    if (document.body) pintar();
+    else document.addEventListener("DOMContentLoaded", pintar);
+  }
+
+  window.addEventListener("error", function (e) {
+    var el = e.target;
+    if (el && el !== window && (el.tagName === "SCRIPT" || el.tagName === "LINK")) {
+      var url = el.src || el.href || "";
+      return avisar(
+        "No se ha podido cargar una libreria externa",
+        url + " — sin ella el codigo no puede arrancar. Pidele a ECLIPSE que use otra direccion o que lo haga sin esa libreria."
+      );
+    }
+    avisar("El codigo ha dado un error", (e.message || "error desconocido") + (e.lineno ? " (linea " + e.lineno + ")" : ""));
+  }, true);
+
+  window.addEventListener("unhandledrejection", function (e) {
+    avisar("El codigo ha dado un error", String((e.reason && e.reason.message) || e.reason || ""));
+  });
+
+  window.__eclipseAvisar = avisar;
+  window.__eclipseAvisado = function () { return avisado; };
+})();
+<\/script>`;
+
+  const conVigilante = /<head[^>]*>/i.test(html)
+    ? html.replace(/<head[^>]*>/i, (etiqueta) => etiqueta + vigilante)
+    : vigilante + html;
 
   /*
     Navegación dentro de la vista previa.
@@ -136,13 +201,9 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
     resuelven contra la dirección del documento de arriba, no contra la vista
     previa. Así que un `href="#contacto"` no bajaba a la sección: cargaba
     eclipse-ia.vercel.app dentro del recuadro, y parecía que la página hecha
-    llevaba a ECLIPSE. Por eso los anclajes se resuelven aquí a mano, buscando
-    el destino y desplazándose hasta él.
-
-    Lo demás se queda quieto: no hay servidor detrás que sirva otra página, y
-    al pulsarlo parecería que algo se ha roto.
+    llevaba a ECLIPSE. Por eso los anclajes se resuelven aquí a mano.
   */
-  const completo = `${html}
+  const completo = `${conVigilante}
 <script>
   (function () {
     function irA(destino) {
@@ -165,21 +226,16 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
     document.addEventListener("submit", function (e) { e.preventDefault(); }, true);
 
     /*
-      Red de seguridad contra la trampa más habitual de las apariciones.
+      Red de seguridad contra la trampa más habitual de las apariciones: el
+      contenido se pone en opacity 0 y se enciende con una animación, y en un
+      móvil con las animaciones desactivadas —viene puesto de fábrica en
+      muchos— nunca se enciende.
 
-      El patrón de "aparecer al bajar" se escribe poniendo el elemento en
-      opacity: 0 y encendiéndolo con una animación. Cuando el móvil lleva las
-      animaciones desactivadas —viene puesto de fábrica en muchos para ahorrar
-      batería— la animación no corre y el contenido se queda invisible: se ve
-      un rectángulo de color enorme y vacío.
-
-      La señal no puede ser "tiene animación": cuando se desactivan, el propio
-      CSS suele escribir animation: none, así que el rastro desaparece
-      justo en el caso que hay que arreglar. Se usa dónde está el elemento:
-      lo que va en el flujo normal de la página y lleva texto dentro es
-      contenido, y el contenido no se esconde a propósito. Un menú
-      desplegable, en cambio, va colocado por encima —fixed o absolute— y ese
-      no se toca: si está oculto, es porque tiene que estarlo.
+      La señal no puede ser "tiene animación": al desactivarlas, el propio CSS
+      escribe animation: none y el rastro desaparece justo en el caso que hay
+      que arreglar. Se usa dónde está el elemento: lo que va en el flujo normal
+      y lleva texto es contenido, y el contenido no se esconde a propósito. Un
+      menú desplegable va colocado por encima, y ese no se toca.
     */
     function rescatarInvisibles() {
       var todos = document.body ? document.body.querySelectorAll("*") : [];
@@ -199,10 +255,24 @@ export function buildPreview(files: GeneratedFile[]): Vista | null {
         el.style.setProperty("transform", "none", "important");
       }
     }
-    // Una al asentarse la página y otra por si algo tardaba en pintarse.
+
+    /** Ni error ni contenido: eso también hay que contarlo. */
+    function avisarSiEstaVacia() {
+      if (!document.body) return;
+      if (window.__eclipseAvisado && window.__eclipseAvisado()) return;
+      if (document.body.innerText.trim().length > 0) return;
+      if (document.querySelector("canvas, img, svg, video")) return;
+      if (window.__eclipseAvisar)
+        window.__eclipseAvisar(
+          "La pagina no ha pintado nada",
+          "El codigo se ha ejecutado pero no ha dibujado nada visible. Pidele a ECLIPSE que lo revise."
+        );
+    }
+
     window.addEventListener("load", function () {
       setTimeout(rescatarInvisibles, 400);
       setTimeout(rescatarInvisibles, 1600);
+      setTimeout(avisarSiEstaVacia, 3000);
     });
   })();
 </script>`;

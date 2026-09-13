@@ -34,10 +34,11 @@ interface Props {
   restantes?: number | null;
 }
 
-const SPEEDS: { id: Speed; label: string; icon: typeof Icon.Bolt }[] = [
-  { id: "rapido", label: "Rápido", icon: Icon.Bolt },
-  { id: "equilibrado", label: "Equilibrado", icon: Icon.Sparkle },
-  { id: "profundo", label: "Profundo", icon: Icon.Brain },
+/** Equilibrado es el de todos; los otros dos son del plan Pro. */
+const SPEEDS: { id: Speed; label: string; icon: typeof Icon.Bolt; pro: boolean }[] = [
+  { id: "rapido", label: "Rápido", icon: Icon.Bolt, pro: true },
+  { id: "equilibrado", label: "Equilibrado", icon: Icon.Sparkle, pro: false },
+  { id: "profundo", label: "Profundo", icon: Icon.Brain, pro: true },
 ];
 
 const PLACEHOLDERS: Record<Mode, string> = {
@@ -415,19 +416,27 @@ export default function Composer({
 
             {/* Velocidad */}
             <div className="flex items-center rounded-lg border border-line-soft bg-void/40 p-0.5">
-              {SPEEDS.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => onSpeedChange(s.id)}
-                  title={s.label}
-                  className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition ${
-                    speed === s.id ? "bg-raised text-ink" : "text-faint hover:text-muted"
-                  }`}
-                >
-                  <s.icon width={13} height={13} />
-                  <span className="hidden sm:inline">{s.label}</span>
-                </button>
-              ))}
+              {SPEEDS.map((s) => {
+                const bloqueado = s.pro && plan !== "pro";
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => (bloqueado ? onProNeeded() : onSpeedChange(s.id))}
+                    title={bloqueado ? `${s.label} · Plan Pro` : s.label}
+                    aria-label={bloqueado ? `${s.label}, requiere plan Pro` : s.label}
+                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] transition ${
+                      speed === s.id && !bloqueado
+                        ? "bg-raised text-ink"
+                        : bloqueado
+                          ? "text-faint/60 hover:text-pro"
+                          : "text-faint hover:text-muted"
+                    }`}
+                  >
+                    <s.icon width={13} height={13} />
+                    <span className="hidden sm:inline">{s.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {mode === "chat" && (

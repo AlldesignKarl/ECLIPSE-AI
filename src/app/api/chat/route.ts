@@ -392,7 +392,21 @@ export async function POST(req: NextRequest) {
 
   const plan = await currentPlan();
   const mode: Mode = body.mode ?? "chat";
-  const speed: Speed = body.speed ?? "equilibrado";
+
+  /*
+    La velocidad se comprueba aquí, no solo en la pantalla.
+
+    Rápido y Profundo se venden como parte del plan Pro, y hasta ahora eso era
+    verdad solo en la lista de planes: el servidor aceptaba lo que le mandaran.
+    Quien supiera mandar una petición a mano tenía el plan Pro gratis, y una
+    función que se cobra pero no se comprueba es una función regalada.
+
+    No se devuelve un error: se responde igual, en Equilibrado. Cortarle la
+    respuesta a alguien por haber tocado un botón que la pantalla le dejaba
+    tocar sería castigarle por un fallo nuestro.
+  */
+  const pedida: Speed = body.speed ?? "equilibrado";
+  const speed: Speed = plan === "pro" ? pedida : "equilibrado";
 
   if (PRO_MODES.includes(mode) && plan !== "pro") {
     return Response.json(

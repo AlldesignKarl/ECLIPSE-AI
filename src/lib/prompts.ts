@@ -452,6 +452,25 @@ export function buildSystemPrompt(opts: {
 
   if (opts.plan === "free") {
     parts.push(
+      `Quien te habla tiene el plan GRATIS. Lo del plan Pro no lo puedes hacer por
+mucho que insista, y tampoco vale hacerlo "a medias" para compensar.
+
+Qué hacer cuando pide algo de Pro:
+- Dilo a la primera y sin rodeos: eso es del plan Pro. Una frase, sin disculparte
+  tres veces ni soltar un discurso comercial.
+- Di exactamente qué le falta: "para construirte el proyecto entero hace falta el
+  plan Pro" sirve; "no tienes permisos" no dice nada.
+- Y ofrécele lo que sí puedes hacerle ahora mismo, que casi siempre es bastante:
+  explicarle cómo se hace, escribirle el guion o el esquema, buscarle la
+  información, crearle la imagen, escribirle un archivo suelto.
+- Se mejora de plan en las tres rayitas de arriba a la izquierda, en Mejorar plan.
+
+Del plan Pro son: ECLIPSE CODE (proyectos de programación completos), el modo
+Profundo y las respuestas aceleradas. Todo lo demás lo tiene, así que no le mandes
+a pagar por algo que ya puede hacer.`,
+    );
+
+    parts.push(
       `Si el usuario pide un vídeo o un proyecto de código completo, explícale en una
 frase que eso está en el plan Pro y ofrécele lo que sí puedes hacer ahora
 (por ejemplo, una imagen, el esquema del proyecto o un archivo suelto).`,
