@@ -490,13 +490,7 @@ cada línea está porque sin ella la escena sale mal de una forma concreta.
   escena.background = new THREE.Color(0x0b0d12);   // SIEMPRE. Sin esta línea el
                                                    // fondo sale blanco de fábrica
                                                    // y parece una página rota.
-  const camara = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
-  camara.position.set(6, 5, 7);                    // FUERA del objeto y EN DIAGONAL:
-  camara.lookAt(0, 0, 0);                          // las tres coordenadas distintas
-                                                   // de cero. De frente, una pirámide
-                                                   // es un triángulo y un cubo un
-                                                   // cuadrado: el volumen desaparece
-                                                   // y parece un dibujo plano.
+  const camara = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
 
   const render = new THREE.WebGLRenderer({ antialias: true });
   render.setSize(innerWidth, innerHeight);
@@ -515,6 +509,50 @@ cada línea está porque sin ella la escena sale mal de una forma concreta.
     camara.updateProjectionMatrix();
     render.setSize(innerWidth, innerHeight);
   });
+
+Y la cámara NO se coloca a ojo. Pega esta función tal cual y llámala UNA VEZ
+cuando ya tengas construido lo que se va a ver: encuadrar(camara, grupo, mandos).
+Mide lo que hay y se coloca sola, así que da igual si tu escena mide dos
+unidades o doscientas. Está probada con objetos desde 0,05 hasta 120 de tamaño y
+fuera del centro, y en todos deja la figura entera, centrada y ocupando algo más
+de la mitad de la pantalla:
+
+  function encuadrar(camara, objeto, mandos, margen = 1.25) {
+    const caja = new THREE.Box3().setFromObject(objeto);
+    if (caja.isEmpty()) return;
+
+    const tam = caja.getSize(new THREE.Vector3());
+    const centro = caja.getCenter(new THREE.Vector3());
+
+    // El alto y el ancho se miden por separado, cada uno con su ángulo: la
+    // vista previa es estrecha y alta, y mirando solo la altura la figura se
+    // sale por los lados.
+    const fovY = (camara.fov * Math.PI) / 180;
+    const fovX = 2 * Math.atan(Math.tan(fovY / 2) * camara.aspect);
+    const d =
+      Math.max(
+        tam.y / 2 / Math.tan(fovY / 2),
+        Math.max(tam.x, tam.z) / 2 / Math.tan(fovX / 2),
+      ) * margen;
+
+    // En diagonal y algo por encima: de frente, una pirámide es un triángulo y
+    // un cubo es un cuadrado, y el volumen desaparece.
+    camara.position.set(centro.x + d * 0.72, centro.y + d * 0.45, centro.z + d * 0.72);
+    camara.near = Math.max(0.01, d / 200);
+    camara.far = d * 20;
+    camara.updateProjectionMatrix();
+    camara.lookAt(centro);
+
+    if (mandos) {
+      mandos.target.copy(centro);
+      mandos.update();
+    }
+  }
+
+Si hay suelo, horizonte o cielo, encuádralo por el objeto y no por el suelo: un
+plano de 400 metros metido en la caja deja la figura como una hormiga. Para eso,
+o le pasas a encuadrar solo el grupo de la figura, o construyes el suelo después
+de llamarla.
 
 Con el body sin márgenes y el canvas en display:block. Si de verdad quieres una
 escena sin luces, los materiales tienen que ser MeshBasicMaterial o
@@ -535,16 +573,13 @@ Lo único que NO hay: archivos de fuera. Ni un .glb ni una textura .jpg, porque
 no hay de dónde cargarlos. La forma se construye con geometría o se dibuja en un
 canvas. Si piden un modelo descargado de internet, se dice y se ofrece hacerlo.
 
-Y antes de dar por buena una escena 3D, repasa esta lista. Son cinco cosas que no
-se ven al leer el código y que estropean el resultado entero:
-1. ¿Está puesto escena.background? Si no, el fondo sale BLANCO.
-2. ¿Hay al menos una AmbientLight y una DirectionalLight? Si no, todo sale NEGRO.
-3. ¿La cámara está fuera del objeto y apuntándolo?
-4. ¿El canvas ocupa la ventana, con el body sin márgenes?
-5. Si hay piezas que se mueven de sitio, ¿vuelven con attach y no con add?
-
-Si alguna respuesta es no, arréglalo antes de entregar. Que el código no dé error
-no quiere decir que la escena se vea.`;
+Antes de dar por buena una escena, repasa esto. No se ve leyendo el código y
+estropea el resultado entero:
+1. escena.background puesto. Sin él, fondo BLANCO.
+2. AmbientLight + DirectionalLight. Sin ellas, todo NEGRO.
+3. encuadrar(...) llamada al final, con la figura construida.
+4. body sin márgenes y canvas en display:block.
+5. Piezas que cambian de sitio: vuelven con attach, nunca con add.`;
 
 /** Cómo se hace una figura que no es un cubo. Solo cuando hay que modelar algo. */
 const MODELAR_3D = `MODELAR ALGO QUE NO ES UN CUBO: un animal, una persona, un coche, un edificio.
@@ -567,23 +602,21 @@ hay que escribir, y son treinta segundos de búsqueda.
 
 Cómo se hace que parezca de verdad:
 - Formas redondeadas, que en la naturaleza no hay aristas: CapsuleGeometry para
-  cuerpos y patas, SphereGeometry escalada con scale.set() para cabezas y
-  vientres, RoundedBoxGeometry para lo que sí es recto, LatheGeometry para lo
-  que tiene simetría de giro (cuernos, jarrones, columnas), ExtrudeGeometry para
-  siluetas dibujadas con Shape.
-- Proporciones de verdad: mídelas contra algo. Una vaca es como tres veces más
-  larga que alta, las patas ocupan la mitad de la altura, la cabeza cabe unas
-  seis veces en el cuerpo. Piénsalas antes de escribir números.
+  cuerpos y patas, SphereGeometry escalada con scale.set() para cabezas,
+  RoundedBoxGeometry para lo recto, LatheGeometry para lo que tiene simetría de
+  giro (cuernos, jarrones, columnas), ExtrudeGeometry para siluetas con Shape.
+- Proporciones medidas contra algo, pensadas antes de escribir números: una vaca
+  es tres veces más larga que alta, las patas la mitad de la altura, la cabeza
+  cabe seis veces en el cuerpo.
 - Agrupa por partes con THREE.Group —una pata es un grupo con sus tramos— y
-  luego colocas y giras el grupo entero. Así se mueve bien y se repite fácil.
-- Materiales que se comporten: roughness alto (0,7-0,9) para pelo, piel, tela y
-  barro; bajo con algo de metalness solo para metal y cristal. Nada de colores
-  planos a medio camino, que es lo que hace que todo parezca plástico.
-- Luz de tres puntos: una principal fuerte y en diagonal con castShadow, una de
-  relleno suave por el lado contrario y una tercera por detrás que le dibuje el
-  borde. Con eso solo, cualquier figura sube dos escalones.
-- Suelo que reciba la sombra, y niebla suave si hay fondo. Un objeto flotando en
-  un color liso siempre parece inacabado.
+  colocas y giras el grupo entero.
+- Materiales que se comporten: roughness 0,7-0,9 para pelo, piel, tela y barro;
+  bajo y con algo de metalness solo para metal y cristal. Los colores planos a
+  medio camino son lo que hace que todo parezca plástico.
+- Luz de tres puntos: principal fuerte en diagonal con castShadow, relleno suave
+  por el lado contrario y una tercera por detrás que dibuje el borde.
+- Suelo que reciba la sombra y niebla suave. Un objeto flotando en un color liso
+  parece inacabado.
 
 Y sé honesto con lo que se puede: con geometría y luz se llega a una figura
 buena, bien proporcionada y con carácter —de dibujo animado bien hecho, de

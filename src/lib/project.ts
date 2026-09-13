@@ -61,27 +61,39 @@ function cerrarBloqueAbierto(markdown: string): string {
 }
 
 /**
- * Quita la ruta cuando el modelo la repite DENTRO del bloque.
+ * Quita la cabecera del bloque cuando el modelo la repite DENTRO.
  *
- * La ruta va en la línea de apertura del bloque. Algunos modelos la escriben
- * además en la primera línea del contenido, y entonces el archivo empieza por
- * "index.html" y ese texto se pinta arriba del todo de la página, encima del
- * diseño. Fuera: una página HTML no empieza nunca por el nombre de sí misma.
+ * La cabecera va en la línea de apertura: ```html index.html. Algunos modelos
+ * la escriben además como primera línea del contenido, y entonces el archivo
+ * empieza por "html index.html" y ese texto se pinta arriba del todo de la
+ * página, encima del diseño y con el fondo blanco del navegador.
+ *
+ * Se reconoce por lo que es: una línea corta hecha solo de trozos que son o el
+ * nombre de un lenguaje, o la ruta del archivo, o una marca de comentario. Una
+ * línea de código de verdad siempre trae algo más —un paréntesis, una llave, un
+ * signo igual—, así que no se toca nada que sirva.
  */
-function sinLaRutaRepetida(contenido: string, ruta: string): string {
+function sinLaCabeceraRepetida(contenido: string, ruta: string): string {
   const salto = contenido.indexOf("\n");
-  const primera = (salto === -1 ? contenido : contenido.slice(0, salto)).trim();
-  if (!primera) return contenido;
+  if (salto === -1) return contenido;
+
+  const primera = contenido.slice(0, salto).trim();
+  if (!primera || primera.length > 120) return contenido;
 
   const nombre = ruta.split("/").pop() ?? ruta;
-  const esLaRuta =
-    primera === ruta ||
-    primera === nombre ||
-    primera === `// ${ruta}` ||
-    primera === `<!-- ${ruta} -->` ||
-    primera === `# ${ruta}`;
+  const piezas = primera
+    .replace(/^(<!--|\/\/|#|\/\*)\s*/, "")
+    .replace(/\s*(-->|\*\/)$/, "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-  return esLaRuta && salto !== -1 ? contenido.slice(salto + 1) : contenido;
+  if (piezas.length === 0 || piezas.length > 3) return contenido;
+
+  const esRelleno = (p: string) =>
+    p === ruta || p === nombre || p === `\`\`\`${ruta}` || LANGUAGES.has(p.toLowerCase());
+
+  return piezas.every(esRelleno) ? contenido.slice(salto + 1) : contenido;
 }
 
 export function extractFiles(texto: string): GeneratedFile[] {
@@ -120,7 +132,7 @@ export function extractFiles(texto: string): GeneratedFile[] {
 
     path = path.replace(/^\.\//, "").replace(/^\/+/, "");
 
-    const limpio = sinLaRutaRepetida(content, path);
+    const limpio = sinLaCabeceraRepetida(content, path);
 
     // Si el modelo repite una ruta, nos quedamos con la última versión.
     if (used.has(path)) {

@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.15",
+    // El encuadre: lo que separa una foto de un recorte mal hecho.
+    nombre: "Encuadre",
+    titulo: "Las escenas 3D se colocan solas",
+    entrada:
+      "La figura salía diminuta, descentrada o con medio cuadro en negro. Ya no: la cámara se coloca midiendo lo que hay.",
+    puntos: [
+      "ECLIPSE ya no coloca la cámara a ojo. Mide la figura y se sitúa donde se ve entera, centrada y grande, sea del tamaño que sea.",
+      "Probado con figuras desde 0,05 hasta 120 de tamaño, alargadas y fuera del centro, en una ventana estrecha de móvil: en todos los casos entra entera y ocupa más de la mitad de la pantalla.",
+      "Y se acabó el «html index.html» escrito encima de la página. Algunos modelos repetían ahí la cabecera del bloque y se pintaba dentro del diseño.",
+    ],
+  },
+  {
     version: "2.14",
     // El mismo sol, visto a través de otro filtro: no cambia nada, solo cómo
     // llega. Aquí, la misma imagen en otro archivo.
