@@ -66,9 +66,25 @@ async function encoger(file: File): Promise<{ data: string; mime: string; size: 
     ctx.drawImage(bitmap, 0, 0, lienzo.width, lienzo.height);
     bitmap.close?.();
 
-    const blob = await new Promise<Blob | null>((listo) =>
-      lienzo.toBlob(listo, "image/jpeg", CALIDAD),
-    );
+    /*
+      Un PNG se queda en PNG mientras quepa.
+
+      Pasar un PNG a JPEG parece inofensivo hasta que el PNG es una captura de
+      pantalla: el JPEG emborrona los bordes de las letras, y encima estropea
+      justo el caso en que alguien manda una imagen para convertirla de formato.
+      Así que primero se intenta PNG, y solo se recurre al JPEG si el PNG sale
+      demasiado gordo para caber en la petición.
+    */
+    const aBlob = (tipo: string, calidad?: number) =>
+      new Promise<Blob | null>((listo) => lienzo.toBlob(listo, tipo, calidad));
+
+    let blob = /png/i.test(file.type) ? await aBlob("image/png") : null;
+    let mime = "image/png";
+
+    if (!blob || blob.size > MAX_FILE_BYTES) {
+      blob = await aBlob("image/jpeg", CALIDAD);
+      mime = "image/jpeg";
+    }
     if (!blob) return null;
 
     // Si encoger no ha servido de nada (una imagen ya pequeña), se deja la
@@ -77,7 +93,7 @@ async function encoger(file: File): Promise<{ data: string; mime: string; size: 
 
     return {
       data: base64FromBuffer(await blob.arrayBuffer()),
-      mime: "image/jpeg",
+      mime,
       size: blob.size,
     };
   } catch {

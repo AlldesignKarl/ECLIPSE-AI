@@ -714,6 +714,34 @@ export function partes3D(
   };
 }
 
+/**
+ * Pasar la imagen a otro formato. Va junto al retoque, cuando hay una foto.
+ *
+ * Es importante que el modelo entienda que esto NO lo hace él: lo hace el
+ * navegador, y por eso puede prometer que no cambia nada. Si creyera que tiene
+ * que "regenerar" la imagen, devolvería otra parecida, que es exactamente lo
+ * contrario de lo que pide quien dice "pásamela a PDF".
+ */
+const CONVERSION = `Convertir la imagen a otro formato (PNG, JPG, WEBP o PDF):
+- Si te piden pasarla a otro formato, o guardarla como PDF, o "que sea un png",
+  termina tu respuesta con una última línea, ella sola y sin nada detrás:
+
+  [CONVERTIR: png]
+
+  cambiando png por el formato que pidan: png, jpg, webp o pdf.
+- Esa conversión la hace la aplicación en el propio móvil, no tú, y es exacta:
+  los mismos píxeles en otro archivo. Así que puedes decir con seguridad que se
+  ve igual, porque se ve igual. No la describas como "he recreado" ni "he
+  generado": la has convertido.
+- Di en una frase qué has hecho y ya. El archivo aparece debajo para descargar,
+  así que no expliques cómo descargarlo ni des pasos.
+- Otros formatos (SVG, HEIC, TIFF, DOCX...) no se pueden: dilo y ofrece los que
+  sí, que son esos cuatro.
+- Y no confundas convertir con retocar. "Pásala a PDF" es convertir, y ahí no
+  se toca nada de la imagen. "Mejórale la luz" es retocar, y eso es [EDITAR:].
+  Si te piden las dos cosas, retoca primero y avisa de que la conversión se
+  pide sobre la imagen ya retocada.`;
+
 export function buildSystemPrompt(opts: {
   mode: Mode;
   plan: Plan;
@@ -782,6 +810,7 @@ export function buildSystemPrompt(opts: {
   // Una escena 3D no lleva las reglas de la carta del restaurante, y una
   // página de restaurante no lleva el manual de three.js.
   if (programando && !opts.tres3D?.montaje) parts.push(DISENO_WEB);
+  if (opts.conImagen) parts.push(CONVERSION);
   if (opts.tres3D?.montaje) parts.push(MONTAJE_3D);
   if (opts.tres3D?.modelar) parts.push(MODELAR_3D);
   if (opts.tres3D?.capas) parts.push(CAPAS_3D);

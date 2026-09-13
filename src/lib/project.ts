@@ -233,6 +233,24 @@ export function leerRetoque(texto: string): { limpio: string; encargo?: string }
 }
 
 /**
+ * Lee la petición de convertir la imagen a otro formato.
+ *
+ * Igual que el retoque, pero para algo que no tiene nada de artístico: pasar la
+ * misma imagen a PNG, JPG, WEBP o PDF. Lo escribe el modelo en la última línea
+ * y lo ejecuta el navegador, sin cambiar un solo píxel.
+ */
+export function leerConversion(texto: string): { limpio: string; formato?: string } {
+  const marca = /\[\s*CONVERTIR\s*:\s*([a-z]{2,5})\s*\]\s*$/i;
+  const hallazgo = texto.match(marca);
+  if (!hallazgo) return { limpio: texto };
+
+  return {
+    limpio: texto.slice(0, hallazgo.index).trimEnd(),
+    formato: hallazgo[1].trim().toLowerCase(),
+  };
+}
+
+/**
  * Los archivos de una respuesta del chat normal, no de ECLIPSE CODE.
  *
  * En CODE todo bloque de código es parte del proyecto y se guarda. En una

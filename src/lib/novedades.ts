@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.14",
+    // El mismo sol, visto a través de otro filtro: no cambia nada, solo cómo
+    // llega. Aquí, la misma imagen en otro archivo.
+    nombre: "Filtro",
+    titulo: "Pásame esta foto a PDF",
+    entrada:
+      "Le mandas una imagen, le dices a qué formato la quieres, y te la devuelve. La misma, sin un píxel de diferencia.",
+    puntos: [
+      "PNG, JPG, WEBP y PDF. Se lo pides hablando —«pásala a pdf»— y te aparece el archivo debajo para descargar.",
+      "Sin pérdida de verdad: un PNG sale idéntico píxel a píxel, y si la foto ya era JPEG, dentro del PDF va ese mismo archivo sin tocar.",
+      "Se hace en tu propio móvil, así que es instantáneo, no gasta cupo y la imagen no sale del teléfono.",
+      "Y las capturas de pantalla ya no se guardan como JPEG: se quedan en PNG, que es lo que mantiene las letras nítidas.",
+    ],
+  },
+  {
     version: "2.13",
     // La primera luz que vuelve tras la totalidad: ya se ve lo que hay.
     nombre: "Primera luz",

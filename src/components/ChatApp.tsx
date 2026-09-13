@@ -21,6 +21,7 @@ import {
   aligerarHistorial,
   archivosEjecutables,
   extractFiles,
+  leerConversion,
   leerRetoque,
   projectName,
 } from "@/lib/project";
@@ -340,6 +341,58 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
    * Si falla, se queda la explicación sin imagen y se dice por qué: haber
    * contado qué mejorarías sigue valiendo aunque el retoque no salga.
    */
+  /**
+   * Pasar la imagen a otro formato, aquí en el móvil.
+   *
+   * No pasa por el servidor a propósito: es una operación exacta, va
+   * instantánea, no gasta cupo de nada y la imagen no sale del teléfono.
+   */
+  const convertir = useCallback(
+    async (conversationId: string, messageId: string, original: Attachment, formato: string) => {
+      const { convertirImagen, leerFormato, nombreDe } = await import("@/lib/convertir");
+      const destino = leerFormato(formato);
+      if (!destino || !original.data) return;
+
+      const ponerNota = (nota: string) =>
+        upsert(conversationId, (c) => ({
+          ...c,
+          messages: c.messages.map((m) =>
+            m.id === messageId ? { ...m, content: `${m.content}\n\n_(${nota})_` } : m,
+          ),
+        }));
+
+      try {
+        const hecha = await convertirImagen(
+          { data: original.data, mime: original.mime, name: original.name },
+          destino,
+        );
+
+        upsert(conversationId, (c) => ({
+          ...c,
+          messages: c.messages.map((m) =>
+            m.id === messageId
+              ? {
+                  ...m,
+                  artifacts: [
+                    ...(m.artifacts ?? []),
+                    {
+                      type: "file" as const,
+                      url: hecha.dataUrl,
+                      title: hecha.nombre,
+                      mime: hecha.mime,
+                    },
+                  ],
+                }
+              : m,
+          ),
+        }));
+      } catch {
+        ponerNota(`No he podido pasarla a ${nombreDe(destino)} en este dispositivo.`);
+      }
+    },
+    [upsert],
+  );
+
   const retocar = useCallback(
     async (conversationId: string, messageId: string, original: Attachment, encargo: string) => {
       setStatus("retocando_imagen");
@@ -527,7 +580,11 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       const thinking = bufferRef.current.thinking;
       // La marca de retoque no se le enseña a nadie: es un encargo para el
       // motor de imagen, y el texto tiene que leerse igual sin ella.
-      const { limpio: text, encargo } = leerRetoque(bufferRef.current.text);
+      // La conversión primero: las dos marcas van al final, y si se pide
+      // retocar Y convertir, la de convertir es la última. Al revés, quitar la
+      // de retocar no encontraría nada y las dos se quedarían sin leer.
+      const { limpio: sinConvertir, formato } = leerConversion(bufferRef.current.text);
+      const { limpio: text, encargo } = leerRetoque(sinConvertir);
       const files = currentMode === "code" ? extractFiles(text) : archivosEjecutables(text);
 
       const reply = makeMessage("assistant", text, {
@@ -575,10 +632,13 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
       if (encargo && original && !failure)
         await retocar(conversationId, reply.id, original, encargo);
 
+      if (formato && original && !failure)
+        await convertir(conversationId, reply.id, original, formato);
+
       setStatus("idle");
       abortRef.current = null;
     },
-    [plan, prefs.speed, prefs.deepSearch, retocar, scheduleFlush, upsert],
+    [convertir, plan, prefs.speed, prefs.deepSearch, retocar, scheduleFlush, upsert],
   );
 
   const runImage = useCallback(
