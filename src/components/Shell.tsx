@@ -27,9 +27,10 @@ export default function Shell() {
   const [view, setView] = useState<View>("portada");
   const [ready, setReady] = useState(false);
   const [wantsIn, setWantsIn] = useState(false);
-  const [auth, setAuth] = useState<{ enabled: boolean; user: string | null }>({
+  const [auth, setAuth] = useState<{ enabled: boolean; user: string | null; nombre: string }>({
     enabled: false,
     user: null,
+    nombre: "",
   });
 
   const remember = useCallback(() => {
@@ -50,8 +51,12 @@ export default function Shell() {
     void fetch("/api/auth")
       .then((r) => r.json())
       .catch(() => ({ enabled: false, user: null }))
-      .then((a: { enabled?: boolean; user?: string | null }) => {
-        setAuth({ enabled: Boolean(a.enabled), user: a.user ?? null });
+      .then((a: { enabled?: boolean; user?: string | null; nombre?: string }) => {
+        setAuth({
+          enabled: Boolean(a.enabled),
+          user: a.user ?? null,
+          nombre: a.nombre ?? "",
+        });
         setReady(true);
       });
   }, []);
@@ -82,8 +87,8 @@ export default function Shell() {
           setView("portada");
         }}
         onSkip={() => setView("app")}
-        onDone={(user) => {
-          setAuth((a) => ({ ...a, user }));
+        onDone={(user, nombre) => {
+          setAuth((a) => ({ ...a, user, nombre }));
           remember();
           setView("app");
         }}
@@ -91,9 +96,11 @@ export default function Shell() {
     ) : (
       <ChatApp
         user={auth.user}
+        nombre={auth.nombre}
+        onNombre={(nombre) => setAuth((a) => ({ ...a, nombre }))}
         onInicio={() => setView("portada")}
         onSignOut={() => {
-          setAuth((a) => ({ ...a, user: null }));
+          setAuth((a) => ({ ...a, user: null, nombre: "" }));
           setView("entrar");
         }}
       />

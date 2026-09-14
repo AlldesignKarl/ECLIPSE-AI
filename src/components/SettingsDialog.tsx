@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "./Modal";
 import * as Icon from "./Icons";
 import type { Plan } from "@/lib/types";
@@ -81,6 +81,10 @@ interface Props {
   /** El motor elegido para ECLIPSE CODE, si hay uno distinto. */
   engineCode?: Engine | null;
   onKeysChange: () => void;
+  /** Cómo quiere que le llamen, y si hay dónde guardarlo. */
+  nombre?: string;
+  puedeCambiarNombre?: boolean;
+  onNombre?: (nombre: string) => void;
   showThinking: boolean;
   onShowThinking: (v: boolean) => void;
   onClearAll: () => void;
@@ -105,6 +109,90 @@ function Row({ ok, label, hint }: { ok: boolean; label: string; hint: string }) 
         <span className="block text-[11.5px] text-faint">{ok ? "Listo" : hint}</span>
       </span>
     </li>
+  );
+}
+
+/**
+ * Cómo quiere que le llame ECLIPSE.
+ *
+ * Se pregunta al crear la cuenta, pero tiene que poder cambiarse: quien se
+ * registró antes de que esto existiera no llegó a elegir nada, y a cualquiera
+ * le puede dejar de gustar cómo le llaman. Se guarda en el servidor, junto a
+ * la cuenta, para que le siga al móvil y al ordenador como todo lo demás.
+ */
+function NombreBox({
+  nombre,
+  onNombre,
+}: {
+  nombre: string;
+  onNombre?: (nombre: string) => void;
+}) {
+  const [valor, setValor] = useState(nombre);
+  const [busy, setBusy] = useState(false);
+  const [hecho, setHecho] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Si llega de fuera (al abrir Ajustes recién entrado), que se vea lo guardado.
+  useEffect(() => {
+    setValor(nombre);
+  }, [nombre]);
+
+  const guardar = async () => {
+    setBusy(true);
+    setError(null);
+    setHecho(false);
+    try {
+      const res = await fetch("/api/auth", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: valor }),
+      });
+      const data = (await res.json()) as { nombre?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo guardar.");
+      setValor(data.nombre ?? "");
+      onNombre?.(data.nombre ?? "");
+      setHecho(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">
+        Cómo quieres que te llame
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={valor}
+          onChange={(e) => {
+            setValor(e.target.value);
+            setHecho(false);
+          }}
+          onKeyDown={(e) => e.key === "Enter" && void guardar()}
+          type="text"
+          maxLength={40}
+          placeholder="Tu nombre, o como prefieras"
+          className="min-w-0 flex-1 rounded-xl border border-line bg-panel px-3 py-2.5 text-[14px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
+        />
+        <button
+          onClick={() => void guardar()}
+          disabled={busy || valor.trim() === nombre.trim()}
+          className="shrink-0 rounded-xl bg-ink px-4 text-[13px] font-medium text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"
+        >
+          {busy ? "…" : "Guardar"}
+        </button>
+      </div>
+      {error ? (
+        <p className="mt-1.5 text-[11.5px] text-danger">{error}</p>
+      ) : (
+        <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
+          {hecho ? "Guardado." : "Así te llamará al hablarte. Puedes dejarlo en blanco."}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -369,6 +457,9 @@ export default function SettingsDialog({
   engine,
   engineCode,
   onKeysChange,
+  nombre = "",
+  puedeCambiarNombre = false,
+  onNombre,
   showThinking,
   onShowThinking,
   onClearAll,
@@ -377,6 +468,10 @@ export default function SettingsDialog({
   return (
     <Modal open={open} onClose={onClose} title="Ajustes">
       <div className="space-y-5">
+        {puedeCambiarNombre && (
+          <NombreBox nombre={nombre} onNombre={onNombre} />
+        )}
+
         <EngineBox sources={keySources} engine={engine} onChange={onKeysChange} />
 
         <MotorCodigo

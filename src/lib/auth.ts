@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { get, setIfAbsent, storeAvailable, StoreError } from "./store";
+import { get, set, setIfAbsent, storeAvailable, StoreError } from "./store";
 
 /**
  * Correo y contraseña.
@@ -53,6 +53,8 @@ interface User {
   salt: string;
   hash: string;
   createdAt: number;
+  /** Cómo quiere que le llamen. Lo elige al crear la cuenta. */
+  nombre?: string;
 }
 
 function key(email: string): string {
@@ -76,17 +78,46 @@ export function passwordProblem(password: string): string | null {
   return null;
 }
 
-export type AuthResult = { ok: true; email: string } | { ok: false; error: string };
+/**
+ * El nombre, dejado en condiciones de escribirlo en una frase.
+ *
+ * Se recorta a algo corto y se le quitan los saltos de línea y lo que no sea
+ * un nombre: esto acaba dentro de las instrucciones del modelo, y un "nombre"
+ * de tres párrafos ahí dentro no es un nombre, es otra cosa.
+ */
+export function limpiarNombre(raw: string): string {
+  return raw
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/[<>{}[\]`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40);
+}
 
-export async function signUp(rawEmail: string, password: string): Promise<AuthResult> {
+export type AuthResult =
+  | { ok: true; email: string; nombre?: string }
+  | { ok: false; error: string };
+
+export async function signUp(
+  rawEmail: string,
+  password: string,
+  rawNombre = "",
+): Promise<AuthResult> {
   const email = normalizeEmail(rawEmail);
   if (!emailLooksValid(email)) return { ok: false, error: "Ese correo no parece válido." };
 
   const problem = passwordProblem(password);
   if (problem) return { ok: false, error: problem };
 
+  const nombre = limpiarNombre(rawNombre);
   const salt = randomBytes(16).toString("hex");
-  const user: User = { email, salt, hash: hash(password, salt), createdAt: Date.now() };
+  const user: User = {
+    email,
+    salt,
+    hash: hash(password, salt),
+    createdAt: Date.now(),
+    ...(nombre ? { nombre } : {}),
+  };
 
   try {
     const created = await setIfAbsent(key(email), JSON.stringify(user));
@@ -96,7 +127,7 @@ export async function signUp(rawEmail: string, password: string): Promise<AuthRe
     return { ok: false, error: err instanceof StoreError ? err.message : "No se ha podido crear la cuenta." };
   }
 
-  return { ok: true, email };
+  return { ok: true, email, ...(nombre ? { nombre } : {}) };
 }
 
 export async function signIn(rawEmail: string, password: string): Promise<AuthResult> {
@@ -119,7 +150,56 @@ export async function signIn(rawEmail: string, password: string): Promise<AuthRe
     return wrong;
   }
 
-  return samePassword(password, user.salt, user.hash) ? { ok: true, email } : wrong;
+  return samePassword(password, user.salt, user.hash)
+    ? { ok: true, email, ...(user.nombre ? { nombre: user.nombre } : {}) }
+    : wrong;
+}
+
+/* -------------------------------- Nombre -------------------------------- */
+
+async function leerUsuario(email: string): Promise<User | null> {
+  let raw: string | null;
+  try {
+    raw = await get(key(email));
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+  try {
+    return typeof raw === "string" ? (JSON.parse(raw) as User) : (raw as User);
+  } catch {
+    return null;
+  }
+}
+
+/** Cómo quiere que le llamen quien está usando la app ahora mismo. */
+export async function nombreActual(): Promise<string> {
+  const email = await currentUser();
+  if (!email) return "";
+  return (await leerUsuario(email))?.nombre ?? "";
+}
+
+/**
+ * Cambiarlo después.
+ *
+ * Hace falta porque al añadir esto ya había cuentas creadas, y a esas nadie
+ * les preguntó nada: sin esta puerta, quien se registró antes se quedaba para
+ * siempre sin nombre. Y porque uno cambia de idea sobre cómo quiere que le
+ * llamen, que es justo la clase de cosa que tiene que poder cambiarse.
+ */
+export async function guardarNombre(rawNombre: string): Promise<string | null> {
+  const email = await currentUser();
+  if (!email) return null;
+  const user = await leerUsuario(email);
+  if (!user) return null;
+
+  const nombre = limpiarNombre(rawNombre);
+  try {
+    await set(key(email), JSON.stringify({ ...user, nombre: nombre || undefined }));
+  } catch {
+    return null;
+  }
+  return nombre;
 }
 
 /* -------------------------------- Sesión -------------------------------- */

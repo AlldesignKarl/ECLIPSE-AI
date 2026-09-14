@@ -5,7 +5,7 @@ import EclipseMark from "./EclipseMark";
 import * as Icon from "./Icons";
 
 interface Props {
-  onDone: (email: string) => void;
+  onDone: (email: string, nombre: string) => void;
   onBack: () => void;
   /** Si el servidor todavía no tiene base de datos, no hay cuentas que crear. */
   enabled: boolean;
@@ -14,6 +14,7 @@ interface Props {
 
 export default function AuthScreen({ onDone, onBack, enabled, onSkip }: Props) {
   const [mode, setMode] = useState<"login" | "signup">("signup");
+  const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -30,11 +31,16 @@ export default function AuthScreen({ onDone, onBack, enabled, onSkip }: Props) {
       const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: signup ? "signup" : "login", email, password }),
+        body: JSON.stringify({
+          action: signup ? "signup" : "login",
+          email,
+          password,
+          ...(signup ? { nombre } : {}),
+        }),
       });
-      const data = (await res.json()) as { user?: string; error?: string };
+      const data = (await res.json()) as { user?: string; nombre?: string; error?: string };
       if (!res.ok || !data.user) throw new Error(data.error ?? "No se ha podido continuar.");
-      onDone(data.user);
+      onDone(data.user, data.nombre ?? "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se ha podido continuar.");
     } finally {
@@ -90,6 +96,29 @@ export default function AuthScreen({ onDone, onBack, enabled, onSkip }: Props) {
         ) : (
           <>
             <div className="mt-8 space-y-3">
+              {/*
+                Lo primero que se pregunta, antes que el correo: es lo único de
+                esta pantalla que no es papeleo. Sirve para que ECLIPSE le hable
+                por su nombre en vez de hablarle a nadie, y por eso se puede
+                dejar en blanco sin que pase nada.
+              */}
+              {signup && (
+                <label className="block">
+                  <span className="mb-1.5 block text-[12px] text-faint">
+                    ¿Cómo quieres que te llame?
+                  </span>
+                  <input
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    type="text"
+                    autoComplete="given-name"
+                    maxLength={40}
+                    placeholder="Tu nombre, o como prefieras"
+                    className="w-full rounded-xl border border-line bg-panel px-3.5 py-3 text-[15px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
+                  />
+                </label>
+              )}
+
               <label className="block">
                 <span className="mb-1.5 block text-[12px] text-faint">Correo</span>
                 <input

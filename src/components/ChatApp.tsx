@@ -71,12 +71,21 @@ function ultimaImagen(messages: Message[]): string | undefined {
 interface ChatAppProps {
   /** Correo de quien ha entrado, o null si la app va sin cuentas. */
   user?: string | null;
+  /** Cómo quiere que le llamen. Lo eligió al crear la cuenta. */
+  nombre?: string;
+  onNombre?: (nombre: string) => void;
   onSignOut?: () => void;
   /** Volver a la portada, la que explica qué es la aplicación. */
   onInicio?: () => void;
 }
 
-export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppProps) {
+export default function ChatApp({
+  user = null,
+  nombre = "",
+  onNombre,
+  onSignOut,
+  onInicio,
+}: ChatAppProps) {
   /* ------------------------------ Estado ------------------------------ */
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -1018,11 +1027,7 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         >
           <div className="mx-auto w-full max-w-3xl">
             {!active || active.messages.length === 0 ? (
-              <Welcome
-                plan={plan}
-                mode={mode}
-                onPick={(prompt) => void send(prompt)}
-              />
+              <Welcome plan={plan} mode={mode} />
             ) : (
               <>
                 {active.messages.map((m, i) => (
@@ -1116,6 +1121,10 @@ export default function ChatApp({ user = null, onSignOut, onInicio }: ChatAppPro
         keySources={keySources}
         engine={engine}
         engineCode={engineCode}
+        nombre={nombre}
+        // Solo se puede guardar con cuenta: sin ella no hay dónde escribirlo.
+        puedeCambiarNombre={Boolean(user)}
+        onNombre={onNombre}
         onKeysChange={() => {
           // Con la clave puesta cambia lo que la aplicación puede hacer.
           void fetch("/api/pro")

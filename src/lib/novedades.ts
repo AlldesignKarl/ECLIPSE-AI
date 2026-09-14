@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.28",
+    // Que te llame por tu nombre y que mire de una vez la foto.
+    nombre: "Por tu nombre",
+    titulo: "Ahora sabe cómo te llamas",
+    entrada:
+      "Te pregunta cómo quieres que te llame y te habla de tú, como una persona. Y la excusa de «no puedo ver imágenes» ya no llega a tu pantalla.",
+    puntos: [
+      "Al crear la cuenta eliges cómo quieres que te llame, y puedes cambiarlo cuando quieras en Ajustes.",
+      "Habla más cercano, sin discursos ni «como modelo de lenguaje». Directo igual, pero de persona a persona.",
+      "Si un motor empieza a decirte que no puede ver tu foto, ECLIPSE le corta y se la manda a otro que sí la ve. Tú solo ves la respuesta buena.",
+      "Con una foto delante contesta siempre el modelo que mejor ve, también en ECLIPSE CODE cuando le pides algo en 3D a partir de una imagen.",
+      "La pantalla de inicio, despejada: sin preguntas de ejemplo. Y el logo de la app, más grande.",
+    ],
+  },
+  {
     version: "2.27",
     // Construir en vez de preguntar, y no inventarse lo que no se ve.
     nombre: "Sin preguntas",

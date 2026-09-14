@@ -406,7 +406,38 @@ const PEQUENO = (id: string) =>
 
 const resolved: Partial<Record<CompatProvider, string>> = {};
 const resueltoCodigo: Partial<Record<CompatProvider, string>> = {};
-const resueltoVista: Partial<Record<CompatProvider, string>> = {};
+/** El que mira imágenes, por proveedor y modo: no vale el mismo para todo. */
+const resueltoVista: Record<string, string> = {};
+
+/**
+ * Ordenar una lista de modelos de mejor a peor para lo que se va a hacer.
+ *
+ * Es lo mismo que hacía `elegirModelo` en línea, sacado aparte porque con una
+ * foto delante hacía falta también ahí. Antes, al filtrar los que ven, se
+ * cogía el primero que saliera del catálogo —el mismo "primero de la lista"
+ * que ya había dado problemas—, y el primero que ve no tiene por qué ser el
+ * que mejor ve: entre `pixtral-12b` y `pixtral-large` el orden lo pone el
+ * proveedor, no nosotros. Para montar una escena 3D a partir de una foto, esa
+ * diferencia es toda la diferencia.
+ */
+function porPreferencia(ids: string[], modo: Mode, grandesPrimero = modo === "code"): string[] {
+  // Los pequeños al final cuando hay que programar: entre dos que encajen con
+  // el mismo patrón, que gane el grande y no el que salga antes. Y lo mismo
+  // mirando una foto, sea el modo que sea: entre `pixtral-12b` y
+  // `pixtral-large` los dos ven, pero solo uno cuenta bien lo que ve.
+  const candidatos = grandesPrimero
+    ? [...ids.filter((id) => !PEQUENO(id)), ...ids.filter(PEQUENO)]
+    : ids;
+  const preferencias = modo === "code" ? PREFERENCIA_CODIGO : PREFERENCIA_CHAT;
+  const ordenados: string[] = [];
+  for (const patron of preferencias) {
+    for (const id of candidatos) {
+      if (patron.test(id) && !ordenados.includes(id)) ordenados.push(id);
+    }
+  }
+  for (const id of candidatos) if (!ordenados.includes(id)) ordenados.push(id);
+  return ordenados;
+}
 /** El catálogo de la cuenta, para no pedirlo en cada mensaje. */
 const catalogo: Partial<Record<CompatProvider, string[]>> = {};
 
@@ -443,7 +474,10 @@ async function elegirModelo(
   // modelo del mundo que no mire imágenes, aquí no sirve para nada.
   if (conVista) {
     const conOjos = disponibles.filter((id) => preset.vision.test(id));
-    if (conOjos.length) return resueltoVista[provider] ?? (resueltoVista[provider] = conOjos[0]);
+    const llave = `${provider}:${modo}`;
+    if (conOjos.length) {
+      return (resueltoVista[llave] ??= porPreferencia(conOjos, modo, true)[0]);
+    }
   }
 
   /*
@@ -476,6 +510,7 @@ async function elegirModelo(
       return encontrado;
     }
   }
+
 
   /*
     Ninguno encaja: el de siempre si está, y si no, el primero que haya.
@@ -529,7 +564,9 @@ export async function tieneVista(
 function olvidarModelo(provider: CompatProvider, modelo: string) {
   if (resolved[provider] === modelo) delete resolved[provider];
   if (resueltoCodigo[provider] === modelo) delete resueltoCodigo[provider];
-  if (resueltoVista[provider] === modelo) delete resueltoVista[provider];
+  for (const llave of Object.keys(resueltoVista)) {
+    if (resueltoVista[llave] === modelo) delete resueltoVista[llave];
+  }
 }
 
 /** Permite fijar el modelo desde el hosting, sin tocar el código. */

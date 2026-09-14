@@ -5,8 +5,10 @@ import { GeminiError, streamChat } from "@/lib/gemini";
 import { keySource, resolveKey } from "@/lib/keys";
 import { gastar } from "@/lib/limites";
 import { CompatError, tieneVista, type CompatProvider } from "@/lib/openai-compat";
+import { crearFiltroDeNegativa } from "@/lib/negativa";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { herramientasPara } from "@/lib/tools/registro";
+import { nombreActual } from "@/lib/auth";
 import { currentPlan } from "@/lib/plan-server";
 import { buildSystemPrompt, partes3D, SEGUIR } from "@/lib/prompts";
 import {
@@ -146,6 +148,8 @@ async function runAnthropic(
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
+    /** Cómo quiere que le llamen quien pregunta. */
+    nombre?: string;
     wantsWeb: boolean;
     signal: AbortSignal;
   },
@@ -195,6 +199,7 @@ async function runAnthropic(
                 engine: "anthropic",
                 conImagen: ultimaConImagen(opts.body.messages),
                 tres3D: partes3D(opts.body.messages),
+                nombre: opts.nombre,
               }),
           cache_control: { type: "ephemeral" },
         },
@@ -269,6 +274,8 @@ async function runGoogle(
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
+    /** Cómo quiere que le llamen quien pregunta. */
+    nombre?: string;
     wantsWeb: boolean;
     signal: AbortSignal;
   },
@@ -289,6 +296,7 @@ async function runGoogle(
         engine: "google",
         conImagen: ultimaConImagen(opts.body.messages),
         tres3D: partes3D(opts.body.messages),
+        nombre: opts.nombre,
       });
 
   for await (const event of streamChat({
@@ -326,6 +334,8 @@ async function runCompat(
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
+    /** Cómo quiere que le llamen quien pregunta. */
+    nombre?: string;
     signal: AbortSignal;
     /** Última pasada: aunque no pueda con las fotos, que conteste igual. */
     sinAbandonar?: boolean;
@@ -354,6 +364,34 @@ async function runCompat(
     !opts.sinAbandonar && (await motoresConOjos(opts.provider)).length > 0;
   send({ t: "status", v: "pensando" });
 
+  /*
+    Y el otro modo de fallar con una foto: decir que no.
+
+    Hay modelos que aceptan la imagen, no la miran, y contestan «lo siento, no
+    puedo ver imágenes». Para el proveedor eso es una respuesta correcta —no
+    hay error que capturar— y para quien pregunta es el mismo fallo de antes,
+    con el agravante de que se lo cuenta. Es justo lo que le pasaba a Carlos:
+    «me dice que no puedo y luego lo hace».
+
+    Como la negativa va siempre en la primera frase, con una foto delante se
+    retienen los primeros caracteres antes de enseñarlos. Si son esa negativa,
+    se abandona en silencio y contesta un motor con ojos; si no lo son, se
+    sueltan de golpe y sigue todo igual. Retener 220 caracteres se nota menos
+    que leer una excusa.
+  */
+  const filtro = crearFiltroDeNegativa(ultimaConImagen(opts.body.messages) && hayOtroConOjos);
+  let negativa = false;
+
+  /** Enseñar texto, marcando de paso que ya se ha escrito algo. */
+  const escribir = (texto: string) => {
+    if (!texto) return;
+    if (!wrote) {
+      wrote = true;
+      send({ t: "status", v: "escribiendo" });
+    }
+    send({ t: "text", v: texto });
+  };
+
   const ultimoTurno = [...opts.body.messages].reverse().find((m) => m.role === "user");
   const herramientas = await herramientasPara(opts.mode, opts.plan, {
     texto: ultimoTurno?.content ?? "",
@@ -379,6 +417,7 @@ async function runCompat(
           conImagen: ultimaConImagen(opts.body.messages),
           tres3D: partes3D(opts.body.messages),
           conHerramientas: herramientas.map((h) => h.nombre),
+          nombre: opts.nombre,
         }),
     turns: opts.body.messages,
     speed: opts.speed,
@@ -394,14 +433,17 @@ async function runCompat(
     if (opts.signal.aborted) break;
 
     if (event.texto) {
-      if (!wrote) {
-        wrote = true;
-        send({ t: "status", v: "escribiendo" });
+      const { mostrar, negativa: excusa } = filtro.recibir(event.texto);
+      if (excusa) {
+        negativa = true;
+        break;
       }
-      send({ t: "text", v: event.texto });
+      escribir(mostrar);
     }
 
     if (event.herramienta) {
+      // Si se pone a usar herramientas ya no está excusándose: fuera la retención.
+      escribir(filtro.resto());
       send({ t: "tool", v: event.herramienta });
       send({
         t: "status",
@@ -432,13 +474,16 @@ async function runCompat(
     }
   }
 
+  // Lo que quede retenido al acabar es una respuesta corta y buena: se suelta.
+  if (!negativa) escribir(filtro.resto());
+
   // Las fuentes ya se han ido mandando clasificadas durante el bucle, así que
   // aquí se devuelve la lista vacía para que la ruta no las vuelva a ordenar.
   void fuentes;
   return {
     sources: [] as { url: string; title?: string }[],
     stopReason: null as string | null,
-    sinVista: sinVista && !wrote && hayOtroConOjos,
+    sinVista: (sinVista || negativa) && !wrote && hayOtroConOjos,
   };
 }
 
@@ -453,6 +498,10 @@ export async function POST(req: NextRequest) {
   }
 
   const plan = await currentPlan();
+  // Cómo quiere que le llamen. Se lee aquí, del servidor, y no de lo que mande
+  // el navegador: el nombre acaba dentro de las instrucciones del modelo, y eso
+  // no es sitio para texto que pueda escribir cualquiera desde fuera.
+  const nombre = await nombreActual();
   const mode: Mode = body.mode ?? "chat";
 
   /*
@@ -576,7 +625,7 @@ export async function POST(req: NextRequest) {
 
       try {
         send({ t: "status", v: "conectando" });
-        const shared = { body, mode, speed, plan, wantsWeb, signal: req.signal };
+        const shared = { body, mode, speed, plan, wantsWeb, nombre, signal: req.signal };
 
         const correr = async (quien: typeof provider) =>
           quien === "google"
