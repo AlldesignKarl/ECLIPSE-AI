@@ -262,3 +262,12 @@ export const Phone = (p: P) => (
     <path d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2C10.9 18.8 5.2 13.1 4.5 5.7A2 2 0 0 1 6.5 3.5z" />
   </svg>
 );
+
+/** Grupos: varias personas hablando con ECLIPSE a la vez. */
+export const Group = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="9" cy="8.5" r="3.2" />
+    <path d="M3.5 19.5a5.5 5.5 0 0 1 11 0" />
+    <path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M17.5 14.6a5.5 5.5 0 0 1 3 4.9" />
+  </svg>
+);

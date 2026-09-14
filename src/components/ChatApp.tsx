@@ -19,6 +19,7 @@ import ConexionesDialog from "./ConexionesDialog";
 import ProgramarDialog from "./ProgramarDialog";
 import BibliotecaDialog from "./BibliotecaDialog";
 import Llamada from "./Llamada";
+import GruposDialog from "./GruposDialog";
 import Welcome from "./Welcome";
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
 import {
@@ -112,6 +113,17 @@ export default function ChatApp({
   const [programarOpen, setProgramarOpen] = useState(false);
   const [bibliotecaOpen, setBibliotecaOpen] = useState(false);
   const [llamando, setLlamando] = useState(false);
+  const [gruposOpen, setGruposOpen] = useState(false);
+
+  // Y si la dirección trae una invitación, se abre Grupos solo: el enlace
+  // tiene que llevar a donde lleva, sin que nadie busque nada.
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("grupo")) setGruposOpen(true);
+    } catch {
+      /* da igual */
+    }
+  }, []);
   /** Si hay encargos hechos que todavía no ha visto nadie. */
   const [tareasNuevas, setTareasNuevas] = useState(false);
   const [proRegalado, setProRegalado] = useState(false);
@@ -1104,6 +1116,7 @@ export default function ChatApp({
         onConexiones={() => setConexionesOpen(true)}
         onProgramar={() => setProgramarOpen(true)}
         onBiblioteca={() => setBibliotecaOpen(true)}
+        onGrupos={() => setGruposOpen(true)}
         tareasNuevas={tareasNuevas}
         onInicio={() => {
           setSidebar(false);
@@ -1299,6 +1312,16 @@ export default function ChatApp({
           );
           setConversations((list) => [fresh, ...list]);
           setActiveId(fresh.id);
+        }}
+      />
+
+      <GruposDialog
+        open={gruposOpen}
+        onClose={() => setGruposOpen(false)}
+        plan={plan}
+        onUpgrade={() => {
+          setGruposOpen(false);
+          setUpgradeOpen(true);
         }}
       />
 

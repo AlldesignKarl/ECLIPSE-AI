@@ -28,6 +28,8 @@ interface Props {
   onProgramar: () => void;
   /** Abre la Biblioteca: imágenes para inspirarse. */
   onBiblioteca: () => void;
+  /** Abre Grupos: varias personas hablando con ECLIPSE a la vez. */
+  onGrupos: () => void;
   /** Hay resultados de encargos sin ver: se enciende un punto. */
   tareasNuevas?: boolean;
   onInicio: () => void;
@@ -53,6 +55,7 @@ export default function Sidebar({
   onConexiones,
   onProgramar,
   onBiblioteca,
+  onGrupos,
   tareasNuevas = false,
   onInicio,
   user = null,
@@ -70,14 +73,27 @@ export default function Sidebar({
   const [draft, setDraft] = useState("");
 
   const groups = useMemo(() => {
+    /*
+      El chat temporal no sale en la lista. Nunca.
+
+      Estaba guardado a medias: no se escribía en el disco —eso sí funcionaba—
+      pero mientras la aplicación seguía abierta aparecía en la lista de
+      conversaciones como una más. Y lo que la gente llama "sus conversaciones"
+      es esa lista, no un archivo del móvil. Así que la promesa se rompía a la
+      vista aunque por dentro se estuviera cumpliendo, que para el caso es lo
+      mismo: quien lo ve ahí, no se fía.
+
+      Se llega a él porque está abierto, y al salir desaparece.
+    */
+    const guardables = conversations.filter((c) => !c.temporal);
     const q = query.trim().toLowerCase();
     const filtered = q
-      ? conversations.filter(
+      ? guardables.filter(
           (c) =>
             c.title.toLowerCase().includes(q) ||
             c.messages.some((m) => m.content.toLowerCase().includes(q)),
         )
-      : conversations;
+      : guardables;
     return groupByDate([...filtered].sort((a, b) => b.updatedAt - a.updatedAt));
   }, [conversations, query]);
 
@@ -346,6 +362,15 @@ export default function Sidebar({
             ) : (
               plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>
             )}
+          </button>
+
+          <button
+            onClick={onGrupos}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-muted transition hover:bg-panel hover:text-ink"
+          >
+            <Icon.Group width={16} height={16} />
+            <span className="flex-1 text-left">Grupos</span>
+            {plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>}
           </button>
 
           <button

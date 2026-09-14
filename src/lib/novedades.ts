@@ -27,6 +27,20 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.35",
+    nombre: "En grupo",
+    titulo: "Ahora podéis preguntarle varios a la vez",
+    entrada:
+      "Montas un grupo, pasas el enlace y todos le habláis a ECLIPSE en el mismo sitio. Para organizar un viaje, un trabajo o lo que sea.",
+    puntos: [
+      "En el menú → Grupos. Le pones nombre, copias la invitación y la mandas. Quien la abra entra directo, sin buscar nada.",
+      "Tus amigos NO necesitan el plan Pro para entrar: solo paga quien monta el grupo.",
+      "ECLIPSE no contesta a todo: lee lo que habláis y solo responde cuando le nombráis o le pedís algo. Y sabe quién ha dicho cada cosa.",
+      "Nadie ve el correo de nadie: solo el nombre que cada uno eligió.",
+      "Y arreglado el chat temporal: ya no aparece en la lista de conversaciones. Era lo único que hacía dudar de que de verdad no se guardaba.",
+    ],
+  },
+  {
     version: "2.34",
     // Hablar en vez de escribir, y una biblioteca para inspirarse.
     nombre: "Llamando",

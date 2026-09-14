@@ -50,6 +50,19 @@ export default function Shell() {
   }, []);
 
   useEffect(() => {
+    /*
+      Una invitación a un grupo entra directa.
+
+      Quien recibe el enlace por WhatsApp no ha visto esta aplicación en su
+      vida: enseñarle primero la portada y obligarle a buscar dónde se entra es
+      perderlo ahí mismo. Si la dirección trae una invitación, va dentro.
+    */
+    try {
+      if (new URLSearchParams(window.location.search).get("grupo")) setWantsIn(true);
+    } catch {
+      /* dirección rara: se sigue como siempre */
+    }
+
     try {
       if (window.localStorage.getItem(ENTERED) === "1") setWantsIn(true);
     } catch {
