@@ -155,3 +155,14 @@ export async function setIfAbsent(key: string, value: string): Promise<boolean> 
 export async function set(key: string, value: string): Promise<void> {
   await command("SET", key, value);
 }
+
+/**
+ * Borrar de verdad.
+ *
+ * Hace falta para las conexiones: una clave que ya no se usa y sigue guardada
+ * es una clave esperando a filtrarse. Escribir encima una cadena vacía deja el
+ * hueco ocupado y la intención a medias; DEL no deja nada.
+ */
+export async function del(key: string): Promise<void> {
+  await command("DEL", key);
+}

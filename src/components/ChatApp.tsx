@@ -15,6 +15,7 @@ import SettingsDialog, {
 import Sidebar from "./Sidebar";
 import ThinkingBar from "./ThinkingBar";
 import UpgradeDialog, { type Billing } from "./UpgradeDialog";
+import ConexionesDialog from "./ConexionesDialog";
 import Welcome from "./Welcome";
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
 import {
@@ -103,6 +104,7 @@ export default function ChatApp({
   });
 
   const [plan, setPlan] = useState<Plan>("free");
+  const [conexionesOpen, setConexionesOpen] = useState(false);
   const [proRegalado, setProRegalado] = useState(false);
   const [caps, setCaps] = useState<Capabilities>(EMPTY_CAPS);
   const [providerLabel, setProviderLabel] = useState("comprobando…");
@@ -964,6 +966,7 @@ export default function ChatApp({
         onRename={(id, title) => upsert(id, (c) => ({ ...c, title }))}
         onUpgrade={() => setUpgradeOpen(true)}
         onSettings={() => setSettingsOpen(true)}
+        onConexiones={() => setConexionesOpen(true)}
         onInicio={() => {
           setSidebar(false);
           onInicio?.();
@@ -1110,6 +1113,16 @@ export default function ChatApp({
         proCodeConfigured={caps.proCodeConfigured}
         billing={billing}
         regalado={proRegalado}
+      />
+
+      <ConexionesDialog
+        open={conexionesOpen}
+        onClose={() => setConexionesOpen(false)}
+        plan={plan}
+        onUpgrade={() => {
+          setConexionesOpen(false);
+          setUpgradeOpen(true);
+        }}
       />
 
       <SettingsDialog

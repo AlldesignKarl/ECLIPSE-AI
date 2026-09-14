@@ -158,12 +158,17 @@ export async function* conversarConHerramientas(opts: {
       const detalle = detalleDe(llamada.function.name, args);
       yield { herramienta: { nombre: llamada.function.name, detalle } };
 
-      const resultado = await ejecutarHerramienta(llamada.function.name, args, {
-        plan: opts.plan,
-        modo: opts.mode,
-        margenAmplio: margenDeSobra(opts.provider),
-        signal: opts.signal,
-      });
+      const resultado = await ejecutarHerramienta(
+        llamada.function.name,
+        args,
+        {
+          plan: opts.plan,
+          modo: opts.mode,
+          margenAmplio: margenDeSobra(opts.provider),
+          signal: opts.signal,
+        },
+        herramientas,
+      );
 
       if (resultado.fuentes?.length) {
         for (const f of resultado.fuentes) {

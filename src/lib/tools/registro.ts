@@ -1,7 +1,9 @@
+import { herramientaConexion } from "../conexiones/herramienta";
 import type { Mode, Plan } from "../types";
 import { herramientaBuscar } from "./buscar";
 import { herramientaDocumento } from "./documentos";
 import { herramientaImagen } from "./imagen";
+import { herramientaSeo } from "./seo";
 import type { Contexto, Herramienta, Resultado } from "./tipos";
 
 /**
@@ -10,7 +12,12 @@ import type { Contexto, Herramienta, Resultado } from "./tipos";
  * Añadir una es escribir su archivo y meterla en esta lista. Nada más: ni el
  * bucle, ni la ruta del chat, ni la interfaz saben cuántas hay ni cuáles son.
  */
-const TODAS: Herramienta[] = [herramientaBuscar, herramientaImagen, herramientaDocumento];
+const TODAS: Herramienta[] = [
+  herramientaBuscar,
+  herramientaImagen,
+  herramientaDocumento,
+  herramientaSeo,
+];
 
 /**
  * Qué herramientas puede usar cada modo. Lo que no está aquí, no se ofrece.
@@ -26,7 +33,7 @@ const TODAS: Herramienta[] = [herramientaBuscar, herramientaImagen, herramientaD
  * archivos del proyecto, y una imagen suelta no pinta nada.
  */
 const POR_MODO: Record<Mode, string[]> = {
-  chat: ["buscar_web", "crear_imagen", "crear_archivo"],
+  chat: ["buscar_web", "crear_imagen", "crear_archivo", "auditar_seo", "conexion"],
   code: ["buscar_web"],
 };
 
@@ -77,7 +84,22 @@ export async function herramientasPara(
   const vivas = await Promise.all(
     candidatas.map(async (h) => ((await h.disponible()) ? h : null)),
   );
-  return vivas.filter((h): h is Herramienta => h !== null);
+  const lista = vivas.filter((h): h is Herramienta => h !== null);
+
+  /*
+    La de las conexiones se fabrica en el momento, no está en `TODAS`.
+
+    Es la única que cambia de una persona a otra: su descripción son las cuentas
+    que ESTA persona tiene conectadas y las acciones que su permiso le deja
+    hacer. Una lista fija no podría decir eso, y decirlo es justo lo que evita
+    que el modelo intente cosas que no puede.
+  */
+  if (permitidas.includes("conexion") && plan === "pro") {
+    const conexion = await herramientaConexion();
+    if (conexion) lista.push(conexion);
+  }
+
+  return lista;
 }
 
 export function buscarHerramienta(nombre: string): Herramienta | undefined {
@@ -96,8 +118,17 @@ export async function ejecutarHerramienta(
   nombre: string,
   args: Record<string, unknown>,
   ctx: Contexto,
+  /*
+    Las que se le ofrecieron en ESTA petición.
+
+    Hace falta desde que existe `conexion`, que no está en el catálogo fijo
+    porque se fabrica con lo que cada persona tiene conectado. Buscándola solo
+    en `TODAS`, el modelo la pedía —se la habíamos anunciado— y le contestaban
+    que no existe.
+  */
+  disponibles?: Herramienta[],
 ): Promise<Resultado> {
-  const herramienta = buscarHerramienta(nombre);
+  const herramienta = disponibles?.find((h) => h.nombre === nombre) ?? buscarHerramienta(nombre);
   if (!herramienta) return { texto: "", error: `No existe ninguna herramienta llamada "${nombre}".` };
 
   if (herramienta.soloPro && ctx.plan !== "pro")

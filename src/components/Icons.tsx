@@ -218,3 +218,12 @@ export const Pencil = (p: P) => (
     <path d="M13.8 6.6 17.4 10.2" />
   </svg>
 );
+
+/** El enchufe de las conexiones: conectar ECLIPSE a la tienda o al dominio. */
+export const Plug = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M9 2.5v5M15 2.5v5" />
+    <path d="M6 7.5h12v3.5a6 6 0 0 1-6 6 6 6 0 0 1-6-6z" />
+    <path d="M12 17v4.5" />
+  </svg>
+);

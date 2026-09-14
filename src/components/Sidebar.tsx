@@ -20,6 +20,8 @@ interface Props {
   onRename: (id: string, title: string) => void;
   onUpgrade: () => void;
   onSettings: () => void;
+  /** Abre Conexiones: la tienda, la web y los dominios de quien pregunta. */
+  onConexiones: () => void;
   onInicio: () => void;
   /** Correo de la sesión abierta, si la app lleva cuentas. */
   user?: string | null;
@@ -39,6 +41,7 @@ export default function Sidebar({
   onRename,
   onUpgrade,
   onSettings,
+  onConexiones,
   onInicio,
   user = null,
   onSignOut,
@@ -274,6 +277,23 @@ export default function Sidebar({
               <span className="text-[13px] font-medium text-ink">Plan Pro activo</span>
             </div>
           )}
+
+          {/*
+            Conexiones va aquí arriba y no escondido dentro de Ajustes.
+
+            Ajustes es donde se toca la aplicación; esto es donde se enchufa el
+            negocio de alguien. Es la diferencia entre una casilla y una razón
+            para pagar el plan Pro, y una razón para pagar no se guarda en un
+            cajón.
+          */}
+          <button
+            onClick={onConexiones}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-muted transition hover:bg-panel hover:text-ink"
+          >
+            <Icon.Plug width={16} height={16} />
+            <span className="flex-1 text-left">Conexiones</span>
+            {plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>}
+          </button>
 
           <button
             onClick={onSettings}

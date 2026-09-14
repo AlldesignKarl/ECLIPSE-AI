@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.29",
+    // Dejar de dar consejos y meterse dentro a hacerlos.
+    nombre: "Conexiones",
+    titulo: "Ahora entra en tu tienda y lo hace",
+    entrada:
+      "Enchufa Shopify, WooCommerce, Wix, IONOS o tu cuenta de Binance, y ECLIPSE deja de contarte lo que habría que hacer para hacerlo. Es del plan Pro.",
+    puntos: [
+      "Tu tienda: te lista los productos, te abre los pedidos y te reescribe las fichas importadas del proveedor, con su título y su descripción para Google.",
+      "Tus dominios: te lee el DNS entero, te dice qué falta y te crea el registro para conectar el dominio con la tienda.",
+      "El SEO de cualquier página, mirada de verdad: título, descripción, encabezados, imágenes sin alt, robots.txt y sitemap. Sin auditar, no da consejos.",
+      "Tus mercados en solo lectura: te lee la cartera, los precios y las velas, y te los analiza. Órdenes no pone ninguna, y no puede: el permiso ni existe.",
+      "Todo empieza mirando y sin tocar. Para que cambie algo hay que darle permiso a propósito, y borrar no puede nunca. Las claves van cifradas y no las ve ni la IA.",
+    ],
+  },
+  {
     version: "2.28",
     // Que te llame por tu nombre y que mire de una vez la foto.
     nombre: "Por tu nombre",
