@@ -271,3 +271,22 @@ export const Group = (p: P) => (
     <path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M17.5 14.6a5.5 5.5 0 0 1 3 4.9" />
   </svg>
 );
+
+/** Meter a alguien en un grupo. Una persona con un más al lado. */
+export const PersonaMas = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="9.5" cy="8" r="3.4" />
+    <path d="M3.5 19.5a6 6 0 0 1 12 0" />
+    <path d="M18.5 8.5v5M16 11h5" />
+  </svg>
+);
+
+/** Compartir: el nodo y sus dos ramas, que es como se dibuja en todas partes. */
+export const Compartir = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="17.5" cy="5.5" r="2.5" />
+    <circle cx="6.5" cy="12" r="2.5" />
+    <circle cx="17.5" cy="18.5" r="2.5" />
+    <path d="M8.8 10.8 15.2 6.7M8.8 13.2l6.4 4.1" />
+  </svg>
+);

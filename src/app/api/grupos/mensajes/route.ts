@@ -6,7 +6,7 @@ import { activeProvider } from "@/lib/provider";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import type { CompatProvider } from "@/lib/openai-compat";
 import { apuntarMensaje, grupoDe, mensajesDe, quien } from "@/lib/grupos/almacen";
-import { estaDentro, leHablanAEclipse } from "@/lib/grupos/tipos";
+import { comoSeLeVe, estaDentro, leHablanAEclipse } from "@/lib/grupos/tipos";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -70,6 +70,19 @@ export async function GET(req: NextRequest) {
       cuando: m.cuando,
       mio: m.de === paso.email,
       deEclipse: m.de === null,
+    })),
+    /*
+      Y quién hay dentro ahora mismo.
+
+      Va aquí y no en otra petición porque esto se pide cada pocos segundos de
+      todas formas. Sin ello, quien tiene el grupo abierto seguía viendo "1
+      persona" después de que entrara alguien: la lista de miembros se había
+      leído al abrir y no se volvía a mirar nunca.
+    */
+    miembros: paso.grupo.miembros.map((m) => ({
+      nombre: comoSeLeVe(m.email, m.nombre),
+      dueno: m.dueno,
+      yo: m.email === paso.email,
     })),
   });
 }

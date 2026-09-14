@@ -35,6 +35,15 @@ interface Grupo {
   hueco: boolean;
 }
 
+/** Lo que se puede saber de un grupo SIN estar dentro. */
+interface Ojeada {
+  id: string;
+  nombre: string;
+  personas: number;
+  hueco: boolean;
+  yaDentro: boolean;
+}
+
 interface Mensaje {
   id: string;
   nombre: string;
@@ -58,6 +67,8 @@ export default function GruposDialog({ open, onClose, plan, onUpgrade }: Props) 
   const [problema, setProblema] = useState<string | null>(null);
   const [creando, setCreando] = useState("");
   const [busy, setBusy] = useState(false);
+  /** La invitación que alguien acaba de abrir, antes de aceptarla. */
+  const [invitado, setInvitado] = useState<(Ojeada & { codigo: string }) | null>(null);
 
   const recargar = useCallback(async () => {
     try {
@@ -77,31 +88,107 @@ export default function GruposDialog({ open, onClose, plan, onUpgrade }: Props) 
   }, [open, recargar]);
 
   /*
-    Una invitación en la dirección: se entra directamente.
+    Una invitación en la dirección.
 
-    Quien recibe el enlace por WhatsApp no tiene que buscar nada: abre, y está
-    dentro. Si no tiene cuenta, se le manda a hacerla y al volver sigue el
-    enlace esperándole.
+    Antes se entraba a lo bruto: se veía el código y se metía a quien fuera en
+    el grupo sin decirle en cuál. Quien recibe un enlace por WhatsApp merece
+    saber a qué le están invitando ANTES de estar dentro —de quién es, cuánta
+    gente hay, si queda sitio—, y quien no tiene cuenta merece que se le diga
+    en vez de un error seco.
+
+    Así que primero se mira, se enseña, y se entra al darle. El código se queda
+    en la dirección hasta entonces: si tiene que crearse la cuenta, al volver
+    la invitación sigue esperándole.
   */
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !open) return;
     const codigo = new URLSearchParams(window.location.search).get("grupo");
-    if (!codigo || !open) return;
+    if (!codigo) return;
 
     void (async () => {
+      try {
+        const r = await fetch(`/api/grupos?invitacion=${encodeURIComponent(codigo)}`);
+        const d = (await r.json()) as { ojeada?: Ojeada; error?: string };
+        if (d.ojeada) setInvitado({ ...d.ojeada, codigo });
+        else setProblema(d.error ?? "Esa invitación ya no vale.");
+      } catch {
+        setProblema("No se ha podido abrir la invitación.");
+      }
+    })();
+  }, [open]);
+
+  /** Aceptar la invitación que se está enseñando. */
+  const entrar = async () => {
+    if (!invitado || busy) return;
+    setBusy(true);
+    try {
       const r = await fetch("/api/grupos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invitacion: codigo }),
+        body: JSON.stringify({ invitacion: invitado.codigo }),
       });
       const d = (await r.json()) as { grupo?: Grupo; error?: string };
       if (d.grupo) {
         window.history.replaceState({}, "", window.location.pathname);
+        setInvitado(null);
         await recargar();
         setDentro(d.grupo);
       } else setProblema(d.error ?? "No se ha podido entrar en el grupo.");
-    })();
-  }, [open, recargar]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (invitado) {
+    return (
+      <Modal open={open} onClose={onClose} title="Te han invitado a un grupo">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-line-soft bg-panel/40 p-4 text-center">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-panel text-muted">
+              <Icon.Group width={22} height={22} />
+            </span>
+            <p className="mt-3 text-[17px] font-semibold text-ink">{invitado.nombre}</p>
+            <p className="mt-1 text-[12.5px] text-muted">
+              {invitado.personas} persona{invitado.personas === 1 ? "" : "s"} dentro
+            </p>
+          </div>
+
+          {sinCuenta ? (
+            <Aviso texto="Para entrar hace falta tu cuenta: es cómo te ven los demás en el grupo. Créala o entra, y la invitación te seguirá esperando aquí." />
+          ) : !invitado.hueco ? (
+            <Aviso texto="Este grupo está lleno. Quien lo creó puede decirte si sale alguien." />
+          ) : (
+            <p className="text-[12.5px] leading-relaxed text-muted">
+              Dentro habláis todos con ECLIPSE en el mismo sitio. Los demás verán el nombre que
+              elegiste, nunca tu correo.
+            </p>
+          )}
+
+          {problema && <Aviso texto={problema} />}
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                window.history.replaceState({}, "", window.location.pathname);
+                setInvitado(null);
+                setProblema(null);
+              }}
+              className="flex-1 rounded-xl border border-line py-2.5 text-[13px] text-muted transition hover:text-ink"
+            >
+              Ahora no
+            </button>
+            <button
+              onClick={() => void entrar()}
+              disabled={busy || sinCuenta || !invitado.hueco}
+              className="flex-1 rounded-xl bg-ink py-2.5 text-[13px] font-medium text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"
+            >
+              {invitado.yaDentro ? "Volver al grupo" : busy ? "Entrando…" : "Entrar en el grupo"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   if (dentro) {
     return (
@@ -238,6 +325,112 @@ function Aviso({ texto }: { texto: string }) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*                            Meter gente al grupo                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Invitar.
+ *
+ * Estaba escondido detrás de tocar el "1 persona" de la esquina, que es
+ * exactamente donde nadie mira: la queja fue "no se puede meter a amigos", y
+ * tenía razón, porque a efectos prácticos no se podía.
+ *
+ * Ahora es un botón con su nombre, arriba, siempre. Y en el móvil abre el menú
+ * de compartir del propio teléfono —WhatsApp, Telegram, lo que tenga— en vez
+ * de copiar al portapapeles y que se busque la vida: mandar un enlace a un
+ * amigo es un gesto, no dos pantallas.
+ */
+function BotonInvitar({
+  grupo,
+  enlace,
+  grande,
+}: {
+  grupo: Grupo;
+  enlace: string;
+  grande?: boolean;
+}) {
+  const [copiado, setCopiado] = useState(false);
+  const [sePuedeCompartir, setSePuedeCompartir] = useState(false);
+
+  // `navigator.share` solo existe en el móvil y en algunos escritorios, y solo
+  // se puede preguntar ya montados.
+  useEffect(() => {
+    setSePuedeCompartir(typeof navigator !== "undefined" && typeof navigator.share === "function");
+  }, []);
+
+  if (!enlace) return null;
+
+  const invitar = async () => {
+    const texto = `Te invito al grupo «${grupo.nombre}» en ECLIPSE. Entras con este enlace:`;
+    if (sePuedeCompartir) {
+      try {
+        await navigator.share({ title: grupo.nombre, text: texto, url: enlace });
+        return;
+      } catch {
+        // Si cierra el menú de compartir no ha pasado nada malo: se cae al
+        // portapapeles, que funciona en todas partes.
+      }
+    }
+    await navigator.clipboard.writeText(enlace).catch(() => {});
+    setCopiado(true);
+    window.setTimeout(() => setCopiado(false), 1800);
+  };
+
+  if (grande)
+    return (
+      <button
+        onClick={() => void invitar()}
+        className="flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-medium text-void transition hover:opacity-90"
+      >
+        <Icon.PersonaMas width={15} height={15} />
+        {copiado ? "Enlace copiado" : "Invitar a alguien"}
+      </button>
+    );
+
+  return (
+    <button
+      onClick={() => void invitar()}
+      className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[12.5px] text-ink transition hover:bg-panel"
+    >
+      <Icon.PersonaMas width={14} height={14} />
+      {copiado ? "Copiado" : "Invitar"}
+    </button>
+  );
+}
+
+/** Las iniciales de alguien, para distinguir quién habla de un vistazo. */
+function inicialesDe(nombre: string): string {
+  const trozos = nombre.trim().split(/\s+/).filter(Boolean);
+  if (!trozos.length) return "?";
+  if (trozos.length === 1) return trozos[0].slice(0, 2).toUpperCase();
+  return (trozos[0][0] + trozos[1][0]).toUpperCase();
+}
+
+/**
+ * Un color por persona, siempre el mismo.
+ *
+ * Sale del propio nombre, así que Marta es del mismo color en tu móvil y en el
+ * de tu hermano sin guardar nada en ninguna parte. Es lo que hace que en un
+ * grupo de seis se sepa quién habla sin leer el nombre.
+ */
+function colorDe(nombre: string): string {
+  const tonos = [210, 145, 25, 280, 340, 190, 55, 305];
+  let suma = 0;
+  for (let i = 0; i < nombre.length; i++) suma = (suma + nombre.charCodeAt(i) * (i + 1)) % 997;
+  return `hsl(${tonos[suma % tonos.length]} 55% 58%)`;
+}
+
+/** La hora, corta. La fecha solo si no es de hoy. */
+function cuandoDe(momento: number): string {
+  const d = new Date(momento);
+  const hoy = new Date();
+  const mismoDia =
+    d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear();
+  const hora = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  return mismoDia ? hora : `${d.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} · ${hora}`;
+}
+
 /** Dentro del grupo. */
 function Sala({
   grupo,
@@ -254,14 +447,17 @@ function Sala({
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [gente, setGente] = useState(false);
-  const [copiado, setCopiado] = useState(false);
+  const [miembros, setMiembros] = useState<Miembro[]>(grupo.miembros);
   const fondo = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(async () => {
     try {
       const r = await fetch(`/api/grupos/mensajes?id=${grupo.id}`);
-      const d = (await r.json()) as { mensajes?: Mensaje[] };
+      const d = (await r.json()) as { mensajes?: Mensaje[]; miembros?: Miembro[] };
       setMensajes(d.mensajes ?? []);
+      // Quién hay dentro también cambia mientras se mira: si no se refresca,
+      // quien invitó sigue viendo "1 persona" después de que entre su amigo.
+      if (d.miembros?.length) setMiembros(d.miembros);
     } catch {
       /* se reintenta al siguiente vistazo */
     }
@@ -311,90 +507,148 @@ function Sala({
   return (
     <Modal open={open} onClose={onClose} title={grupo.nombre} wide>
       <div className="flex h-[70vh] flex-col">
-        <div className="mb-2 flex items-center gap-2">
+        {/*
+          La cabecera del grupo: volver, quién está, e invitar.
+
+          Invitar va aquí y no escondido, porque es lo primero que hace falta
+          en un grupo recién hecho y lo único que no se puede deducir solo.
+        */}
+        <div className="flex items-center gap-2 border-b border-line-soft pb-2.5">
           <button
             onClick={onVolver}
-            className="flex items-center gap-1 text-[12.5px] text-faint transition hover:text-ink"
+            className="flex shrink-0 items-center gap-1 text-[12.5px] text-faint transition hover:text-ink"
           >
             <Icon.ChevronLeft width={14} height={14} />
             Grupos
           </button>
+
           <button
             onClick={() => setGente(!gente)}
-            className="ml-auto text-[12.5px] text-faint transition hover:text-ink"
+            className="ml-auto flex min-w-0 items-center gap-1.5 text-[12.5px] text-faint transition hover:text-ink"
           >
-            {grupo.miembros.length} persona{grupo.miembros.length > 1 ? "s" : ""}
+            <span className="flex -space-x-1.5">
+              {miembros.slice(0, 3).map((m) => (
+                <span
+                  key={m.nombre}
+                  className="flex h-5 w-5 items-center justify-center rounded-full border border-void text-[9px] font-semibold text-white"
+                  style={{ background: colorDe(m.nombre) }}
+                >
+                  {inicialesDe(m.nombre)}
+                </span>
+              ))}
+            </span>
+            {miembros.length}
           </button>
+
+          <BotonInvitar grupo={grupo} enlace={enlace} />
         </div>
 
         {gente && (
-          <div className="mb-3 rounded-xl border border-line-soft bg-panel/40 p-3">
-            <ul className="space-y-1">
-              {grupo.miembros.map((m) => (
-                <li key={m.nombre} className="text-[12.5px] text-muted">
-                  {m.nombre}
-                  {m.yo && " (tú)"}
-                  {m.dueno && " · creó el grupo"}
+          <div className="mt-2.5 rounded-xl border border-line-soft bg-panel/40 p-3">
+            <ul className="space-y-1.5">
+              {miembros.map((m) => (
+                <li key={m.nombre} className="flex items-center gap-2 text-[12.5px] text-muted">
+                  <span
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                    style={{ background: colorDe(m.nombre) }}
+                  >
+                    {inicialesDe(m.nombre)}
+                  </span>
+                  <span className="truncate">
+                    {m.nombre}
+                    {m.yo && " (tú)"}
+                    {m.dueno && " · creó el grupo"}
+                  </span>
                 </li>
               ))}
             </ul>
-            {enlace && (
-              <div className="mt-3 border-t border-line-soft pt-3">
-                <p className="text-[11.5px] leading-relaxed text-faint">
-                  Quien abra este enlace entra en el grupo. Mándalo solo a quien quieras dentro.
-                </p>
-                <button
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(enlace).catch(() => {});
-                    setCopiado(true);
-                    window.setTimeout(() => setCopiado(false), 1800);
-                  }}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-line py-2 text-[12.5px] text-ink transition hover:bg-panel"
-                >
-                  <Icon.Copy width={13} height={13} />
-                  {copiado ? "Copiado" : "Copiar la invitación"}
-                </button>
-              </div>
-            )}
+            <p className="mt-2.5 border-t border-line-soft pt-2.5 text-[11.5px] leading-relaxed text-faint">
+              Nadie ve el correo de nadie: solo el nombre que cada uno eligió. Quien abra la
+              invitación entra en el grupo, así que mándala solo a quien quieras dentro.
+            </p>
           </div>
         )}
 
-        <div ref={fondo} className="scroll-thin min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
+        <div ref={fondo} className="scroll-thin min-h-0 flex-1 space-y-3 overflow-y-auto py-3.5 pr-1">
           {mensajes.length === 0 && (
-            <p className="py-8 text-center text-[13px] leading-relaxed text-muted">
-              Todavía no ha escrito nadie. Escribe algo y, si quieres que conteste ECLIPSE,
-              nómbralo o pídele algo directamente.
-            </p>
+            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-panel text-muted">
+                <Icon.Group width={22} height={22} />
+              </span>
+              <p className="max-w-xs text-[13px] leading-relaxed text-muted">
+                {miembros.length <= 1
+                  ? "De momento estás tú solo. Manda la invitación a quien quieras y escribid aquí: ECLIPSE contesta cuando le nombréis."
+                  : "Todavía no ha escrito nadie. Escribe algo y, si quieres que conteste ECLIPSE, nómbralo o pídele algo directamente."}
+              </p>
+              {miembros.length <= 1 && <BotonInvitar grupo={grupo} enlace={enlace} grande />}
+            </div>
           )}
-          {mensajes.map((m) => (
-            <div key={m.id} className={m.mio ? "flex justify-end" : ""}>
-              <div className={`max-w-[85%] ${m.mio ? "" : "w-full"}`}>
-                {!m.mio && (
-                  <span
-                    className={`mb-0.5 block text-[11px] ${
-                      m.deEclipse ? "text-pro" : "text-faint"
+
+          {mensajes.map((m, i) => {
+            /*
+              Mensajes seguidos de la misma persona se agrupan: el nombre y la
+              foto solo salen en el primero. Es lo que hace que una conversación
+              de seis personas se pueda leer sin marearse.
+            */
+            const anterior = mensajes[i - 1];
+            const seguido =
+              anterior && anterior.nombre === m.nombre && m.cuando - anterior.cuando < 5 * 60 * 1000;
+
+            if (m.mio)
+              return (
+                <div key={m.id} className={`flex justify-end ${seguido ? "-mt-1.5" : ""}`}>
+                  <div className="max-w-[80%]">
+                    <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md border border-tuyo-borde bg-tuyo px-3.5 py-2 text-[14px] leading-relaxed text-ink">
+                      {m.texto}
+                    </div>
+                    <span className="mt-0.5 block text-right text-[10.5px] text-faint">
+                      {cuandoDe(m.cuando)}
+                    </span>
+                  </div>
+                </div>
+              );
+
+            return (
+              <div key={m.id} className={`flex gap-2 ${seguido ? "-mt-1.5" : ""}`}>
+                <span className="w-7 shrink-0">
+                  {!seguido &&
+                    (m.deEclipse ? (
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-pro/15 text-pro">
+                        <Icon.Sparkle width={13} height={13} />
+                      </span>
+                    ) : (
+                      <span
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                        style={{ background: colorDe(m.nombre) }}
+                      >
+                        {inicialesDe(m.nombre)}
+                      </span>
+                    ))}
+                </span>
+
+                <div className="min-w-0 max-w-[80%]">
+                  {!seguido && (
+                    <span className="mb-0.5 flex items-baseline gap-1.5">
+                      <span className={`text-[11.5px] font-medium ${m.deEclipse ? "text-pro" : "text-ink"}`}>
+                        {m.nombre}
+                      </span>
+                      <span className="text-[10.5px] text-faint">{cuandoDe(m.cuando)}</span>
+                    </span>
+                  )}
+                  <div
+                    className={`whitespace-pre-wrap break-words rounded-2xl rounded-tl-md px-3.5 py-2 text-[14px] leading-relaxed text-ink ${
+                      m.deEclipse ? "border border-pro/20 bg-pro/[0.06]" : "bg-panel"
                     }`}
                   >
-                    {m.nombre}
-                  </span>
-                )}
-                <div
-                  className={`whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed ${
-                    m.mio
-                      ? "rounded-br-md border border-tuyo-borde bg-tuyo text-ink"
-                      : m.deEclipse
-                        ? "border border-line-soft bg-panel/60 text-ink"
-                        : "bg-panel text-ink"
-                  }`}
-                >
-                  {m.texto}
+                    {m.texto}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <div className="mt-3 flex gap-2">
+        <div className="flex gap-2 border-t border-line-soft pt-3">
           <input
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
