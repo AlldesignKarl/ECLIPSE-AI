@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.36",
+    // Saber dónde estás, y enchufarse a lo tuyo.
+    nombre: "Sobre el terreno",
+    titulo: "Ahora sabe dónde estás, si tú quieres",
+    entrada:
+      "Excursiones, sitios cerca y cómo llegar. Y un catálogo de conexiones con su marca, para enchufar tu tienda o tu web en un minuto.",
+    puntos: [
+      "En Ajustes → Ubicación. Está apagada: la enciendes tú, y el móvil te pide su permiso encima. Solo se manda la zona, redondeada a un kilómetro: sirve para el pueblo o la ciudad, no para tu calle.",
+      "Con ella puesta le puedes decir «planifícame el finde», «cómo llego a Jaca» o «algo para cenar por aquí» y te contesta con sitios de verdad y su enlace a Google Maps.",
+      "No se guarda en ningún sitio: va con el mensaje y se va con él. Al apagarla se borra también lo último que sabía.",
+      "Conexiones es ahora un catálogo con buscador y categorías, cada servicio con su color y su nombre. Nuevos: Stripe (solo mirar cobros y saldo, nunca mover dinero) y Telegram, para que ECLIPSE te escriba.",
+      "Y al empezar una conversación te cuenta cómo conectar tu tienda o tu web, una vez: si le dices «ahora no», no vuelve.",
+    ],
+  },
+  {
     version: "2.35",
     nombre: "En grupo",
     titulo: "Ahora podéis preguntarle varios a la vez",

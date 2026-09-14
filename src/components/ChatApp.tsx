@@ -1222,7 +1222,11 @@ export default function ChatApp({
         >
           <div className="mx-auto w-full max-w-3xl">
             {!active || active.messages.length === 0 ? (
-              <Welcome plan={plan} mode={mode} />
+              <Welcome
+                plan={plan}
+                mode={mode}
+                onConectar={() => setConexionesOpen(true)}
+              />
             ) : (
               <>
                 {active.messages.map((m, i) => (
