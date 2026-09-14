@@ -246,3 +246,12 @@ export const Calendar = (p: P) => (
     <circle cx="15" cy="14" r="1.1" fill="currentColor" stroke="none" />
   </svg>
 );
+
+/** La biblioteca: imágenes para inspirarse. */
+export const Library = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="3.5" y="4.5" width="4" height="15" rx="1.2" />
+    <rect x="9.5" y="4.5" width="4" height="15" rx="1.2" />
+    <path d="M16.2 6.2l3.4.9a1.2 1.2 0 0 1 .85 1.47l-3 11.2" />
+  </svg>
+);

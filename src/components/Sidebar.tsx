@@ -26,6 +26,8 @@ interface Props {
   onConexiones: () => void;
   /** Abre Programar: los encargos que ECLIPSE hace solo. */
   onProgramar: () => void;
+  /** Abre la Biblioteca: imágenes para inspirarse. */
+  onBiblioteca: () => void;
   /** Hay resultados de encargos sin ver: se enciende un punto. */
   tareasNuevas?: boolean;
   onInicio: () => void;
@@ -50,6 +52,7 @@ export default function Sidebar({
   onSettings,
   onConexiones,
   onProgramar,
+  onBiblioteca,
   tareasNuevas = false,
   onInicio,
   user = null,
@@ -314,6 +317,19 @@ export default function Sidebar({
             para pagar el plan Pro, y una razón para pagar no se guarda en un
             cajón.
           */}
+          {/*
+            La biblioteca es lo único de aquí abajo que no configura nada: se
+            entra a mirar. Va la primera de las tres porque es la que se abre
+            por gusto, no por necesidad.
+          */}
+          <button
+            onClick={onBiblioteca}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-muted transition hover:bg-panel hover:text-ink"
+          >
+            <Icon.Library width={16} height={16} />
+            <span className="flex-1 text-left">Biblioteca</span>
+          </button>
+
           {/*
             Programar, justo encima de Conexiones: son las dos cosas que hacen
             que ECLIPSE trabaje sin que tú estés delante, y se entienden mejor

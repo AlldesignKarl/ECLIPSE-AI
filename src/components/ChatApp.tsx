@@ -17,6 +17,7 @@ import ThinkingBar from "./ThinkingBar";
 import UpgradeDialog, { type Billing } from "./UpgradeDialog";
 import ConexionesDialog from "./ConexionesDialog";
 import ProgramarDialog from "./ProgramarDialog";
+import BibliotecaDialog from "./BibliotecaDialog";
 import Welcome from "./Welcome";
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
 import {
@@ -108,6 +109,7 @@ export default function ChatApp({
   const [plan, setPlan] = useState<Plan>("free");
   const [conexionesOpen, setConexionesOpen] = useState(false);
   const [programarOpen, setProgramarOpen] = useState(false);
+  const [bibliotecaOpen, setBibliotecaOpen] = useState(false);
   /** Si hay encargos hechos que todavía no ha visto nadie. */
   const [tareasNuevas, setTareasNuevas] = useState(false);
   const [proRegalado, setProRegalado] = useState(false);
@@ -1099,6 +1101,7 @@ export default function ChatApp({
         onSettings={() => setSettingsOpen(true)}
         onConexiones={() => setConexionesOpen(true)}
         onProgramar={() => setProgramarOpen(true)}
+        onBiblioteca={() => setBibliotecaOpen(true)}
         tareasNuevas={tareasNuevas}
         onInicio={() => {
           setSidebar(false);
@@ -1260,6 +1263,15 @@ export default function ChatApp({
         proCodeConfigured={caps.proCodeConfigured}
         billing={billing}
         regalado={proRegalado}
+      />
+
+      <BibliotecaDialog
+        open={bibliotecaOpen}
+        onClose={() => setBibliotecaOpen(false)}
+        onInspirar={(prompt) => {
+          setBibliotecaOpen(false);
+          setInput(prompt);
+        }}
       />
 
       <ProgramarDialog
