@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.30",
+    // Que se lea mientras se escribe.
+    nombre: "A su ritmo",
+    titulo: "Ahora se le ve escribir",
+    entrada:
+      "La respuesta ya no aparece de golpe: se escribe a un ritmo que se puede seguir, como cuando alguien te está contestando.",
+    puntos: [
+      "El texto del motor llega a borbotones —a veces un párrafo entero de una vez— y aparecía como un muro en el que había que buscar por dónde ibas. Ahora se guarda entero según llega y se enseña a su ritmo.",
+      "Va más rápido cuanto más se acumula, así que nunca se queda atrás; y en cuanto el motor termina, acelera para no hacerte esperar por una animación.",
+      "Si le das a parar, se enseña al momento lo que haya. Y en ECLIPSE CODE va más suelto: ahí lo que miras es la vista previa, no las letras.",
+    ],
+  },
+  {
     version: "2.29",
     // Dejar de dar consejos y meterse dentro a hacerlos.
     nombre: "Conexiones",

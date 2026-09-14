@@ -27,6 +27,7 @@ import {
   leerRetoque,
   projectName,
 } from "@/lib/project";
+import { crearRitmo, type Ritmo } from "@/lib/ritmo";
 import { readSSE } from "@/lib/sse";
 import {
   clearEnCurso,
@@ -129,6 +130,16 @@ export default function ChatApp({
   const abortRef = useRef<AbortController | null>(null);
   const bufferRef = useRef({ text: "", thinking: "" });
   const rafRef = useRef<number | null>(null);
+  /*
+    El ritmo al que APARECE la respuesta, que no es al que llega.
+
+    Llega a borbotones —a veces un párrafo entero de una vez— y pintarlo tal
+    cual se lee mal y se lee como si no hubiera pensado nada. Se guarda entero
+    según llega y se enseña a un ritmo propio; lo de abajo solo decide cuánto
+    de lo guardado se ve ya.
+  */
+  const ritmoRef = useRef<Ritmo | null>(null);
+  const terminadoRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
 
@@ -321,12 +332,61 @@ export default function ChatApp({
 
   const flushStream = useCallback(() => {
     rafRef.current = null;
-    setStream({ ...bufferRef.current });
+
+    const { text, thinking } = bufferRef.current;
+    const ritmo = ritmoRef.current;
+
+    // Sin ritmo —al parar, al fallar— se enseña entero y punto.
+    if (!ritmo) {
+      setStream({ text, thinking });
+      return;
+    }
+
+    const hasta = ritmo.visibles(performance.now(), text.length, terminadoRef.current);
+    setStream({ text: text.slice(0, hasta), thinking });
+
+    // Mientras quede texto por enseñar hay que seguir pintando, aunque no
+    // llegue nada nuevo del motor: es justo cuando llega de golpe.
+    if (ritmo.pendiente(text.length)) {
+      rafRef.current = requestAnimationFrame(flushStream);
+    }
   }, []);
 
   const scheduleFlush = useCallback(() => {
     if (rafRef.current === null) rafRef.current = requestAnimationFrame(flushStream);
   }, [flushStream]);
+
+  /**
+   * Esperar a que termine de escribirse lo que ya ha llegado.
+   *
+   * El motor termina antes que la pantalla, y el mensaje definitivo no puede
+   * aparecer mientras todavía se está escribiendo el provisional: sería un
+   * salto del texto a medias al texto entero. Con un tope, porque ninguna
+   * animación puede dejar a nadie esperando.
+   */
+  const terminarDeEscribir = useCallback(
+    () =>
+      new Promise<void>((listo) => {
+        const ritmo = ritmoRef.current;
+        if (!ritmo || !ritmo.pendiente(bufferRef.current.text.length)) return listo();
+
+        terminadoRef.current = true;
+        const limite = performance.now() + 4000;
+
+        const mirar = () => {
+          const total = bufferRef.current.text.length;
+          if (!ritmo.pendiente(total) || performance.now() > limite) {
+            ritmo.todo(total);
+            setStream({ ...bufferRef.current });
+            return listo();
+          }
+          scheduleFlush();
+          requestAnimationFrame(mirar);
+        };
+        mirar();
+      }),
+    [scheduleFlush],
+  );
 
   /* ------------------------------- Título ------------------------------ */
   /**
@@ -471,6 +531,19 @@ export default function ChatApp({
       const controller = new AbortController();
       abortRef.current = controller;
       bufferRef.current = { text: "", thinking: "" };
+      /*
+        Un ritmo nuevo por respuesta.
+
+        En ECLIPSE CODE el techo sube: ahí lo que se escribe son archivos, y
+        verlos teclearse línea a línea no aporta nada —lo que se mira es la
+        vista previa y el ZIP—, así que se pinta con ritmo pero sin hacer
+        esperar.
+      */
+      ritmoRef.current = crearRitmo(
+        performance.now(),
+        currentMode === "code" ? { techo: 900, techoFinal: 6000 } : {},
+      );
+      terminadoRef.current = false;
       guardadoRef.current = 0;
       clearEnCurso();
       setStream({ text: "", thinking: "" });
@@ -615,10 +688,27 @@ export default function ChatApp({
         }
       }
 
+      /*
+        Que termine de escribirse lo que ya ha llegado, antes de cerrar.
+
+        El mensaje definitivo sustituye al que se está escribiendo, así que
+        soltarlo aquí sin más daría un salto del texto a medias al texto
+        entero. Salvo que el usuario haya parado o haya fallado algo: ahí lo
+        que toca es enseñar ya lo que hay y no hacerle esperar por una
+        animación.
+      */
+      if (controller.signal.aborted || failure) {
+        ritmoRef.current?.todo(bufferRef.current.text.length);
+        setStream({ ...bufferRef.current });
+      } else {
+        await terminarDeEscribir();
+      }
+
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
+      ritmoRef.current = null;
 
       const thinking = bufferRef.current.thinking;
       // La marca de retoque no se le enseña a nadie: es un encargo para el
@@ -762,7 +852,7 @@ export default function ChatApp({
       setStatus("idle");
       abortRef.current = null;
     },
-    [convertir, plan, prefs.speed, prefs.deepSearch, retocar, scheduleFlush, upsert],
+    [convertir, plan, prefs.speed, prefs.deepSearch, retocar, scheduleFlush, terminarDeEscribir, upsert],
   );
 
   runChatRef.current = runChat;
