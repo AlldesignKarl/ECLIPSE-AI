@@ -10,6 +10,7 @@ import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { herramientasPara } from "@/lib/tools/registro";
 import { nombreActual } from "@/lib/auth";
 import { currentPlan } from "@/lib/plan-server";
+import { aligerarHistorial } from "@/lib/project";
 import { buildSystemPrompt, partes3D, SEGUIR } from "@/lib/prompts";
 import {
   activeProvider,
@@ -498,6 +499,18 @@ export async function POST(req: NextRequest) {
   } catch {
     return Response.json({ error: "Petición mal formada." }, { status: 400 });
   }
+
+  /*
+    Adelgazar aquí también, no solo en el navegador.
+
+    El navegador ya lo hace —y ahí es donde se ahorra la subida, que en el móvil
+    es lo que más se nota—, pero el navegador es de quien entra: basta con que
+    alguien tenga la versión anterior guardada para que siga mandando todas las
+    fotos de la conversación en cada mensaje. El cupo por minuto lo paga el
+    servidor, así que la cuenta se hace también aquí. Pasarlo dos veces no hace
+    nada: lo ya adelgazado se queda igual.
+  */
+  body.messages = aligerarHistorial(body.messages ?? []);
 
   const plan = await currentPlan();
   // Cómo quiere que le llamen. Se lee aquí, del servidor, y no de lo que mande

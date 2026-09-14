@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.31",
+    // Las fotos viejas dejan de reenviarse en cada mensaje.
+    nombre: "Sin repetirse",
+    titulo: "Las conversaciones con fotos duran mucho más",
+    entrada:
+      "Cada foto que mandabas se volvía a enviar entera en todos los mensajes siguientes. Era lo más caro de la conversación y no se veía.",
+    puntos: [
+      "Una foto del primer mensaje se re-subía y se re-cobraba en el segundo, el tercero y el décimo. Con tres o cuatro fotos, el cupo por minuto se agotaba antes de empezar a escribir.",
+      "Ahora solo viajan las fotos de las dos últimas veces que adjuntaste algo. De las demás queda una línea diciendo que existieron, que es lo único que hace falta para no perder el hilo.",
+      "Se nota en tres sitios: las conversaciones con fotos duran mucho más, cada mensaje sube menos datos desde el móvil, y con Google ECLIPSE CODE ya no corta el archivo a la cuarta parte.",
+    ],
+  },
+  {
     version: "2.30",
     // Que se lea mientras se escribe.
     nombre: "A su ritmo",

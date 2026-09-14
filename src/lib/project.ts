@@ -360,9 +360,61 @@ export function archivosEjecutables(markdown: string): GeneratedFile[] {
  * con saber que existieron. Nadie pide "vuelve a la versión de hace cuatro",
  * y si lo pidiera, ahí está el panel de cada mensaje con sus archivos.
  */
-export function aligerarHistorial<T extends { role: string; content: string }>(
-  mensajes: T[],
-): T[] {
+/**
+ * Cuántos turnos con adjuntos siguen viajando enteros.
+ *
+ * Dos, y no uno, porque comparar es normal: se manda una foto, se pregunta, se
+ * manda otra y se dice "¿y esta?". Con uno solo, la primera desaparecería justo
+ * cuando hace falta tenerlas las dos delante.
+ *
+ * Y ojo a lo que NO cuenta: los turnos sin adjuntos no gastan sitio. Si mandas
+ * una foto y luego preguntas cinco cosas sobre ella, esa foto sigue siendo una
+ * de las dos últimas con adjuntos y sigue viajando, que es justo lo que se
+ * quiere.
+ */
+const TURNOS_CON_ADJUNTOS = 2;
+
+export function aligerarHistorial<
+  T extends {
+    role: string;
+    content: string;
+    attachments?: { name: string; kind?: string }[];
+  },
+>(mensajes: T[]): T[] {
+  /*
+    Las fotos viejas no se vuelven a mandar.
+
+    Esto era lo más caro de toda la conversación y no se veía. Cada adjunto se
+    reenviaba ENTERO en todos los mensajes siguientes: una foto del primer
+    mensaje se volvía a subir y a cobrar en el segundo, el tercero y el décimo.
+    Con tres fotos, cada mensaje nuevo arrastraba tres imágenes, y el cupo por
+    minuto —ocho mil tokens en la capa gratuita de Groq— se iba antes de empezar
+    a escribir. De ahí salía lo de "empieza una conversación nueva" a los cuatro
+    mensajes.
+
+    Se quedan las de los dos últimos turnos que traían algo. De las demás se
+    deja una línea diciendo que existieron, que es lo único que hace falta para
+    no perder el hilo: el modelo ya habló de ellas, y lo que dijo sigue escrito
+    en su propia respuesta.
+  */
+  const conAdjuntos = mensajes
+    .map((m, i) => (m.role === "user" && m.attachments?.length ? i : -1))
+    .filter((i) => i !== -1);
+  const vivos = new Set(conAdjuntos.slice(-TURNOS_CON_ADJUNTOS));
+
+  mensajes = mensajes.map((m, i) => {
+    if (!m.attachments?.length || vivos.has(i)) return m;
+
+    const nombres = m.attachments.map((a) => `"${a.name}"`).join(", ");
+    return {
+      ...m,
+      content:
+        `${m.content}\n\n(Aquí adjuntó ${nombres}. Ya lo miraste y hablasteis de ello más arriba, ` +
+        `así que no se vuelve a mandar. Si hace falta volver a verlo, pídeselo.)`.trim(),
+      attachments: undefined,
+    };
+  });
+
   /*
     Se conservan las DOS últimas versiones con código, no solo la última.
 
