@@ -45,6 +45,8 @@ interface Entrada {
 export const wix: Servicio = {
   id: "wix",
   nombre: "Wix",
+  color: "#0C6EFC",
+  marca: "Wx",
   familia: "web",
   resumen:
     "Tu web y tu tienda de Wix: productos, textos y entradas del blog, sin entrar al editor.",

@@ -71,6 +71,8 @@ function unProducto(p: Producto): string {
 export const shopify: Servicio = {
   id: "shopify",
   nombre: "Shopify",
+  color: "#5E8E3E",
+  marca: "Sh",
   familia: "tienda",
   resumen:
     "Tu tienda: catálogo, pedidos, stock y el SEO de cada ficha. ECLIPSE puede reescribirte cuatrocientos títulos mientras desayunas.",

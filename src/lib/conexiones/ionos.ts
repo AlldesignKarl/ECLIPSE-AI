@@ -67,6 +67,8 @@ async function zonaDe(cred: Credenciales, dominio: string, signal?: AbortSignal)
 export const ionos: Servicio = {
   id: "ionos",
   nombre: "IONOS",
+  color: "#003D8F",
+  marca: "IO",
   familia: "dominio",
   resumen:
     "Tus dominios y su DNS. Conectar un dominio con una tienda, apuntar el correo o arreglar una web caída sin pelearte con los registros.",

@@ -65,6 +65,8 @@ function textoDeBloque(b: Record<string, unknown>): string {
 export const notion: Servicio = {
   id: "notion",
   nombre: "Notion",
+  color: "#191919",
+  marca: "N",
   familia: "trabajo",
   resumen:
     "Tus notas, tareas y bases de datos. Que ECLIPSE lea lo que tienes apuntado y escriba dentro, en vez de darte consejos sobre organizarte.",

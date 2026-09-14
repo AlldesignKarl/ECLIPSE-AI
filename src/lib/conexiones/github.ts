@@ -38,6 +38,8 @@ function repo(v: unknown): string {
 export const github: Servicio = {
   id: "github",
   nombre: "GitHub",
+  color: "#24292F",
+  marca: "Gh",
   familia: "trabajo",
   resumen:
     "Tus repositorios: leer el código que ya tienes, ver las incidencias y abrir una nueva. No toca tus ramas.",

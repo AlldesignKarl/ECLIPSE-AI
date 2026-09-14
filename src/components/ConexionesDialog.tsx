@@ -32,7 +32,9 @@ interface Campo {
 interface Servicio {
   id: string;
   nombre: string;
-  familia: "tienda" | "web" | "dominio" | "mercado" | "trabajo";
+  color: string;
+  marca: string;
+  familia: "tienda" | "web" | "dominio" | "mercado" | "trabajo" | "dinero" | "mensajes";
   resumen: string;
   pasos: string[];
   enlace: string;
@@ -52,28 +54,22 @@ interface Estado {
   servicios: Servicio[];
 }
 
-const FAMILIAS: { id: Servicio["familia"]; titulo: string; entrada: string }[] = [
-  {
-    id: "tienda",
-    titulo: "Tu tienda",
-    entrada: "Catálogo, pedidos, stock y los textos que lee Google en cada ficha.",
-  },
-  { id: "web", titulo: "Tu web", entrada: "Los textos, los productos y el blog, sin entrar al editor." },
-  {
-    id: "dominio",
-    titulo: "Tus dominios",
-    entrada: "El DNS, que es donde todo el mundo se atasca y donde un error deja la web caída.",
-  },
-  {
-    id: "trabajo",
-    titulo: "Tu trabajo",
-    entrada: "Donde tienes apuntado lo que hay que hacer, y el código en el que trabajas.",
-  },
-  {
-    id: "mercado",
-    titulo: "Tus mercados",
-    entrada: "La cartera y los precios, para analizarlos. Las órdenes las das tú, siempre.",
-  },
+/**
+ * Las categorías, como se llaman de cara afuera.
+ *
+ * Por lo que HACE cada cosa y no por lo que es técnicamente: nadie busca "APIs
+ * REST de comercio electrónico", busca "mi tienda". Y en el mismo orden en que
+ * la gente los va a querer.
+ */
+const FAMILIAS: { id: Servicio["familia"] | "todo"; titulo: string }[] = [
+  { id: "todo", titulo: "Todo" },
+  { id: "tienda", titulo: "Comercio" },
+  { id: "dinero", titulo: "Dinero" },
+  { id: "trabajo", titulo: "Trabajo" },
+  { id: "web", titulo: "Webs" },
+  { id: "dominio", titulo: "Dominios" },
+  { id: "mensajes", titulo: "Mensajes" },
+  { id: "mercado", titulo: "Mercados" },
 ];
 
 interface Props {
@@ -87,6 +83,8 @@ export default function ConexionesDialog({ open, onClose, plan, onUpgrade }: Pro
   const [estado, setEstado] = useState<Estado | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [categoria, setCategoria] = useState<Servicio["familia"] | "todo">("todo");
 
   const recargar = useCallback(async () => {
     setCargando(true);
@@ -129,31 +127,62 @@ export default function ConexionesDialog({ open, onClose, plan, onUpgrade }: Pro
 
         {cargando && !estado && <p className="text-[13px] text-faint">Un momento…</p>}
 
-        {estado &&
-          FAMILIAS.map((familia) => {
-            const lista = estado.servicios.filter((s) => s.familia === familia.id);
-            if (!lista.length) return null;
-            return (
-              <div key={familia.id}>
-                <div className="mb-1 text-[11.5px] uppercase tracking-wide text-faint">
-                  {familia.titulo}
-                </div>
-                <p className="mb-2.5 text-[12px] leading-relaxed text-muted">{familia.entrada}</p>
-                <div className="space-y-2">
-                  {lista.map((s) => (
-                    <Tarjeta
-                      key={s.id}
-                      servicio={s}
-                      puede={plan === "pro" && Boolean(estado.conCuenta && estado.almacen)}
-                      abierto={abierto === s.id}
-                      onAbrir={() => setAbierto(abierto === s.id ? null : s.id)}
-                      onCambio={recargar}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+        {estado && (
+          <>
+            {/* Buscar. Con nueve servicios ya se agradece; con treinta, manda. */}
+            <div className="relative">
+              <Icon.Search
+                width={15}
+                height={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+              />
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar conexiones"
+                className="w-full rounded-xl border border-line bg-panel py-2.5 pl-9 pr-3 text-[14px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
+              />
+            </div>
+
+            <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+              {FAMILIAS.filter(
+                (f) => f.id === "todo" || estado.servicios.some((s) => s.familia === f.id),
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setCategoria(f.id)}
+                  className={`shrink-0 rounded-lg px-3 py-1.5 text-[12.5px] transition ${
+                    categoria === f.id ? "bg-raised text-ink" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {f.titulo}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {estado.servicios
+                .filter((s) => categoria === "todo" || s.familia === categoria)
+                .filter((s) => {
+                  const q = busca.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    s.nombre.toLowerCase().includes(q) || s.resumen.toLowerCase().includes(q)
+                  );
+                })
+                .map((s) => (
+                  <Tarjeta
+                    key={s.id}
+                    servicio={s}
+                    puede={plan === "pro" && Boolean(estado.conCuenta && estado.almacen)}
+                    abierto={abierto === s.id}
+                    onAbrir={() => setAbierto(abierto === s.id ? null : s.id)}
+                    onCambio={recargar}
+                  />
+                ))}
+            </div>
+          </>
+        )}
 
         <p className="border-t border-line-soft pt-4 text-[11.5px] leading-relaxed text-faint">
           Las claves se guardan cifradas y nunca salen del servidor: ni las ve la IA, ni vuelven a
@@ -270,33 +299,52 @@ function Tarjeta({
 
   return (
     <div
-      className={`rounded-xl border p-3.5 transition ${
-        servicio.conectado ? "border-ok/30 bg-ok/5" : "border-line-soft bg-panel/40"
+      className={`rounded-xl border p-3 transition ${
+        abierto ? "border-line bg-panel/60" : "border-line-soft bg-panel/30 hover:border-line"
       }`}
     >
-      <button onClick={onAbrir} className="flex w-full items-start gap-2.5 text-left">
+      <button onClick={onAbrir} className="flex w-full items-center gap-3 text-left">
+        {/*
+          El logo. Una pastilla del color exacto de la marca con sus iniciales:
+          se reconoce igual de rápido que el logo de verdad, no depende de que
+          nadie mueva un archivo en su servidor, y no es de nadie.
+        */}
         <span
-          className={`mt-1 h-2 w-2 shrink-0 rounded-full ${servicio.conectado ? "bg-ok" : "bg-line"}`}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[15px] font-semibold text-white"
+          style={{ background: servicio.color }}
           aria-hidden
-        />
+        >
+          {servicio.marca}
+        </span>
+
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
-            <span className="text-[13.5px] font-medium text-ink">{servicio.nombre}</span>
+            <span className="truncate text-[14px] font-medium text-ink">{servicio.nombre}</span>
             {servicio.conectado && (
-              <span className="rounded-md bg-panel px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-faint">
-                {servicio.permiso === "escribir" ? "puede cambiar" : "solo lectura"}
+              <span className="shrink-0 rounded-md bg-panel px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-faint">
+                {servicio.permiso === "escribir" ? "puede cambiar" : "solo lee"}
               </span>
             )}
           </span>
-          <span className="mt-0.5 block text-[12px] leading-relaxed text-muted">
+          <span className="mt-0.5 block line-clamp-2 text-[12px] leading-snug text-muted">
             {servicio.conectado ? servicio.cuenta : servicio.resumen}
           </span>
         </span>
-        <Icon.ChevronLeft
-          width={15}
-          height={15}
-          className={`mt-1 shrink-0 text-faint transition ${abierto ? "rotate-90" : "-rotate-90"}`}
-        />
+
+        {/*
+          El botón a la derecha, como en cualquier catálogo de aplicaciones: es
+          donde la mano lo busca, y dice de un vistazo qué está puesto y qué no
+          sin tener que leer nada.
+        */}
+        <span
+          className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition ${
+            servicio.conectado
+              ? "border border-ok/40 text-ok"
+              : "bg-ink text-void"
+          }`}
+        >
+          {servicio.conectado ? "Conectado" : "Conectar"}
+        </span>
       </button>
 
       {abierto && (

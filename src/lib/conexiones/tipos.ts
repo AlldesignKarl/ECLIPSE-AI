@@ -65,8 +65,19 @@ export interface Servicio {
   /** `shopify`. Es la clave de todo: URL, almacén y llamadas del modelo. */
   id: string;
   nombre: string;
+  /**
+   * Su color y sus iniciales, para reconocerlo de un vistazo.
+   *
+   * No se traen los logos de verdad desde sus servidores, y es a propósito:
+   * enlazar la marca de otro desde su web es usar su ancho de banda y su imagen
+   * sin permiso, y además deja la pantalla dependiendo de que no muevan un
+   * archivo. Una pastilla del color exacto de cada marca con sus iniciales se
+   * reconoce igual de rápido, no se rompe nunca y no es de nadie.
+   */
+  color: string;
+  marca: string;
   /** Para agrupar en la pantalla de Conexiones. */
-  familia: "tienda" | "web" | "dominio" | "mercado" | "trabajo";
+  familia: "tienda" | "web" | "dominio" | "mercado" | "trabajo" | "dinero" | "mensajes";
   /** Una línea de qué se puede hacer conectándolo. */
   resumen: string;
   /** Cómo conseguir la clave, paso a paso y sin dar nada por sabido. */
@@ -90,6 +101,8 @@ export interface Servicio {
 export interface EstadoConexion {
   id: string;
   nombre: string;
+  color: string;
+  marca: string;
   familia: Servicio["familia"];
   resumen: string;
   pasos: string[];

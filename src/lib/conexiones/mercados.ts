@@ -73,6 +73,8 @@ interface Saldo {
 export const mercados: Servicio = {
   id: "mercados",
   nombre: "Binance (solo lectura)",
+  color: "#F0B90B",
+  marca: "B",
   familia: "mercado",
   resumen:
     "Tu cartera y el mercado, para analizarlos. ECLIPSE nunca compra, vende ni cancela: lee, calcula y te lo explica. Las órdenes las das tú.",

@@ -52,6 +52,8 @@ interface Pedido {
 export const woocommerce: Servicio = {
   id: "woocommerce",
   nombre: "WooCommerce",
+  color: "#7F54B3",
+  marca: "Wo",
   familia: "tienda",
   resumen:
     "La tienda de WordPress: productos, pedidos, stock y los textos que lee Google. Lo mismo que Shopify, sin cuota mensual.",
