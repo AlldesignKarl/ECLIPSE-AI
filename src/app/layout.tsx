@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, JetBrains_Mono, Newsreader } from "next/font/google";
+import { ICONOS } from "@/lib/iconos";
 import { SITE_DESCRIPTION as DESCRIPTION, SITE_URL } from "@/lib/site";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
@@ -54,11 +55,13 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: "/" },
   icons: {
+    // El `?v=` de siempre: mismo archivo, dirección nueva, icono nuevo a la
+    // vista. Se explica entero en `manifest.ts`.
     icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: `/icon-192.png?v=${ICONOS}`, sizes: "192x192", type: "image/png" },
+      { url: `/icon-512.png?v=${ICONOS}`, sizes: "512x512", type: "image/png" },
     ],
-    apple: { url: "/apple-icon.png", sizes: "180x180" },
+    apple: { url: `/apple-icon.png?v=${ICONOS}`, sizes: "180x180" },
   },
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "ECLIPSE", statusBarStyle: "black-translucent" },
