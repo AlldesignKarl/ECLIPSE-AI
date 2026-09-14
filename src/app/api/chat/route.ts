@@ -653,15 +653,28 @@ export async function POST(req: NextRequest) {
           para todo el mundo. Se prueba el que tocaba antes de desviar por la
           foto, y si ese tampoco, el siguiente que tenga clave.
         */
-        const seAgoto = (err: unknown) =>
+        /*
+          ¿Esto es problema de ESTE motor, o de la petición?
+
+          Si es del motor —se quedó sin cupo, o no tiene ahora mismo ningún
+          modelo servible— lo que toca es probar el siguiente, no enseñar un
+          error. Carlos se encontró un «Groq no tiene ningún modelo que esta
+          aplicación pueda usar» en rojo, con Mistral configurado y disponible
+          al lado sin que nadie lo intentara. Antes esto solo miraba el cupo;
+          quedarse sin modelos es exactamente el mismo caso y acababa distinto.
+        */
+        const esDeEsteMotor = (err: unknown) =>
           (err instanceof GeminiError || err instanceof CompatError) &&
-          (err.status === 429 || err.status === 413 || /cuota|quota|l[íi]mite|rate/i.test(err.message));
+          (err.status === 429 ||
+            err.status === 413 ||
+            err.status === 404 ||
+            /cuota|quota|l[íi]mite|rate|ning[úu]n modelo/i.test(err.message));
 
         let result;
         try {
           result = await correr(provider);
         } catch (err) {
-          if (!provider || !seAgoto(err)) throw err;
+          if (!provider || !esDeEsteMotor(err)) throw err;
 
           const recambios = [deVuelta, await siguienteMotor(provider)].filter(
             (p, i, todos): p is NonNullable<typeof p> =>

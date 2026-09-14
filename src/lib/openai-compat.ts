@@ -824,6 +824,37 @@ export async function* streamCompat(opts: {
   /** ¿El respaldo tiene que saber mirar? Solo si la foto sigue en el viaje. */
   const conFoto = () => hayFotos && mandarImagenes;
 
+  /**
+   * Probar los respaldos, en dos rondas.
+   *
+   * Primero los que pueden hacer el trabajo: con una foto delante, solo los que
+   * ven. Y si ninguno puede —porque la cuenta no tiene ninguno, o porque
+   * tampoco contestan— se suelta la foto y se prueba con los demás.
+   *
+   * Esa segunda ronda es la red de seguridad, y quitarla tuvo consecuencias:
+   * con solo la primera, un motor cuyos modelos con ojos fallaran se quedaba
+   * sin respaldo ninguno y lo que llegaba a la pantalla era un error rojo. Y un
+   * error rojo es lo peor de los tres finales posibles, porque corta la
+   * conversación. Soltando la foto se avisa con `sinVista`, quien llama se va a
+   * otro motor con ojos, y solo si no queda ninguno se contesta sin ella.
+   */
+  const probarRespaldos = async (limite: number) => {
+    const habiaFoto = conFoto();
+    for (const hacenFaltaOjos of habiaFoto ? [true, false] : [false]) {
+      // Segunda ronda: la foto se queda fuera, y por eso se puede usar el resto.
+      if (habiaFoto && !hacenFaltaOjos) mandarImagenes = false;
+
+      for (const candidato of (await alternativas(hacenFaltaOjos)).slice(0, limite)) {
+        res = await pedir(candidato);
+        if (res.ok) {
+          if (opts.modo === "code") resueltoCodigo[opts.provider] = candidato;
+          else resolved[opts.provider] = candidato;
+          return;
+        }
+      }
+    }
+  };
+
   // Modelo desconocido o retirado: se olvida, se pide el catálogo de nuevo —el
   // guardado puede ser justo el que caducó— y se prueban varios antes de
   // rendirse.
@@ -831,14 +862,7 @@ export async function* streamCompat(opts: {
     olvidarModelo(opts.provider, wanted);
     delete catalogo[opts.provider];
 
-    for (const candidato of (await alternativas(conFoto())).slice(0, 8)) {
-      res = await pedir(candidato);
-      if (res.ok) {
-        if (opts.modo === "code") resueltoCodigo[opts.provider] = candidato;
-        else resolved[opts.provider] = candidato;
-        break;
-      }
-    }
+    await probarRespaldos(8);
   }
 
   /*
@@ -856,14 +880,7 @@ export async function* streamCompat(opts: {
   // modelo, así que otro modelo tiene su propio cupo entero sin gastar.
   if (res.status === 429 || res.status === 413) {
     olvidarModelo(opts.provider, wanted);
-    for (const candidato of (await alternativas(conFoto())).slice(0, 4)) {
-      res = await pedir(candidato);
-      if (res.ok) {
-        if (opts.modo === "code") resueltoCodigo[opts.provider] = candidato;
-        else resolved[opts.provider] = candidato;
-        break;
-      }
-    }
+    await probarRespaldos(4);
   }
 
   // Agotados los respaldos, se explica la causa PRIMERA, no la última.
@@ -881,7 +898,10 @@ export async function* streamCompat(opts: {
 
   if (res.status === 404 || res.status === 400)
     throw new CompatError(
-      `${preset.label.split(" ")[0]} no tiene ahora mismo ningún modelo que esta aplicación pueda usar. Prueba en unos minutos, o pon otro motor en Ajustes.`,
+      // Sin "pon otro motor en Ajustes": eso es mandarle a configurar algo para
+      // que la aplicación haga lo que ya sabe hacer sola. Cambiar de motor es
+      // trabajo nuestro, y pasa justo después de este error.
+      `${preset.label.split(" ")[0]} no tiene ahora mismo ningún modelo disponible.`,
       res.status,
     );
 
