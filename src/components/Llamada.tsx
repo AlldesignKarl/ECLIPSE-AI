@@ -3,15 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Icon from "./Icons";
 import { dictar, dictadoDisponible } from "@/lib/dictado";
+import { readSSE } from "@/lib/sse";
 import { paraElMensaje } from "@/lib/ubicacion";
 import {
   elegirVoz,
   guardarAjustes,
   IDIOMAS,
   leerAjustes,
+  loQueHay,
   RITMOS,
   tonoDe,
   velocidadDe,
+  VOCES,
+  VOZ_POR_DEFECTO,
   type AjustesVoz,
 } from "@/lib/voz-ajustes";
 import {
@@ -78,7 +82,7 @@ export default function Llamada({ abierta, onCerrar, nombre = "", onGuardar }: P
     Se lee al descolgar y no en cada frase: cambiar la voz a mitad de una
     llamada sería raro, y leerlo cien veces por conversación, tonto.
   */
-  const ajustesRef = useRef<AjustesVoz>({ timbre: "suave", idioma: "es-ES", ritmo: "normal" });
+  const ajustesRef = useRef<AjustesVoz>(VOZ_POR_DEFECTO);
 
   /** Decir una frase en alto y esperar a que termine. */
   const decir = useCallback(
@@ -177,7 +181,7 @@ export default function Llamada({ abierta, onCerrar, nombre = "", onGuardar }: P
       },
       decir,
       callar,
-      async preguntar(turnos) {
+      async preguntar(turnos, alTrozo) {
         // También en una llamada: "¿qué hago hoy por aquí?" se pregunta más
         // hablando que escribiendo.
         const ubicacion = await paraElMensaje().catch(() => null);
@@ -201,20 +205,26 @@ export default function Llamada({ abierta, onCerrar, nombre = "", onGuardar }: P
           throw new Error(d.error ?? "No he podido contestar.");
         }
 
-        // La respuesta llega en trozos; en una llamada se espera a tenerla
-        // entera, porque hablar a medias y rectificar suena peor que esperar.
-        const texto = await res.text();
+        /*
+          La respuesta se va entregando según llega, no al final.
+
+          Antes se esperaba a tenerla entera «porque hablar a medias y
+          rectificar suena peor que esperar». Eso era cierto a medias: lo que
+          no se puede es decir media frase, pero una frase TERMINADA ya no
+          cambia. Así que se entrega el texto según llega y la llamada dice en
+          alto cada frase en cuanto está cerrada. Es lo que quita el par de
+          segundos de silencio de después de preguntar.
+        */
         let salida = "";
-        for (const linea of texto.split("\n")) {
-          if (!linea.startsWith("data:")) continue;
-          try {
-            const e = JSON.parse(linea.slice(5).trim()) as { t?: string; v?: unknown };
-            if (e.t === "text" && typeof e.v === "string") salida += e.v;
-            if (e.t === "error" && typeof e.v === "string") throw new Error(e.v);
-          } catch {
-            /* una línea suelta que no era JSON */
+        let fallo: string | null = null;
+        await readSSE(res, (e) => {
+          if (e.t === "text" && typeof e.v === "string") {
+            salida += e.v;
+            alTrozo?.(e.v);
           }
-        }
+          if (e.t === "error" && typeof e.v === "string") fallo = e.v;
+        });
+        if (fallo) throw new Error(fallo);
         return salida;
       },
       ahora: () => Date.now(),
@@ -446,15 +456,33 @@ function segundos(total: number): string {
  * llamar para arreglar eso es perder la llamada.
  */
 function AjustesDeVoz({ onCerrar }: { onCerrar: () => void }) {
-  const [ajustes, setAjustes] = useState<AjustesVoz>({
-    timbre: "suave",
-    idioma: "es-ES",
-    ritmo: "normal",
-  });
+  const [ajustes, setAjustes] = useState<AjustesVoz>(VOZ_POR_DEFECTO);
+  /** Qué voces tiene ESTE aparato en ESTE idioma. Se pregunta, no se supone. */
+  const [hay, setHay] = useState({ mujer: true, hombre: true });
 
   useEffect(() => {
     setAjustes(leerAjustes());
   }, []);
+
+  /*
+    El catálogo de voces del aparato llega tarde.
+
+    En Chrome, `getVoices()` devuelve una lista vacía hasta que el navegador
+    termina de cargarlas, y avisa con `voiceschanged`. Sin escuchar ese aviso,
+    la primera vez que se abre esto se diría que el móvil no tiene ninguna voz.
+  */
+  useEffect(() => {
+    const mirar = () => {
+      try {
+        setHay(loQueHay(window.speechSynthesis.getVoices(), ajustes.idioma));
+      } catch {
+        /* sin voces en este aparato */
+      }
+    };
+    mirar();
+    window.speechSynthesis?.addEventListener?.("voiceschanged", mirar);
+    return () => window.speechSynthesis?.removeEventListener?.("voiceschanged", mirar);
+  }, [ajustes.idioma]);
 
   const cambiar = (cambios: Partial<AjustesVoz>) => {
     const nuevo = { ...ajustes, ...cambios };
@@ -498,6 +526,37 @@ function AjustesDeVoz({ onCerrar }: { onCerrar: () => void }) {
         <div className="space-y-4">
           <div>
             <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Voz</div>
+            <div className="flex gap-1.5 rounded-xl border border-line-soft bg-panel/40 p-1">
+              {VOCES.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    cambiar({ voz: v.id });
+                    probar({ ...ajustes, voz: v.id });
+                  }}
+                  className={`flex-1 rounded-lg px-3 py-2 text-[13px] transition ${
+                    ajustes.voz === v.id ? "bg-raised text-ink" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {v.nombre}
+                </button>
+              ))}
+            </div>
+            {/*
+              Si el móvil no tiene voz de quien se ha pedido, se dice. Callarlo
+              haría pensar que el botón no funciona, cuando lo que pasa es que
+              ahí no hay nada que elegir.
+            */}
+            {((ajustes.voz === "mujer" && !hay.mujer) || (ajustes.voz === "hombre" && !hay.hombre)) && (
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
+                Tu móvil no trae voz de {ajustes.voz} en este idioma, así que usará la mejor que
+                tenga. Se pueden añadir más en los ajustes de voz del propio móvil.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Timbre</div>
             <div className="grid grid-cols-2 gap-2">
               {([
                 { id: "suave" as const, nombre: "Suave", pie: "Más grave y tranquila" },
@@ -561,8 +620,8 @@ function AjustesDeVoz({ onCerrar }: { onCerrar: () => void }) {
               ))}
             </select>
             <span className="mt-1.5 block text-[11.5px] leading-relaxed text-faint">
-              También es el idioma en el que te escucha. Las voces las pone tu móvil: si una suena
-              mal, prueba la otra.
+              También es el idioma en el que te escucha. Las voces las pone tu móvil, y ECLIPSE
+              coge la que mejor suena de las que tengas.
             </span>
           </label>
         </div>

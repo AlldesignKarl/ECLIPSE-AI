@@ -112,7 +112,16 @@ async function pollinationsImage(prompt: string): Promise<ImageResult> {
   // acepten el `nologo`. Si aun así estampan el suyo, es cosa de su servicio.
   url.searchParams.set("referrer", process.env.POLLINATIONS_REFERRER || "eclipse-ia.vercel.app");
   url.searchParams.set("model", process.env.POLLINATIONS_MODEL || "flux");
-  url.searchParams.set("enhance", "true");
+  /*
+    El "mejorador" del proveedor, solo cuando hace falta.
+
+    Reescribe el prompt por su cuenta. Eso salva un prompt de cinco palabras,
+    pero cuando ya hemos escrito una ficha de fotografía entera —cámara,
+    óptica, luz— lo que hace es pisarla y devolver el acabado de plástico que
+    justamente se estaba evitando. Así que se le deja actuar solo si lo que le
+    llega es corto.
+  */
+  if (prompt.length < 140) url.searchParams.set("enhance", "true");
   url.searchParams.set("seed", String(Math.floor(Math.random() * 1e9)));
 
   let res: Response;

@@ -27,10 +27,18 @@
 /** En qué punto está la llamada. */
 export type Fase = "conectando" | "escuchando" | "pensando" | "hablando" | "colgada";
 
-/** Cuánto silencio significa "he terminado". */
-export const SILENCIO_MS = 1100;
+/**
+ * Cuánto silencio significa "he terminado".
+ *
+ * Bajado de 1100 a 800: con 1100 lo que se notaba era un segundo largo de nada
+ * entre que callas y que empieza a pensar, y en una llamada un segundo de nada
+ * se siente como que el otro no te ha oído. 800 sigue estando por encima de la
+ * pausa normal de quien respira a mitad de frase, y para quien de verdad se
+ * queda pensando está el margen de abajo.
+ */
+export const SILENCIO_MS = 800;
 /** Y cuánto más si la frase se quedó colgando. */
-export const SILENCIO_DUDANDO_MS = 800;
+export const SILENCIO_DUDANDO_MS = 700;
 /** Por debajo de esto no es un turno: es un carraspeo o un ruido. */
 export const MINIMO_LETRAS = 2;
 
@@ -111,6 +119,23 @@ export function enFrases(texto: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Saca del buffer las frases YA terminadas, y devuelve lo que queda a medias.
+ *
+ * Es lo que permite hablar mientras el modelo sigue escribiendo: en cuanto hay
+ * un punto, esa frase se puede decir en alto sin riesgo de tener que
+ * rectificar, porque una frase terminada ya no cambia.
+ */
+export function sacarFrases(buffer: string): { frases: string[]; resto: string } {
+  // Hasta el último final de frase; lo de después sigue esperando.
+  const corte = buffer.search(/[.!?…\n](?=[^.!?…\n]*$)/);
+  if (corte === -1) return { frases: [], resto: buffer };
+
+  const cerrado = buffer.slice(0, corte + 1);
+  const resto = buffer.slice(corte + 1);
+  return { frases: enFrases(cerrado), resto };
+}
+
 /** Lo que se le dice al modelo para que hable como se habla. */
 export const COMO_HABLAR = `Esto es una LLAMADA de voz: lo que escribas se va a
 leer en alto, y quien te escucha no puede ver la pantalla.
@@ -140,8 +165,15 @@ export interface Entorno {
   decir: (frase: string) => Promise<void>;
   /** Corta lo que se esté diciendo. */
   callar: () => void;
-  /** Le pregunta al modelo. */
-  preguntar: (turnos: Turno[]) => Promise<string>;
+  /**
+   * Le pregunta al modelo.
+   *
+   * `alTrozo` recibe lo que va llegando, para poder empezar a hablar con la
+   * primera frase en vez de esperar a la respuesta entera. La diferencia se
+   * nota muchísimo: una respuesta de cuatro frases tardaba en empezar lo que
+   * tardaba en escribirse entera.
+   */
+  preguntar: (turnos: Turno[], alTrozo?: (trozo: string) => void) => Promise<string>;
   /** El reloj, para poder adelantarlo en las pruebas. */
   ahora: () => number;
   temporizador: (fn: () => void, ms: number) => () => void;
@@ -192,9 +224,50 @@ export function iniciarLlamada(
     avisos.onTurno([...turnos]);
     cambiar("pensando");
 
+    /*
+      Hablar mientras contesta, no después.
+
+      Las frases terminadas se van encolando según llegan y una sola tarea las
+      va diciendo en orden. Así se empieza a oír a ECLIPSE en cuanto tiene la
+      primera frase, y no cuando ha terminado de escribir las cuatro. Es el
+      cambio que hace que la llamada deje de "costarle arrancar".
+    */
+    const cola: string[] = [];
+    let buffer = "";
+    /** Todo lo que ha ido llegando en trozos, para saber qué falta por decir. */
+    let recibido = "";
+    let hablandoYa = false;
+    let hablado = "";
+
+    const vaciarCola = async () => {
+      if (hablandoYa) return;
+      hablandoYa = true;
+      while (cola.length && !colgada) {
+        // Si le han interrumpido, lo que quedaba por decir ya no vale.
+        if (fase !== "pensando" && fase !== "hablando") break;
+        const frase = cola.shift() as string;
+        if (fase !== "hablando") cambiar("hablando");
+        // Lo que ya ha dicho, para reconocer su propio eco en el micrófono.
+        hablado = `${hablado} ${frase}`.trim();
+        ultimoDicho = hablado;
+        await entorno.decir(frase);
+      }
+      hablandoYa = false;
+      cola.length = 0;
+    };
+
     let respuesta = "";
     try {
-      respuesta = await entorno.preguntar([...turnos]);
+      respuesta = await entorno.preguntar([...turnos], (trozo) => {
+        if (colgada) return;
+        recibido += trozo;
+        buffer += trozo;
+        const { frases, resto } = sacarFrases(buffer);
+        buffer = resto;
+        if (!frases.length) return;
+        cola.push(...frases);
+        void vaciarCola();
+      });
     } catch (err) {
       if (colgada) return;
       avisos.onError(err instanceof Error ? err.message : "No he podido contestar.");
@@ -211,13 +284,25 @@ export function iniciarLlamada(
 
     turnos.push({ role: "assistant", content: limpia });
     avisos.onTurno([...turnos]);
+
+    /*
+      Lo que quede por decir.
+
+      Dos casos. Si fue llegando en trozos, lo que falta es la cola del buffer:
+      la última frase, que suele quedarse sin punto final. Y si el motor no
+      mandó trozos —o mandó algo distinto de la respuesta final—, falta todo:
+      más vale decirlo entero que quedarse a medias.
+    */
+    const queda = recibido.trim() ? buffer : limpia;
+    for (const frase of enFrases(queda)) {
+      if (colgada) break;
+      if (fase !== "pensando" && fase !== "hablando") break;
+      if (fase !== "hablando") cambiar("hablando");
+      cola.push(frase);
+    }
+    await vaciarCola();
     ultimoDicho = limpia;
 
-    cambiar("hablando");
-    for (const frase of enFrases(limpia)) {
-      if (colgada || fase !== "hablando") break;
-      await entorno.decir(frase);
-    }
     if (!colgada) cambiar("escuchando");
   };
 
