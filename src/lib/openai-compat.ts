@@ -361,8 +361,14 @@ const PREFERENCIA_CHAT: RegExp[] = [
   // ninguna preferencia encajaba y se acababa cogiendo "el primero que haya",
   // que resultó ser Codestral: un modelo de completar código contestando a
   // "¿de dónde son estos edificios?". De ahí salía todo lo demás.
-  /pixtral/i,
+  //
+  // Y el grande ANTES que Pixtral, aunque Pixtral sea el que mira. Estaban al
+  // revés, y entonces una conversación de texto —sin ninguna foto— la contestaba
+  // un modelo de doce mil millones elegido por una virtud que allí no hacía
+  // falta. Para mirar una imagen ya se filtra aparte, antes de llegar a esta
+  // lista, así que aquí Pixtral no tiene por qué adelantar a nadie.
   /mistral-large|magistral|mistral-medium/i,
+  /pixtral/i,
   /kimi|k2/i,
   /70b|72b/i,
   /gpt-oss.*120/i,
@@ -790,11 +796,33 @@ export async function* streamCompat(opts: {
 
   /**
    * Otros modelos que la cuenta tenga, para cuando el elegido no sirve.
+   *
    * Siempre salen del catálogo: un nombre escrito en el código puede llevar
    * meses retirado, y entonces el respaldo falla peor que el intento original.
+   *
+   * Pero salen ORDENADOS y, con una foto delante, FILTRADOS. Aquí estaba el
+   * fallo que devolvía "no he podido ver la imagen" después de haberlo dado por
+   * arreglado: se elegía bien el modelo que mira —Pixtral—, ese modelo se
+   * quedaba sin cupo, y el respaldo recorría el catálogo en el orden que
+   * viniera y se quedaba con el primero que contestara. El primero era
+   * Codestral, que es de completar código y no ve nada. Entonces la foto se
+   * caía por el camino, y quien preguntaba recibía la disculpa firmada por un
+   * modelo que nunca debió tocar ese mensaje.
+   *
+   * Un respaldo que no puede hacer el trabajo no es un respaldo. Si no queda
+   * ninguno que mire, es mejor fallar aquí: así el que llama se va a otro motor
+   * con ojos en vez de gastar el turno en una respuesta a ciegas.
    */
-  const alternativas = async () =>
-    (await modelosDeLaCuenta(opts.provider, preset, opts.key)).filter((m) => m !== wanted);
+  const alternativas = async (hacenFaltaOjos = false) => {
+    const todos = (await modelosDeLaCuenta(opts.provider, preset, opts.key)).filter(
+      (m) => m !== wanted,
+    );
+    const utiles = hacenFaltaOjos ? todos.filter((m) => preset.vision.test(m)) : todos;
+    return porPreferencia(utiles, opts.modo ?? "chat", hacenFaltaOjos);
+  };
+
+  /** ¿El respaldo tiene que saber mirar? Solo si la foto sigue en el viaje. */
+  const conFoto = () => hayFotos && mandarImagenes;
 
   // Modelo desconocido o retirado: se olvida, se pide el catálogo de nuevo —el
   // guardado puede ser justo el que caducó— y se prueban varios antes de
@@ -803,7 +831,7 @@ export async function* streamCompat(opts: {
     olvidarModelo(opts.provider, wanted);
     delete catalogo[opts.provider];
 
-    for (const candidato of (await alternativas()).slice(0, 8)) {
+    for (const candidato of (await alternativas(conFoto())).slice(0, 8)) {
       res = await pedir(candidato);
       if (res.ok) {
         if (opts.modo === "code") resueltoCodigo[opts.provider] = candidato;
@@ -828,7 +856,7 @@ export async function* streamCompat(opts: {
   // modelo, así que otro modelo tiene su propio cupo entero sin gastar.
   if (res.status === 429 || res.status === 413) {
     olvidarModelo(opts.provider, wanted);
-    for (const candidato of (await alternativas()).slice(0, 4)) {
+    for (const candidato of (await alternativas(conFoto())).slice(0, 4)) {
       res = await pedir(candidato);
       if (res.ok) {
         if (opts.modo === "code") resueltoCodigo[opts.provider] = candidato;

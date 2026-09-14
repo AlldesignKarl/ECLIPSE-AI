@@ -17,7 +17,7 @@
 export const INICIO = 220;
 
 const NEGATIVAS: RegExp[] = [
-  /\bno\s+(?:puedo|puede[ns]?|podr[íi]a|(?:soy|es|son)\s+capa[cz](?:es)?\s+de|tengo\s+(?:la\s+)?(?:capacidad|posibilidad)\s+de)\s+(?:\w+\s+){0,3}?(?:ver|mirar|leer|abrir|analizar|procesar|visualizar|acceder\s+a)\b(?!\s+(?:bien|del\s+todo|con\s+claridad|claramente|con\s+detalle|apenas))[^.]{0,40}\b(?:im[áa]gen|foto|adjunt|archivo)/i,
+  /\bno\s+(?:puedo|puede[ns]?|podr[íi]a|(?:he|ha|hemos|se\s+ha)\s+podido|(?:soy|es|son)\s+capa[cz](?:es)?\s+de|tengo\s+(?:la\s+)?(?:capacidad|posibilidad)\s+de)\s+(?:\w+\s+){0,3}?(?:ver|mirar|leer|abrir|analizar|procesar|visualizar|acceder\s+a)\b(?!\s+(?:bien|del\s+todo|con\s+claridad|claramente|con\s+detalle|apenas))[^.]{0,40}\b(?:im[áa]gen|foto|adjunt|archivo)/i,
   /\bno\s+tengo\s+acceso\s+a\s+[^.]{0,40}\b(?:im[áa]gen|foto|adjunt)/i,
   /\bno\s+(?:veo|recibo|me\s+llega)\s+(?:ninguna|la|ning[úu]n)\s*(?:im[áa]gen|foto|adjunto)/i,
   /\bno\s+(?:se\s+ha\s+adjuntado|hay)\s+(?:ninguna|ning[úu]n)\s*(?:im[áa]gen|foto|adjunto)/i,

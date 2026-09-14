@@ -85,8 +85,17 @@ export async function providerForTurn(
 
   if (!hayImagenes || base === null) return base;
 
-  // Estos ya miran imágenes por su cuenta: desviarlos a Google sería cambiar
-  // de motor sin ganar nada, y encima gastar la cuota corta de Google.
+  /*
+    Google y Anthropic miran imágenes SIEMPRE, sea cual sea el modelo: mandarlos
+    a Google sería cambiar de motor sin ganar nada.
+
+    Mistral va con ellos, pero por otro motivo, y conviene no confundirlos. No
+    es que Mistral vea siempre —que tenga Pixtral depende de la cuenta, igual
+    que en Groq—: es que a Mistral se le PREGUNTA justo después, en la ruta,
+    mirando su catálogo de verdad, y si ese día no tiene con qué mirar se cambia
+    ahí. Desviarlo aquí a ciegas gastaría la cuota corta de Google en fotos que
+    Mistral podía ver de sobra.
+  */
   if (base === "google" || base === "anthropic" || base === "mistral") return base;
 
   // Solo se cambia si el propio hosting no ha fijado un motor a la fuerza.
