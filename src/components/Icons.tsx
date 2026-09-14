@@ -255,3 +255,10 @@ export const Library = (p: P) => (
     <path d="M16.2 6.2l3.4.9a1.2 1.2 0 0 1 .85 1.47l-3 11.2" />
   </svg>
 );
+
+/** Llamar a ECLIPSE: hablar en vez de escribir. */
+export const Phone = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2C10.9 18.8 5.2 13.1 4.5 5.7A2 2 0 0 1 6.5 3.5z" />
+  </svg>
+);

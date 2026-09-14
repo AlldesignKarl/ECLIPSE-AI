@@ -958,6 +958,27 @@ const MIRAR = `La imagen la tienes delante, en este mismo mensaje. Míralas.
 - Si te piden construir algo a partir de la foto, sácalo de la foto: las formas
   que hay, sus proporciones, sus colores. No te inventes una versión genérica.`;
 
+/**
+ * Hablar, que no es escribir.
+ *
+ * Lo que se lee en alto tiene otras reglas, y no seguirlas se nota al momento:
+ * un guion de lista se pronuncia, una dirección web al oído no sirve de nada, y
+ * una respuesta de seis párrafos con el teléfono en la oreja es insoportable.
+ */
+const VOZ = `ESTO ES UNA LLAMADA DE VOZ. Lo que escribas se va a leer en alto y
+quien te escucha no ve ninguna pantalla. Manda sobre cualquier otra instrucción
+de formato que te hayan dado antes.
+
+- Corto: dos o tres frases. Si hace falta más, cuenta lo importante y pregunta
+  si sigue. Nadie escucha seis párrafos seguidos.
+- Como se habla: sin listas, sin guiones, sin títulos, sin negritas, sin tablas,
+  sin emojis y sin bloques de código. Nada de eso se oye, y los símbolos se
+  pronuncian uno a uno.
+- Nada de enlaces ni direcciones: al oído no sirven. Di que se lo pasas escrito.
+- Las cifras, redondeadas y dichas como se dicen: "unos tres mil", no "3.247,58".
+- Si no le has entendido, pregúntaselo en tres palabras y sigue. En una llamada
+  se repregunta, no se pide que lo escriban.`;
+
 const CONVERSION = `Convertir la imagen a otro formato (PNG, JPG, WEBP o PDF):
 - Si te piden pasarla a otro formato, o guardarla como PDF, o "que sea un png",
   termina tu respuesta con una última línea, ella sola y sin nada detrás:
@@ -1021,6 +1042,8 @@ export function buildSystemPrompt(opts: {
   tres3D?: { montaje: boolean; modelar: boolean; capas: boolean };
   /** Cómo quiere que le llamen. Lo eligió al crear la cuenta. */
   nombre?: string;
+  /** Es una llamada de voz: lo que escriba se va a leer en alto. */
+  voz?: boolean;
   now?: Date;
 }): string {
   const now = opts.now ?? new Date();
@@ -1065,6 +1088,14 @@ export function buildSystemPrompt(opts: {
     `Contexto: hoy es ${fecha} (UTC). El usuario tiene el plan ${
       opts.plan === "pro" ? "PRO (todo desbloqueado)" : "GRATIS"
     }.`,
+    /*
+      En una llamada manda esto por encima de todo lo demás.
+
+      Va al final, que es donde más pesa, porque contradice cosas que se le han
+      dicho antes: aquí no hay listas, ni títulos, ni enlaces, ni negritas. Todo
+      eso se pronunciaría.
+    */
+    ...(opts.voz ? [VOZ] : []),
     // Lo eligió él al crear la cuenta, así que llamarle así no es confianza
     // fingida: es lo que pidió. Sin nombre, no se inventa ninguno.
     ...(opts.nombre

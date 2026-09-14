@@ -43,6 +43,8 @@ interface Body {
   deepSearch?: boolean;
   /** Esto no es una respuesta nueva: es terminar una que se cortó. */
   continuar?: boolean;
+  /** Viene de una llamada: se contesta para el oído y no para la pantalla. */
+  voz?: boolean;
 }
 
 const PRO_MODES: Mode[] = ["code"];
@@ -151,6 +153,8 @@ async function runAnthropic(
     plan: "free" | "pro";
     /** Cómo quiere que le llamen quien pregunta. */
     nombre?: string;
+    /** Es una llamada de voz: se contesta para el oído, no para la pantalla. */
+    voz?: boolean;
     wantsWeb: boolean;
     signal: AbortSignal;
   },
@@ -201,6 +205,7 @@ async function runAnthropic(
                 conImagen: ultimaConImagen(opts.body.messages),
                 tres3D: partes3D(opts.body.messages),
                 nombre: opts.nombre,
+                voz: opts.voz,
               }),
           cache_control: { type: "ephemeral" },
         },
@@ -277,6 +282,8 @@ async function runGoogle(
     plan: "free" | "pro";
     /** Cómo quiere que le llamen quien pregunta. */
     nombre?: string;
+    /** Es una llamada de voz: se contesta para el oído, no para la pantalla. */
+    voz?: boolean;
     wantsWeb: boolean;
     signal: AbortSignal;
   },
@@ -298,6 +305,7 @@ async function runGoogle(
         conImagen: ultimaConImagen(opts.body.messages),
         tres3D: partes3D(opts.body.messages),
         nombre: opts.nombre,
+        voz: opts.voz,
       });
 
   for await (const event of streamChat({
@@ -339,6 +347,8 @@ async function runCompat(
     plan: "free" | "pro";
     /** Cómo quiere que le llamen quien pregunta. */
     nombre?: string;
+    /** Es una llamada de voz: se contesta para el oído, no para la pantalla. */
+    voz?: boolean;
     signal: AbortSignal;
     /** Última pasada: aunque no pueda con las fotos, que conteste igual. */
     sinAbandonar?: boolean;
@@ -421,6 +431,7 @@ async function runCompat(
           tres3D: partes3D(opts.body.messages),
           conHerramientas: herramientas.map((h) => h.nombre),
           nombre: opts.nombre,
+          voz: opts.voz,
         }),
     turns: opts.body.messages,
     speed: opts.speed,
@@ -640,7 +651,7 @@ export async function POST(req: NextRequest) {
 
       try {
         send({ t: "status", v: "conectando" });
-        const shared = { body, mode, speed, plan, wantsWeb, nombre, signal: req.signal };
+        const shared = { body, mode, speed, plan, wantsWeb, nombre, voz: body.voz === true, signal: req.signal };
 
         const correr = async (quien: typeof provider) =>
           quien === "google"

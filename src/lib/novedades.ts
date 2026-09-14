@@ -27,6 +27,20 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.34",
+    // Hablar en vez de escribir, y una biblioteca para inspirarse.
+    nombre: "Llamando",
+    titulo: "Ahora puedes llamar a ECLIPSE",
+    entrada:
+      "Una llamada de verdad: hablas, te contesta en alto y puedes interrumpirle. Sin mandar audios y sin tocar nada.",
+    puntos: [
+      "El teléfono está arriba, en la cabecera del chat. Descuelgas y ya está escuchando: no hay que pulsar para hablar.",
+      "Sabe cuándo has terminado por el silencio, y espera un poco más si te quedas pensando a media frase. Si le hablas encima mientras habla, se calla.",
+      "En la llamada contesta como se habla: corto, sin listas ni enlaces, y las cifras redondeadas. Al colgar, lo hablado se te guarda como una conversación normal.",
+      "Y una Biblioteca nueva, en el menú: miles de imágenes de museos y archivos para inspirarte, todas de uso libre y con su autor. Desde cualquiera puedes pedirle a ECLIPSE algo parecido.",
+    ],
+  },
+  {
     version: "2.33",
     // Encargos que se hacen solos.
     nombre: "Programar",

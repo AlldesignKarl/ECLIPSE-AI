@@ -18,6 +18,7 @@ import UpgradeDialog, { type Billing } from "./UpgradeDialog";
 import ConexionesDialog from "./ConexionesDialog";
 import ProgramarDialog from "./ProgramarDialog";
 import BibliotecaDialog from "./BibliotecaDialog";
+import Llamada from "./Llamada";
 import Welcome from "./Welcome";
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
 import {
@@ -110,6 +111,7 @@ export default function ChatApp({
   const [conexionesOpen, setConexionesOpen] = useState(false);
   const [programarOpen, setProgramarOpen] = useState(false);
   const [bibliotecaOpen, setBibliotecaOpen] = useState(false);
+  const [llamando, setLlamando] = useState(false);
   /** Si hay encargos hechos que todavía no ha visto nadie. */
   const [tareasNuevas, setTareasNuevas] = useState(false);
   const [proRegalado, setProRegalado] = useState(false);
@@ -1147,6 +1149,18 @@ export default function ChatApp({
             )}
           </div>
 
+          {/*
+            Llamar, en la cabecera y no escondido en el menú: es lo que se busca
+            cuando se tienen las manos ocupadas, y entonces no se va a rebuscar.
+          */}
+          <button
+            onClick={() => setLlamando(true)}
+            aria-label="Llamar a ECLIPSE"
+            className="rounded-lg p-2 text-muted transition hover:bg-panel hover:text-ink"
+          >
+            <Icon.Phone width={19} height={19} />
+          </button>
+
           {plan === "free" && (
             <button
               onClick={() => setUpgradeOpen(true)}
@@ -1263,6 +1277,29 @@ export default function ChatApp({
         proCodeConfigured={caps.proCodeConfigured}
         billing={billing}
         regalado={proRegalado}
+      />
+
+      {/*
+        La llamada.
+
+        Al colgar, lo hablado se guarda como una conversación normal: lo que se
+        dice en una llamada no se pierde por haberlo dicho en voz alta, y así se
+        puede releer, copiar o seguir por escrito.
+      */}
+      <Llamada
+        abierta={llamando}
+        nombre={nombre}
+        onCerrar={() => setLlamando(false)}
+        onGuardar={(turnos) => {
+          const fresh = emptyConversation();
+          fresh.title = "Llamada";
+          fresh.mode = "chat";
+          fresh.messages = turnos.map((t) =>
+            makeMessage(t.role, t.content, { mode: "chat" }),
+          );
+          setConversations((list) => [fresh, ...list]);
+          setActiveId(fresh.id);
+        }}
       />
 
       <BibliotecaDialog
