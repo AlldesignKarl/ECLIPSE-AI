@@ -65,7 +65,7 @@ function textoDeBloque(b: Record<string, unknown>): string {
 export const notion: Servicio = {
   id: "notion",
   nombre: "Notion",
-  color: "#191919",
+  color: "#000000",
   marca: "N",
   familia: "trabajo",
   resumen:

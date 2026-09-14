@@ -38,7 +38,7 @@ function repo(v: unknown): string {
 export const github: Servicio = {
   id: "github",
   nombre: "GitHub",
-  color: "#24292F",
+  color: "#181717",
   marca: "Gh",
   familia: "trabajo",
   resumen:

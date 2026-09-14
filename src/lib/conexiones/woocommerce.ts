@@ -52,7 +52,7 @@ interface Pedido {
 export const woocommerce: Servicio = {
   id: "woocommerce",
   nombre: "WooCommerce",
-  color: "#7F54B3",
+  color: "#96588A",
   marca: "Wo",
   familia: "tienda",
   resumen:

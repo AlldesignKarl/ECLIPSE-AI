@@ -71,7 +71,7 @@ function unProducto(p: Producto): string {
 export const shopify: Servicio = {
   id: "shopify",
   nombre: "Shopify",
-  color: "#5E8E3E",
+  color: "#7AB55C",
   marca: "Sh",
   familia: "tienda",
   resumen:

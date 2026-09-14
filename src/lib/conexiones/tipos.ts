@@ -66,13 +66,14 @@ export interface Servicio {
   id: string;
   nombre: string;
   /**
-   * Su color y sus iniciales, para reconocerlo de un vistazo.
+   * Su color oficial y sus iniciales.
    *
-   * No se traen los logos de verdad desde sus servidores, y es a propósito:
-   * enlazar la marca de otro desde su web es usar su ancho de banda y su imagen
-   * sin permiso, y además deja la pantalla dependiendo de que no muevan un
-   * archivo. Una pastilla del color exacto de cada marca con sus iniciales se
-   * reconoce igual de rápido, no se rompe nunca y no es de nadie.
+   * El logo que se ve en pantalla NO es esto: está dibujado en
+   * `conexiones/logos.ts`, trazo a trazo, porque enlazarlo desde la web de cada
+   * marca sería usar su ancho de banda y dejar la pantalla dependiendo de que
+   * no muevan un archivo. Esto es el recambio para un servicio que todavía no
+   * tenga su dibujo: su color exacto con sus iniciales encima, que se reconoce
+   * y nunca se rompe.
    */
   color: string;
   marca: string;

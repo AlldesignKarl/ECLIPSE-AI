@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { logoDe } from "@/lib/conexiones/logos";
 import Modal from "./Modal";
 import * as Icon from "./Icons";
 import type { Plan } from "@/lib/types";
@@ -223,6 +224,49 @@ function Cerrado({ onUpgrade }: { onUpgrade: () => void }) {
   );
 }
 
+/**
+ * El logo de un servicio.
+ *
+ * Sobre pastilla blanca y no sobre el color de la marca, que es lo primero que
+ * se prueba y lo que peor sale: con el fondo teñido, un logo oscuro como el de
+ * Notion o GitHub desaparece, y dos marcas de color parecido dejan de
+ * distinguirse a golpe de vista. En blanco se ve cada logo como su dueño lo
+ * dibujó, y la fila entera queda igual de legible con el tema claro que con el
+ * oscuro.
+ *
+ * Si algún día se añade un servicio sin logo, no se queda un hueco: vuelven
+ * las iniciales sobre su color, que para eso siguen guardadas.
+ */
+function LogoDe({ servicio }: { servicio: Servicio }) {
+  const logo = logoDe(servicio.id);
+
+  if (!logo)
+    return (
+      <span
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[15px] font-semibold text-white"
+        style={{ background: servicio.color }}
+        aria-hidden
+      >
+        {servicio.marca}
+      </span>
+    );
+
+  return (
+    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white ring-1 ring-black/10">
+      <svg
+        viewBox="0 0 24 24"
+        width={24}
+        height={24}
+        fill={logo.color}
+        role="img"
+        aria-label={logo.titulo}
+      >
+        <path d={logo.trazo} />
+      </svg>
+    </span>
+  );
+}
+
 function Tarjeta({
   servicio,
   puede,
@@ -297,6 +341,7 @@ function Tarjeta({
     }
   };
 
+
   return (
     <div
       className={`rounded-xl border p-3 transition ${
@@ -304,18 +349,7 @@ function Tarjeta({
       }`}
     >
       <button onClick={onAbrir} className="flex w-full items-center gap-3 text-left">
-        {/*
-          El logo. Una pastilla del color exacto de la marca con sus iniciales:
-          se reconoce igual de rápido que el logo de verdad, no depende de que
-          nadie mueva un archivo en su servidor, y no es de nadie.
-        */}
-        <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[15px] font-semibold text-white"
-          style={{ background: servicio.color }}
-          aria-hidden
-        >
-          {servicio.marca}
-        </span>
+        <LogoDe servicio={servicio} />
 
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
@@ -326,7 +360,13 @@ function Tarjeta({
               </span>
             )}
           </span>
-          <span className="mt-0.5 block line-clamp-2 text-[12px] leading-snug text-muted">
+          {/*
+            Dos líneas y punto. `block` sobra aquí y además estorbaba: pisaba
+            el `display` que necesita el recorte, y cada fila se estiraba a
+            cinco líneas hasta dejar el catálogo en cuatro servicios por
+            pantalla. Lo largo se lee al abrir el servicio.
+          */}
+          <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-muted">
             {servicio.conectado ? servicio.cuenta : servicio.resumen}
           </span>
         </span>

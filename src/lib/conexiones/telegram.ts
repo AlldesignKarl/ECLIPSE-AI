@@ -20,7 +20,7 @@ function url(cred: Credenciales, metodo: string): string {
 export const telegram: Servicio = {
   id: "telegram",
   nombre: "Telegram",
-  color: "#229ED9",
+  color: "#26A5E4",
   marca: "Tg",
   familia: "mensajes",
   resumen:
