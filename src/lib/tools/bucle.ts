@@ -68,6 +68,8 @@ function detalleDe(nombre: string, args: Record<string, unknown>): string {
   if (nombre === "buscar_web") return String(args.consulta ?? "");
   if (nombre === "crear_archivo") return String(args.nombre ?? "");
   if (nombre === "crear_imagen") return String(args.descripcion ?? "").slice(0, 60);
+  if (nombre === "mapa")
+    return String(args.hasta ?? args.que ?? (args.accion === "donde_estoy" ? "dónde estoy" : ""));
   return "";
 }
 
@@ -79,6 +81,8 @@ export async function* conversarConHerramientas(opts: {
   speed: Speed;
   mode: Mode;
   plan: Plan;
+  /** Dónde está, si dio permiso. Solo la ve la herramienta de mapas. */
+  ubicacion?: { lat: number; lon: number };
   signal?: AbortSignal;
 }): AsyncGenerator<EventoBucle> {
   const ultimoTurno = [...opts.turns].reverse().find((t) => t.role === "user");
@@ -165,6 +169,7 @@ export async function* conversarConHerramientas(opts: {
           plan: opts.plan,
           modo: opts.mode,
           margenAmplio: margenDeSobra(opts.provider),
+          ubicacion: opts.ubicacion,
           signal: opts.signal,
         },
         herramientas,

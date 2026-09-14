@@ -32,6 +32,7 @@ import {
   projectName,
 } from "@/lib/project";
 import { crearRitmo, type Ritmo } from "@/lib/ritmo";
+import { paraElMensaje } from "@/lib/ubicacion";
 import { readSSE } from "@/lib/sse";
 import {
   clearEnCurso,
@@ -620,6 +621,17 @@ export default function ChatApp({
       setPasosVivos([]);
       let failure: string | undefined;
 
+      /*
+        Dónde está, si lo ha activado.
+
+        Se pide aquí y no al abrir la aplicación porque el navegador saca su
+        aviso justo cuando se le pregunta, y que salte al entrar —sin haber
+        pedido nada que tenga que ver con sitios— es de las cosas que hacen
+        que la gente diga que no para siempre. Si tarda o falla, se envía sin
+        ella: el mensaje nunca se queda esperando al GPS.
+      */
+      const ubicacion = await paraElMensaje().catch(() => null);
+
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -629,6 +641,9 @@ export default function ChatApp({
             mode: currentMode,
             speed: prefs.speed,
             deepSearch: prefs.deepSearch,
+            ubicacion: ubicacion
+              ? { lat: ubicacion.lat, lon: ubicacion.lon, lugar: ubicacion.lugar }
+              : undefined,
             // Continuar va con instrucciones mínimas: lo que no se manda en
             // instrucciones queda libre para terminar el archivo.
             continuar: Boolean(continuarDe),

@@ -45,9 +45,44 @@ interface Body {
   continuar?: boolean;
   /** Viene de una llamada: se contesta para el oído y no para la pantalla. */
   voz?: boolean;
+  /**
+   * Dónde está, si dio permiso en Ajustes.
+   *
+   * Llega ya redondeada a un kilómetro desde el navegador, se usa para
+   * contestar y se va con la petición: no se guarda en la base de datos ni en
+   * la conversación. `lugar` es el nombre del sitio ("Zaragoza, Aragón,
+   * España"), que el navegador ya resolvió una vez para no tener que
+   * traducir coordenadas en cada mensaje.
+   */
+  ubicacion?: { lat: number; lon: number; lugar?: string };
 }
 
 const PRO_MODES: Mode[] = ["code"];
+
+/**
+ * La ubicación que llega del navegador, comprobada antes de usarla.
+ *
+ * Se comprueba porque llega de fuera: cualquiera puede mandar lo que quiera a
+ * esta ruta. Coordenadas que no son números, o que no caben en un mapa, se
+ * tiran; y el nombre del sitio se recorta, porque de ahí sale texto que acaba
+ * dentro de las instrucciones del modelo.
+ *
+ * También se vuelve a redondear aquí aunque el navegador ya lo haga: el
+ * redondeo es la promesa de que no guardamos el portal de nadie, y una
+ * promesa que solo se cumple en el lado del cliente no es una promesa.
+ */
+function ubicacionLimpia(u: Body["ubicacion"]): Body["ubicacion"] {
+  if (!u || typeof u !== "object") return undefined;
+  const { lat, lon } = u;
+  if (typeof lat !== "number" || typeof lon !== "number") return undefined;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return undefined;
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return undefined;
+  return {
+    lat: Math.round(lat * 1000) / 1000,
+    lon: Math.round(lon * 1000) / 1000,
+    lugar: typeof u.lugar === "string" ? u.lugar.slice(0, 120) : undefined,
+  };
+}
 
 /**
  * ¿Hay una foto reciente en la conversación? De eso depende que se le explique
@@ -206,6 +241,7 @@ async function runAnthropic(
                 tres3D: partes3D(opts.body.messages),
                 nombre: opts.nombre,
                 voz: opts.voz,
+                lugar: opts.body.ubicacion?.lugar,
               }),
           cache_control: { type: "ephemeral" },
         },
@@ -306,6 +342,7 @@ async function runGoogle(
         tres3D: partes3D(opts.body.messages),
         nombre: opts.nombre,
         voz: opts.voz,
+        lugar: opts.body.ubicacion?.lugar,
       });
 
   for await (const event of streamChat({
@@ -432,11 +469,13 @@ async function runCompat(
           conHerramientas: herramientas.map((h) => h.nombre),
           nombre: opts.nombre,
           voz: opts.voz,
+          lugar: opts.body.ubicacion?.lugar,
         }),
     turns: opts.body.messages,
     speed: opts.speed,
     mode: opts.mode,
     plan: opts.plan,
+    ubicacion: opts.body.ubicacion,
     signal: opts.signal,
   });
 
@@ -522,6 +561,7 @@ export async function POST(req: NextRequest) {
     nada: lo ya adelgazado se queda igual.
   */
   body.messages = aligerarHistorial(body.messages ?? []);
+  body.ubicacion = ubicacionLimpia(body.ubicacion);
 
   const plan = await currentPlan();
   // Cómo quiere que le llamen. Se lee aquí, del servidor, y no de lo que mande

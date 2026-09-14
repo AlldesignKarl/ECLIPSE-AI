@@ -378,10 +378,14 @@ function herramientasTexto(nombres: string[]): string {
     "- No cuentes que vas a usarlas ni narres la fontanería. Úsalas y responde.",
   ];
 
+  // La regla del contenido ajeno va con CUALQUIER herramienta que traiga texto
+  // escrito por otros. La búsqueda no es la única: en el mapa, el nombre y la
+  // descripción de un sitio los escribe quien lo dio de alta.
+  if (nombres.includes("buscar_web") || nombres.includes("mapa"))
+    lineas.push("", REGLA_CONTENIDO_EXTERNO);
+
   if (nombres.includes("buscar_web"))
     lineas.push(
-      "",
-      REGLA_CONTENIDO_EXTERNO,
       "",
       "- Al buscar, lee de verdad los extractos y fíjate en la fiabilidad que trae cada",
       "  fuente. Si dos fuentes se contradicen, dilo en vez de quedarte con una.",
@@ -401,6 +405,17 @@ function herramientasTexto(nombres: string[]): string {
       "  lo que dirías vale para cualquier página y por tanto no vale para ninguna.",
       "- Después de auditar, ordena lo que has encontrado por lo que más mueve la aguja, no",
       "  por el orden en que salió. Un noindex puesto sin querer va antes que un alt que falta.",
+    );
+
+  if (nombres.includes("mapa"))
+    lineas.push(
+      "- Para sitios, planes o cómo llegar, mira el mapa antes de contestar. Los horarios,",
+      "  las distancias y los negocios que abren y cierran no te los sabes, y una excursión",
+      "  a un sitio que ya no existe es peor que decir que no lo sabes.",
+      "- Si el mapa te dice que no sabe dónde está el usuario, pregúntale de qué ciudad",
+      "  hablamos. No supongas una.",
+      "- Con la ubicación no te pongas pesado: úsala cuando venga a cuento y no anuncies",
+      "  que sabes dónde está.",
     );
 
   if (nombres.includes("conexion")) lineas.push("", NEGOCIO);
@@ -1044,6 +1059,8 @@ export function buildSystemPrompt(opts: {
   nombre?: string;
   /** Es una llamada de voz: lo que escriba se va a leer en alto. */
   voz?: boolean;
+  /** Dónde está, en palabras, si activó la ubicación. */
+  lugar?: string;
   now?: Date;
 }): string {
   const now = opts.now ?? new Date();
@@ -1096,6 +1113,27 @@ export function buildSystemPrompt(opts: {
       eso se pronunciaría.
     */
     ...(opts.voz ? [VOZ] : []),
+    /*
+      Dónde está, cuando lo ha dado.
+
+      Cambia la respuesta entera sin que tenga que explicarlo: "qué hago este
+      fin de semana" en Zaragoza no es lo mismo que en Oviedo, y hasta ahora la
+      única salida era preguntarle dónde vive cada vez.
+
+      Va con el aviso de que la ubicación es aproximada a propósito. Un modelo
+      al que le das unas coordenadas tiende a hablar como si supiera la calle;
+      aquí no la sabe, y decir el barrio de alguien que no lo ha dicho asusta
+      más de lo que ayuda.
+    */
+    ...(opts.lugar
+      ? [
+          `Está en ${opts.lugar} (ubicación aproximada, al kilómetro: sirve para la
+ciudad o el pueblo, NO para la calle ni el barrio, así que no los menciones). Tenlo en
+cuenta cuando pregunte por planes, sitios, horarios o distancias, sin repetírselo cada
+vez. Para sitios concretos, distancias o cómo llegar usa la herramienta de mapas si la
+tienes: los horarios y lo que ha abierto o cerrado no te los sabes de memoria.`,
+        ]
+      : []),
     // Lo eligió él al crear la cuenta, así que llamarle así no es confianza
     // fingida: es lo que pidió. Sin nombre, no se inventa ninguno.
     ...(opts.nombre

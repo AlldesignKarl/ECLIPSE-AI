@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Icon from "./Icons";
 import { dictar, dictadoDisponible } from "@/lib/dictado";
+import { paraElMensaje } from "@/lib/ubicacion";
 import {
   elegirVoz,
   guardarAjustes,
@@ -177,6 +178,9 @@ export default function Llamada({ abierta, onCerrar, nombre = "", onGuardar }: P
       decir,
       callar,
       async preguntar(turnos) {
+        // También en una llamada: "¿qué hago hoy por aquí?" se pregunta más
+        // hablando que escribiendo.
+        const ubicacion = await paraElMensaje().catch(() => null);
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -186,6 +190,9 @@ export default function Llamada({ abierta, onCerrar, nombre = "", onGuardar }: P
             // eternos cuando tienes el teléfono en la oreja.
             speed: "rapido",
             voz: true,
+            ubicacion: ubicacion
+              ? { lat: ubicacion.lat, lon: ubicacion.lon, lugar: ubicacion.lugar }
+              : undefined,
             messages: turnos.map((t) => ({ role: t.role, content: t.content })),
           }),
         });

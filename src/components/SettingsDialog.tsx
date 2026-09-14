@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { aplicarTema, guardarTema, temaGuardado, type Tema } from "@/lib/tema";
+import {
+  guardarPermiso,
+  paraElMensaje,
+  permiso as permisoUbicacion,
+  sePuede as hayGeolocalizacion,
+  ultima as ultimaUbicacion,
+} from "@/lib/ubicacion";
 import Modal from "./Modal";
 import * as Icon from "./Icons";
 import type { Plan } from "@/lib/types";
@@ -167,6 +174,98 @@ function TemaBox() {
         Se guarda en este dispositivo: el móvil de noche y el ordenador de día no tienen por qué
         ir igual.
       </p>
+    </div>
+  );
+}
+
+/**
+ * La ubicación: apagada de fábrica, y con lo que hace escrito delante.
+ *
+ * Encenderla aquí no basta para que la aplicación sepa nada: al darle, se le
+ * pide el permiso al navegador, que saca el suyo encima. Son dos síes, y es a
+ * propósito. Apagarla borra también lo último que se supo, porque un
+ * interruptor que deja rastro no está apagado.
+ */
+function UbicacionBox() {
+  const [activa, setActiva] = useState(false);
+  const [lugar, setLugar] = useState<string | null>(null);
+  const [pidiendo, setPidiendo] = useState(false);
+  const [rechazado, setRechazado] = useState(false);
+  const [hayGps, setHayGps] = useState(true);
+
+  useEffect(() => {
+    setActiva(permisoUbicacion() === "si");
+    setLugar(ultimaUbicacion()?.lugar ?? null);
+    setHayGps(hayGeolocalizacion());
+  }, []);
+
+  async function cambiar(quiere: boolean) {
+    setRechazado(false);
+    if (!quiere) {
+      guardarPermiso("no");
+      setActiva(false);
+      setLugar(null);
+      return;
+    }
+
+    // Se guarda el sí ANTES de preguntar al navegador porque el diálogo del
+    // sistema puede tardar; si el usuario lo acepta, ya está todo listo.
+    guardarPermiso("si");
+    setActiva(true);
+    setPidiendo(true);
+    // Lo mismo que se hará al enviar un mensaje: así, si sale bien, aquí se
+    // puede enseñar ya en qué ciudad cree que está, que es la única forma de
+    // comprobar que esto funciona sin tener que ponerse a chatear.
+    const donde = await paraElMensaje();
+    setPidiendo(false);
+    setLugar(donde?.lugar ?? null);
+    if (!donde) {
+      // Dijo que no en el navegador, o no llegó: no se deja encendido algo
+      // que no va a funcionar.
+      guardarPermiso("no");
+      setActiva(false);
+      setRechazado(true);
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Ubicación</div>
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line-soft bg-panel/40 p-3">
+        <input
+          type="checkbox"
+          checked={activa}
+          disabled={!hayGps || pidiendo}
+          onChange={(e) => void cambiar(e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-[var(--pro)]"
+        />
+        <span className="min-w-0">
+          <span className="block text-[13.5px] text-ink">Dejar que ECLIPSE sepa dónde estás</span>
+          <span className="mt-1 block text-[11.5px] leading-relaxed text-faint">
+            Para excursiones, sitios cerca, cómo llegar y planes en tu ciudad. Solo se manda la
+            zona, redondeada a un kilómetro: sirve para el pueblo o la ciudad, no para tu calle.
+            No se guarda en ningún sitio ni se comparte con nadie, y puedes apagarlo aquí cuando
+            quieras.
+          </span>
+          {pidiendo && (
+            <span className="mt-1.5 block text-[11.5px] text-muted">Preguntándole al móvil…</span>
+          )}
+          {activa && lugar && !pidiendo && (
+            <span className="mt-1.5 block text-[11.5px] text-muted">Ahora mismo: {lugar}</span>
+          )}
+          {rechazado && (
+            <span className="mt-1.5 block text-[11.5px] text-muted">
+              El navegador no ha dado el permiso. Se activa desde el candado de la barra de
+              direcciones, o en los ajustes del móvil.
+            </span>
+          )}
+          {!hayGps && (
+            <span className="mt-1.5 block text-[11.5px] text-muted">
+              Este navegador no sabe dónde está.
+            </span>
+          )}
+        </span>
+      </label>
     </div>
   );
 }
@@ -528,6 +627,8 @@ export default function SettingsDialog({
     <Modal open={open} onClose={onClose} title="Ajustes">
       <div className="space-y-5">
         <TemaBox />
+
+        <UbicacionBox />
 
         {puedeCambiarNombre && (
           <NombreBox nombre={nombre} onNombre={onNombre} />

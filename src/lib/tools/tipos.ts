@@ -38,6 +38,14 @@ export interface Contexto {
   signal?: AbortSignal;
   /** Cuenta lo que va pasando, para poder enseñarlo en pantalla. */
   avisar?: (texto: string) => void;
+  /**
+   * Dónde está quien pregunta, si dio permiso.
+   *
+   * Llega en la petición y se va con ella: no se guarda en ninguna parte, ni
+   * se le enseña al modelo salvo que use la herramienta de mapas. Viene ya
+   * redondeada a un kilómetro desde el navegador.
+   */
+  ubicacion?: { lat: number; lon: number };
 }
 
 export interface Resultado {
