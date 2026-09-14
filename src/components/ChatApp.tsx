@@ -16,6 +16,7 @@ import Sidebar from "./Sidebar";
 import ThinkingBar from "./ThinkingBar";
 import UpgradeDialog, { type Billing } from "./UpgradeDialog";
 import ConexionesDialog from "./ConexionesDialog";
+import ProgramarDialog from "./ProgramarDialog";
 import Welcome from "./Welcome";
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
 import {
@@ -106,6 +107,9 @@ export default function ChatApp({
 
   const [plan, setPlan] = useState<Plan>("free");
   const [conexionesOpen, setConexionesOpen] = useState(false);
+  const [programarOpen, setProgramarOpen] = useState(false);
+  /** Si hay encargos hechos que todavía no ha visto nadie. */
+  const [tareasNuevas, setTareasNuevas] = useState(false);
   const [proRegalado, setProRegalado] = useState(false);
   const [caps, setCaps] = useState<Capabilities>(EMPTY_CAPS);
   const [providerLabel, setProviderLabel] = useState("comprobando…");
@@ -192,6 +196,20 @@ export default function ChatApp({
     setActiveId(null);
     setPrefs(loadPrefs());
     setHydrated(true);
+
+    /*
+      ¿Hay encargos hechos que no ha visto nadie?
+
+      Solo para encender el punto del menú. Es una consulta barata y sin
+      `aldia`, así que no dispara ninguna tarea: abrir la aplicación no puede
+      costar una llamada al motor por sistema.
+    */
+    void fetch("/api/tareas")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { resultados?: { nueva?: boolean }[] } | null) => {
+        setTareasNuevas(Boolean(d?.resultados?.some((x) => x.nueva)));
+      })
+      .catch(() => {});
 
     void fetch("/api/pro")
       .then((r) => r.json())
@@ -1080,6 +1098,8 @@ export default function ChatApp({
         onUpgrade={() => setUpgradeOpen(true)}
         onSettings={() => setSettingsOpen(true)}
         onConexiones={() => setConexionesOpen(true)}
+        onProgramar={() => setProgramarOpen(true)}
+        tareasNuevas={tareasNuevas}
         onInicio={() => {
           setSidebar(false);
           onInicio?.();
@@ -1240,6 +1260,17 @@ export default function ChatApp({
         proCodeConfigured={caps.proCodeConfigured}
         billing={billing}
         regalado={proRegalado}
+      />
+
+      <ProgramarDialog
+        open={programarOpen}
+        onClose={() => setProgramarOpen(false)}
+        plan={plan}
+        onUpgrade={() => {
+          setProgramarOpen(false);
+          setUpgradeOpen(true);
+        }}
+        onLeidos={() => setTareasNuevas(false)}
       />
 
       <ConexionesDialog

@@ -24,6 +24,10 @@ interface Props {
   onSettings: () => void;
   /** Abre Conexiones: la tienda, la web y los dominios de quien pregunta. */
   onConexiones: () => void;
+  /** Abre Programar: los encargos que ECLIPSE hace solo. */
+  onProgramar: () => void;
+  /** Hay resultados de encargos sin ver: se enciende un punto. */
+  tareasNuevas?: boolean;
   onInicio: () => void;
   /** Correo de la sesión abierta, si la app lleva cuentas. */
   user?: string | null;
@@ -45,6 +49,8 @@ export default function Sidebar({
   onUpgrade,
   onSettings,
   onConexiones,
+  onProgramar,
+  tareasNuevas = false,
   onInicio,
   user = null,
   onSignOut,
@@ -308,6 +314,24 @@ export default function Sidebar({
             para pagar el plan Pro, y una razón para pagar no se guarda en un
             cajón.
           */}
+          {/*
+            Programar, justo encima de Conexiones: son las dos cosas que hacen
+            que ECLIPSE trabaje sin que tú estés delante, y se entienden mejor
+            juntas.
+          */}
+          <button
+            onClick={onProgramar}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-muted transition hover:bg-panel hover:text-ink"
+          >
+            <Icon.Calendar width={16} height={16} />
+            <span className="flex-1 text-left">Programar</span>
+            {tareasNuevas ? (
+              <span className="h-1.5 w-1.5 rounded-full bg-pro" aria-label="Hay algo nuevo" />
+            ) : (
+              plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>
+            )}
+          </button>
+
           <button
             onClick={onConexiones}
             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-muted transition hover:bg-panel hover:text-ink"

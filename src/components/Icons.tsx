@@ -236,3 +236,13 @@ export const Ghost = (p: P) => (
     <circle cx="14.3" cy="10.5" r="1.1" fill="currentColor" stroke="none" />
   </svg>
 );
+
+/** Programar: lo que ECLIPSE hace solo, cada día o cada semana. */
+export const Calendar = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="3.5" y="5.5" width="17" height="15" rx="2.5" />
+    <path d="M3.5 10h17M8 3.5v4M16 3.5v4" />
+    <circle cx="9" cy="14" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="14" r="1.1" fill="currentColor" stroke="none" />
+  </svg>
+);

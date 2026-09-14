@@ -39,6 +39,21 @@ interface Preset {
 const OJOS =
   /llama-4|scout|maverick|vision|multimodal|[-/]vl[-\d]|vl-|pixtral|llava|gemma-?3|internvl|molmo|qwen.*(vl|omni)|gemini|gpt-4o|gpt-5|claude|nova-(lite|pro)/i;
 
+/**
+ * La dirección del proveedor, con una puerta para poder probarlo.
+ *
+ * En producción nunca hay variable puesta y se usa la de siempre. En las
+ * pruebas se apunta a un servidor local que habla como Groq, y así se puede
+ * comprobar el camino entero —incluido lo que corre de madrugada sin nadie
+ * delante— sin gastar cuota ni depender de que un proveedor conteste.
+ *
+ * Es la misma puerta que ya tienen las conexiones, y por el mismo motivo.
+ */
+function presetDe(provider: CompatProvider): Preset {
+  const base = process.env[`MOTOR_BASE_${provider.toUpperCase()}`];
+  return base ? { ...PRESETS[provider], base } : PRESETS[provider];
+}
+
 export const PRESETS: Record<CompatProvider, Preset> = {
   groq: {
     label: "Groq · gratis, sin tarjeta",
@@ -556,7 +571,7 @@ export async function tieneVista(
   key: string,
 ): Promise<"si" | "no" | "no-se"> {
   if (!key) return "no";
-  const preset = PRESETS[provider];
+  const preset = presetDe(provider);
   const disponibles = await modelosDeLaCuenta(provider, preset, key);
 
   // Catálogo vacío es "no lo sé", no "no puede": puede ser la red, o que la
@@ -618,7 +633,7 @@ export async function* streamCompat(opts: {
   /** De él depende cuánto se le deja escribir. */
   modo?: Mode;
 }): AsyncGenerator<CompatEvent> {
-  const preset = PRESETS[opts.provider];
+  const preset = presetDe(opts.provider);
   if (!opts.key)
     throw new CompatError(
       `Falta la clave de ${preset.label.split(" ")[0]}. Consíguela gratis en ${preset.keyUrl}`,
@@ -1039,7 +1054,7 @@ export async function verifyCompatKey(
   provider: CompatProvider,
   key: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const preset = PRESETS[provider];
+  const preset = presetDe(provider);
   try {
     const res = await fetch(`${preset.base}/models`, {
       headers: { Authorization: `Bearer ${key}` },
@@ -1062,7 +1077,7 @@ export async function oneShotCompat(
   /** Los títulos caben en cuatro palabras; un prompt de imagen, no. */
   tope = 48,
 ): Promise<string> {
-  const preset = PRESETS[provider];
+  const preset = presetDe(provider);
   const res = await fetch(`${preset.base}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },

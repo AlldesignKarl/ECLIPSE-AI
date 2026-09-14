@@ -27,6 +27,20 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.33",
+    // Encargos que se hacen solos.
+    nombre: "Programar",
+    titulo: "Déjale dicho algo una vez y lo hace solo",
+    entrada:
+      "«Cada jueves, planes para el finde». «Cada día, cómo va la tienda». Se lo dices una vez y te lo encuentras hecho.",
+    puntos: [
+      "En el menú → Programar. Hay seis encargos ya escritos para empezar: tocas uno y ya está funcionando. O escribes el tuyo con tus palabras.",
+      "Cada día, de lunes a viernes, o un día concreto de la semana. Se preparan de madrugada y los tienes al levantarte.",
+      "Puede usar todo lo que ya sabe hacer: buscar en internet, mirar tu tienda conectada, auditarte el SEO o leer tus tareas de Notion.",
+      "Si algún día el reloj falla, los hace en cuanto abres la aplicación. Nada se queda sin hacer porque una máquina no sonara.",
+    ],
+  },
+  {
     version: "2.32",
     // Tema claro, chat que no se guarda, y dos conexiones más.
     nombre: "A tu manera",
