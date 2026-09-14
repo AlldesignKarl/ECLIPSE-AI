@@ -19,8 +19,17 @@ import { pendientes, textoDe, type Tarea } from "./tipos";
  *   Quien tenga la suya solo en el móvil no puede tener tareas, y se dice.
  */
 
-/** Cuánto se deja correr una tarea antes de darla por perdida. */
-const LIMITE_MS = 90_000;
+/**
+ * Cuánto se deja correr una tarea antes de darla por perdida.
+ *
+ * Cuarenta y cinco segundos y no noventa, y el número no es caprichoso: una
+ * función del plan gratuito de Vercel se corta a los sesenta. Con noventa, lo
+ * que pasaba es que el hosting mataba la función antes que nosotros —y una
+ * función muerta no apunta nada: ni el resultado, ni el fallo, ni que se
+ * intentó—. La tarea se quedaba eternamente "pendiente" y quien miraba veía
+ * una pantalla que no hacía nada.
+ */
+const LIMITE_MS = 45_000;
 
 const COMO_CONTESTAR = `Esto es un encargo programado: nadie lo está leyendo en
 directo y nadie te va a contestar. Así que entrega algo TERMINADO.
@@ -56,7 +65,9 @@ export async function ejecutarUna(email: string, tarea: Tarea): Promise<Ejecucio
       !provider
         ? "No hay ningún motor configurado en el servidor."
         : "Las tareas necesitan un motor con herramientas (Mistral, Groq u OpenRouter) puesto en el servidor.";
-    await anotarEjecucion(email, tarea.id, motivo);
+    // Definitivo: reintentarlo dentro de un minuto no va a poner una clave que
+    // no está. Se apunta y se deja para mañana.
+    await anotarEjecucion(email, tarea.id, motivo, true);
     return { tarea: tarea.titulo, ok: false, detalle: motivo };
   }
 
@@ -64,7 +75,7 @@ export async function ejecutarUna(email: string, tarea: Tarea): Promise<Ejecucio
   if (!key) {
     const motivo =
       "La clave del motor no está en el servidor, solo en un navegador. Una tarea corre sin nadie delante, así que no puede usarla.";
-    await anotarEjecucion(email, tarea.id, motivo);
+    await anotarEjecucion(email, tarea.id, motivo, true);
     return { tarea: tarea.titulo, ok: false, detalle: motivo };
   }
 
@@ -127,21 +138,57 @@ export async function ejecutarUna(email: string, tarea: Tarea): Promise<Ejecucio
   return { tarea: tarea.titulo, ok: true, detalle: `${limpio.length} caracteres` };
 }
 
+/** Cuántas le quedan hoy a esta persona. */
+export async function cuantasPendientes(email: string, ahora = new Date()): Promise<number> {
+  return pendientes(await tareasDe(email), ahora).length;
+}
+
 /**
- * Todo lo que le toque hoy a una persona.
+ * La siguiente que le toque, y solo esa.
+ *
+ * Esto es lo que arregla el "no funciona". Antes se hacían todas dentro de una
+ * sola petición: cuatro encargos eran cuatro llamadas al motor seguidas, seis
+ * minutos, y el hosting cortaba la función a los sesenta segundos. Nadie veía
+ * nada nunca.
+ *
+ * Ahora cada petición hace UNA y contesta cuántas quedan. Quien esté delante ve
+ * llegar los partes de uno en uno, y ninguna petición se acerca al límite.
+ */
+export async function ejecutarSiguiente(
+  email: string,
+  ahora = new Date(),
+): Promise<{ hecha: Ejecucion | null; quedan: number }> {
+  const toca = pendientes(await tareasDe(email), ahora);
+  if (!toca.length) return { hecha: null, quedan: 0 };
+
+  const hecha = await ejecutarUna(email, toca[0]);
+  return { hecha, quedan: await cuantasPendientes(email, ahora) };
+}
+
+/**
+ * Todo lo que le toque hoy a una persona, con un tope de tiempo.
  *
  * De una en una y no todas a la vez: son varias llamadas al motor, y lanzarlas
  * juntas es la forma más rápida de que el proveedor las rechace por cupo y no
- * salga ninguna.
+ * salga ninguna. Y con reloj: lo que no entre en el presupuesto se queda para
+ * la siguiente pasada del reloj o para cuando alguien abra la aplicación, que
+ * es infinitamente mejor que perderlo por un corte a mitad.
  */
 export async function ejecutarPendientes(
   email: string,
   ahora = new Date(),
+  presupuestoMs = Infinity,
 ): Promise<Ejecucion[]> {
+  const empezo = Date.now();
   const tareas = await tareasDe(email);
   const toca = pendientes(tareas, ahora);
 
   const hechas: Ejecucion[] = [];
-  for (const tarea of toca) hechas.push(await ejecutarUna(email, tarea));
+  for (const tarea of toca) {
+    // Si no cabe otra entera, se para: empezar una que se va a cortar a mitad
+    // gasta cupo y no entrega nada.
+    if (Date.now() - empezo + LIMITE_MS > presupuestoMs) break;
+    hechas.push(await ejecutarUna(email, tarea));
+  }
   return hechas;
 }

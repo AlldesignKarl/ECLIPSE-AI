@@ -115,42 +115,82 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
   const [cargando, setCargando] = useState(false);
   const [creando, setCreando] = useState(false);
   const [abierto, setAbierto] = useState<string | null>(null);
+  /** Cuántos encargos quedan por hacer hoy, y si se están haciendo ahora. */
+  const [porHacer, setPorHacer] = useState(0);
+  const [haciendo, setHaciendo] = useState<string | null>(null);
 
-  const recargar = useCallback(
-    async (alDia = false) => {
-      setCargando(true);
+  const recargar = useCallback(async () => {
+    setCargando(true);
+    try {
+      const r = await fetch("/api/tareas");
+      const d = (await r.json()) as {
+        tareas?: Tarea[];
+        resultados?: Resultado[];
+        pendientes?: number;
+        error?: string;
+      };
+      setTareas(d.tareas ?? []);
+      setResultados(d.resultados ?? []);
+      setPorHacer(d.pendientes ?? 0);
+      setProblema(r.ok ? null : (d.error ?? null));
+      return d.pendientes ?? 0;
+    } catch {
+      setProblema("No se ha podido cargar.");
+      return 0;
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  /**
+   * Ponerse al día, de uno en uno y enseñándolo.
+   *
+   * Antes esto iba dentro de la propia carga: la pantalla se quedaba en blanco
+   * mientras el servidor hacía cuatro llamadas al motor seguidas, y el hosting
+   * la cortaba a los sesenta segundos sin entregar nada. Ahora la lista aparece
+   * al instante y los partes van cayendo mientras se miran.
+   */
+  const ponerseAlDia = useCallback(async (cuantos: number) => {
+    // Tope de vueltas por si algo se atasca: el servidor no puede hacer que
+    // esto gire para siempre.
+    for (let i = 0; i < Math.min(cuantos, 12); i++) {
       try {
-        const r = await fetch(`/api/tareas${alDia ? "?aldia=1" : ""}`);
+        const r = await fetch("/api/tareas?hacer=1", { method: "POST" });
+        if (!r.ok) break;
         const d = (await r.json()) as {
+          hecha?: { tarea: string } | null;
+          quedan?: number;
           tareas?: Tarea[];
           resultados?: Resultado[];
-          error?: string;
         };
-        setTareas(d.tareas ?? []);
-        setResultados(d.resultados ?? []);
-        setProblema(r.ok ? null : (d.error ?? null));
+        if (d.tareas) setTareas(d.tareas);
+        if (d.resultados) setResultados(d.resultados);
+        setPorHacer(d.quedan ?? 0);
+        setHaciendo(d.quedan ? "siguiente" : null);
+        if (!d.hecha || !d.quedan) break;
       } catch {
-        setProblema("No se ha podido cargar.");
-      } finally {
-        setCargando(false);
+        break;
       }
-    },
-    [],
-  );
+    }
+    setHaciendo(null);
+  }, []);
 
   useEffect(() => {
     if (!open || plan !== "pro") return;
-    // Al abrir se pone al día: si el reloj de la noche no llegó a sonar, se
-    // hace ahora. Por eso puede tardar un momento la primera vez.
-    void recargar(true).then(async () => {
+    void (async () => {
+      const quedan = await recargar();
       await fetch("/api/tareas", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leidos: true }),
       }).catch(() => {});
       onLeidos?.();
-    });
-  }, [open, plan, recargar, onLeidos]);
+      if (quedan > 0) {
+        setHaciendo("primero");
+        await ponerseAlDia(quedan);
+      }
+    })();
+  }, [open, plan, recargar, ponerseAlDia, onLeidos]);
 
   const sinLeer = resultados.filter((r) => r.nueva).length;
 
@@ -161,7 +201,7 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
       title="Programar"
       subtitle={
         tareas.length
-          ? `${tareas.length} encargo(s). ECLIPSE los hace solo y te los deja aquí.`
+          ? `${tareas.length === 1 ? "Un encargo" : `${tareas.length} encargos`}. ECLIPSE los hace solo y te los deja aquí.`
           : "Déjale dicho algo una vez y lo hace solo, cada día o cada semana."
       }
       wide
@@ -192,6 +232,23 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
 
         {plan === "pro" && !problema && (
           <>
+            {/*
+              Mientras se pone al día.
+
+              Decirlo importa más de lo que parece: un encargo tarda medio
+              minuto y sin este aviso lo que se ve es una pantalla que no hace
+              nada, que es exactamente lo que la gente llama "está roto".
+            */}
+            {haciendo && (
+              <div className="flex items-center gap-2.5 rounded-xl border border-line-soft bg-panel/40 px-3.5 py-3">
+                <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-line border-t-pro" />
+                <span className="text-[12.5px] text-muted">
+                  Haciendo {porHacer === 1 ? "el encargo que queda" : `los ${porHacer} encargos de hoy`}
+                  … tarda un momento; puedes cerrar esto y volver luego.
+                </span>
+              </div>
+            )}
+
             {resultados.length > 0 && (
               <div>
                 <div className="mb-1.5 flex items-center gap-2 text-[11.5px] uppercase tracking-wide text-faint">

@@ -22,16 +22,19 @@ export async function GET(req: NextRequest) {
   const busca = (url.searchParams.get("busca") ?? "").trim();
   const pagina = Number(url.searchParams.get("pagina") ?? "1");
 
-  const consulta = busca || estanteDe(estante)?.busqueda || ESTANTES[0].busqueda;
+  const ficha = estanteDe(estante);
+  const consulta = busca || ficha?.busqueda || ESTANTES[0].busqueda;
 
   try {
-    const { imagenes, total } = await buscarImagenes(consulta, {
+    const { imagenes, total, fuente } = await buscarImagenes(consulta, {
       pagina: Number.isFinite(pagina) ? pagina : 1,
+      // Buscando a mano no se prefiere ninguno: manda lo que haya escrito.
+      prefiere: busca ? undefined : ficha?.prefiere,
       signal: req.signal,
     });
 
     return Response.json(
-      { imagenes, total, estantes: ESTANTES },
+      { imagenes, total, fuente, estantes: ESTANTES },
       {
         headers: {
           // Media hora en el borde: lo que hay en un estante no cambia de un

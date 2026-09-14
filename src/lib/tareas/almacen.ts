@@ -132,18 +132,35 @@ export async function borrarTarea(id: string): Promise<boolean> {
   return quedan.length !== tareas.length;
 }
 
-/** Marcar que se acaba de hacer (o que falló). Lo llama el reloj. */
+/**
+ * Marcar que se acaba de hacer, o que falló.
+ *
+ * Un fallo NO cuenta como hecha a la primera: se apunta y se deja que se
+ * reintente. A la segunda sí, porque a la segunda ya no es mala suerte y
+ * seguir intentándolo solo gasta el cupo del motor. `definitivo` es para los
+ * fallos que no tiene sentido reintentar hoy —no hay motor, no hay clave—:
+ * esos se dan por vistos a la primera.
+ */
 export async function anotarEjecucion(
   email: string,
   id: string,
   fallo?: string,
+  definitivo = false,
 ): Promise<void> {
   const tareas = await tareasDe(email);
   const tarea = tareas.find((t) => t.id === id);
   if (!tarea) return;
 
-  tarea.ultima = Date.now();
-  tarea.ultimoFallo = fallo;
+  if (!fallo) {
+    tarea.ultima = Date.now();
+    tarea.ultimoFallo = undefined;
+    tarea.fallos = 0;
+  } else {
+    tarea.fallos = (tarea.fallos ?? 0) + 1;
+    tarea.ultimoFallo = fallo;
+    if (definitivo || tarea.fallos >= 2) tarea.ultima = Date.now();
+  }
+
   await guardarTareas(email, tareas);
 }
 

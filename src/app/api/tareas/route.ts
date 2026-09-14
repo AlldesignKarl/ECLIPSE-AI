@@ -12,11 +12,19 @@ import {
   misTareas,
   tareasListas,
 } from "@/lib/tareas/almacen";
-import { ejecutarPendientes } from "@/lib/tareas/ejecutar";
-import { DIAS, MAX_TAREAS, pendientes, type Cuando } from "@/lib/tareas/tipos";
+import { cuantasPendientes, ejecutarSiguiente } from "@/lib/tareas/ejecutar";
+import { DIAS, MAX_TAREAS, type Cuando } from "@/lib/tareas/tipos";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+/*
+  Sesenta y no trescientos.
+
+  Trescientos era una mentira: el plan gratuito de Vercel corta a los sesenta
+  pase lo que pase, así que pedir cinco minutos no daba cinco minutos, daba un
+  corte silencioso a mitad. Con el número de verdad escrito aquí, lo de dentro
+  se puede dimensionar para caber.
+*/
+export const maxDuration = 60;
 
 /**
  * Programar: los encargos que ECLIPSE hace solo.
@@ -64,14 +72,19 @@ function limpio(v: unknown, maximo: number): string {
 }
 
 /**
- * Las tareas y lo que han producido.
+ * Las tareas y lo que han producido. Y nada más: esto NO ejecuta nada.
  *
- * Y de paso, ponerse al día. El reloj del servidor corre una vez al día; si ese
- * día no llegó a sonar —o la tarea se creó después— al abrir la aplicación se
- * hace lo que faltaba. Así nada se queda sin hacer por un reloj que falló, que
- * es lo que convierte esto en algo de lo que uno se puede fiar.
+ * Aquí estaba el fallo que hacía que Programar pareciera roto. Al abrir la
+ * pantalla, esta misma petición se ponía a hacer todos los encargos del día:
+ * cuatro encargos eran cuatro llamadas al motor seguidas, minutos de espera, y
+ * el hosting cortando la función a los sesenta segundos. Lo que se veía era una
+ * pantalla cargando para siempre y ni un solo parte.
+ *
+ * Ahora esto contesta al instante y dice cuántos quedan por hacer. Hacerlos es
+ * otra petición, una por encargo, y quien esté delante los ve llegar de uno en
+ * uno.
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   const paso = await puerta();
   if ("error" in paso)
     return Response.json(
@@ -79,26 +92,36 @@ export async function GET(req: NextRequest) {
       { status: paso.status },
     );
 
-  const alDia = new URL(req.url).searchParams.get("aldia") === "1";
-  if (alDia) {
-    const toca = pendientes(await misTareas(), new Date());
-    // Solo si hay algo pendiente: abrir la aplicación no puede costar una
-    // llamada al motor por sistema.
-    if (toca.length) await ejecutarPendientes(paso.email);
-  }
-
   return Response.json({
     tareas: await misTareas(),
     resultados: await misResultados(),
+    pendientes: await cuantasPendientes(paso.email),
     dias: DIAS,
     maximo: MAX_TAREAS,
   });
 }
 
-/** Crear un encargo. */
+/** Crear un encargo, o hacer el siguiente que toque. */
 export async function POST(req: NextRequest) {
   const paso = await puerta();
   if ("error" in paso) return Response.json({ error: paso.error, code: paso.code }, { status: paso.status });
+
+  /*
+    Ponerse al día, de uno en uno.
+
+    El reloj del servidor corre una vez al día; si ese día no llegó a sonar —o
+    el encargo se creó después— se hace aquí. Uno por petición, para que ninguna
+    se acerque al límite del hosting.
+  */
+  if (new URL(req.url).searchParams.get("hacer") === "1") {
+    const { hecha, quedan } = await ejecutarSiguiente(paso.email);
+    return Response.json({
+      hecha: hecha ? { tarea: hecha.tarea, ok: hecha.ok } : null,
+      quedan,
+      resultados: await misResultados(),
+      tareas: await misTareas(),
+    });
+  }
 
   const cuerpo = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const titulo = limpio(cuerpo.titulo, 60);

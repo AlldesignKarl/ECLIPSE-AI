@@ -44,6 +44,16 @@ export interface Tarea {
   ultima?: number;
   /** Si la última salió mal, qué pasó. */
   ultimoFallo?: string;
+  /**
+   * Cuántas veces ha fallado hoy.
+   *
+   * Existe para no tener que elegir entre dos cosas malas. Si un fallo marca la
+   * tarea como hecha, un corte de red de diez segundos te deja sin el parte del
+   * día entero. Si no la marca, una tarea que falla siempre se reintenta sin
+   * parar y se come el cupo del motor. Así: se reintenta una vez, y a la
+   * segunda se deja para mañana.
+   */
+  fallos?: number;
 }
 
 export interface Resultado {

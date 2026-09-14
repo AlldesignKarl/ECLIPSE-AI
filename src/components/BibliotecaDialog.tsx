@@ -157,9 +157,9 @@ export default function BibliotecaDialog({ open, onClose, onInspirar }: Props) {
         )}
 
         <p className="border-t border-line-soft pt-4 text-[11.5px] leading-relaxed text-faint">
-          Las imágenes vienen de Openverse, el buscador de obra con licencia libre de Wikimedia:
-          museos, archivos y fotógrafos que han dado permiso para reutilizarlas. Por eso puedes
-          usarlas de verdad, respetando el autor y la licencia que pone en cada una.
+          Las imágenes vienen de Wikimedia Commons y de museos como el Art Institute of Chicago:
+          archivos y fotógrafos que han dado permiso para reutilizarlas. Por eso puedes usarlas de
+          verdad, respetando el autor y la licencia que pone en cada una.
         </p>
       </div>
 
