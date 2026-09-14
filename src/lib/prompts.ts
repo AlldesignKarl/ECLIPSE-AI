@@ -495,6 +495,16 @@ function herramientasTexto(nombres: string[]): string {
       "  que sabes dónde está.",
     );
 
+  if (nombres.includes("mis_conversaciones"))
+    lineas.push(
+      "- Si se refiere a algo de antes sin explicarlo —«sigue con lo de la web», «¿cómo",
+      "  quedamos?»— mira en las conversaciones anteriores ANTES de preguntar. Preguntar",
+      "  «¿a qué te refieres?» cuando podrías haberlo mirado es lo que hace que una",
+      "  herramienta no sirva de nada.",
+      "- Lo que encuentres son resúmenes, no transcripciones: no cites frases literales",
+      "  como si las tuvieras, y si te falta detalle, pregúntalo.",
+    );
+
   if (nombres.includes("conexion")) lineas.push("", NEGOCIO);
 
   return lineas.join("\n");
@@ -1138,6 +1148,8 @@ export function buildSystemPrompt(opts: {
   voz?: boolean;
   /** Dónde está, en palabras, si activó la ubicación. */
   lugar?: string;
+  /** Lo que ya se sabe de esta persona, una frase por línea. */
+  memoria?: string;
   now?: Date;
 }): string {
   const now = opts.now ?? new Date();
@@ -1214,6 +1226,27 @@ ciudad o el pueblo, NO para la calle ni el barrio, así que no los menciones). T
 cuenta cuando pregunte por planes, sitios, horarios o distancias, sin repetírselo cada
 vez. Para sitios concretos, distancias o cómo llegar usa la herramienta de mapas si la
 tienes: los horarios y lo que ha abierto o cerrado no te los sabes de memoria.`,
+        ]
+      : []),
+    /*
+      Lo que ya se sabe de quien escribe.
+
+      Es lo que hace que la aplicación mejore según se usa: la primera vez no
+      sabe nada y a la décima ya no hay que explicarle a qué te dedicas ni cómo
+      quieres las respuestas. Con dos avisos que evitan lo que da grima: que no
+      lo suelte de golpe para lucirse, y que si algo ya no cuadra, mande lo que
+      diga ahora la persona y no la ficha.
+    */
+    ...(opts.memoria
+      ? [
+          `Lo que ya sabes de esta persona de otras veces:
+${opts.memoria}
+
+Úsalo con naturalidad: da por sabido lo que está ahí en vez de volver a
+preguntarlo. NO lo recites ni digas "según mis notas"; nadie quiere que le lean
+su ficha. Si algo de ahí ya no encaja con lo que te está contando ahora, manda
+lo de ahora. Y si te pregunta qué sabes de ella, se lo dices sin problema: es
+suyo, y puede borrarlo en Ajustes.`,
         ]
       : []),
     // Lo eligió él al crear la cuenta, así que llamarle así no es confianza

@@ -179,6 +179,116 @@ function TemaBox() {
 }
 
 /**
+ * Lo que ECLIPSE ha aprendido de ti.
+ *
+ * Esta caja no es un adorno: es la condición para que la memoria sea aceptable.
+ * Una aplicación que va guardando cosas tuyas sin que puedas mirarlas ni
+ * borrarlas no es una aplicación con memoria, es otra cosa. Así que aquí está
+ * todo lo que sabe, frase por frase, con una cruz en cada una y un botón para
+ * borrarlo entero.
+ */
+function MemoriaBox() {
+  const [hechos, setHechos] = useState<{ id: string; texto: string }[]>([]);
+  const [temas, setTemas] = useState<{ id: string; titulo: string }[]>([]);
+  const [abierto, setAbierto] = useState(false);
+  const [sinCuenta, setSinCuenta] = useState(false);
+  const [cargado, setCargado] = useState(false);
+
+  const cargar = async () => {
+    try {
+      const r = await fetch("/api/memoria");
+      const d = (await r.json()) as {
+        hechos?: { id: string; texto: string }[];
+        temas?: { id: string; titulo: string }[];
+        sinCuenta?: boolean;
+      };
+      setHechos(d.hechos ?? []);
+      setTemas(d.temas ?? []);
+      setSinCuenta(Boolean(d.sinCuenta));
+    } catch {
+      /* si no se puede leer, se queda vacío y ya */
+    } finally {
+      setCargado(true);
+    }
+  };
+
+  useEffect(() => {
+    void cargar();
+  }, []);
+
+  const olvidar = async (id?: string) => {
+    if (!id && !confirm("¿Borrar todo lo que ECLIPSE sabe de ti? No se puede deshacer."))
+      return;
+    await fetch(`/api/memoria${id ? `?hecho=${id}` : ""}`, { method: "DELETE" }).catch(() => {});
+    await cargar();
+  };
+
+  if (!cargado || sinCuenta) return null;
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Memoria</div>
+      <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
+        {hechos.length === 0 && temas.length === 0 ? (
+          <p className="text-[12.5px] leading-relaxed text-muted">
+            Todavía no ha aprendido nada de ti. Según vayáis hablando se irá quedando con lo que
+            sirva para ayudarte mejor —a qué te dedicas, en qué andas, cómo prefieres las
+            respuestas— y aquí lo verás todo.
+          </p>
+        ) : (
+          <>
+            <p className="text-[12.5px] leading-relaxed text-muted">
+              Esto es lo que sabe de ti, y de {temas.length}{" "}
+              {temas.length === 1 ? "conversación recuerda" : "conversaciones recuerda"} de qué
+              ibais. Las conversaciones NO se guardan en el servidor: solo estas frases y un
+              resumen de dos líneas de cada una.
+            </p>
+
+            {hechos.length > 0 && (
+              <button
+                onClick={() => setAbierto(!abierto)}
+                className="mt-2 text-[12.5px] text-ink underline-offset-2 hover:underline"
+              >
+                {abierto ? "Ocultar" : `Ver las ${hechos.length} cosas que sabe`}
+              </button>
+            )}
+
+            {abierto && (
+              <ul className="mt-2.5 space-y-1.5 border-t border-line-soft pt-2.5">
+                {hechos.map((h) => (
+                  <li key={h.id} className="flex items-start gap-2">
+                    <span className="flex-1 text-[12.5px] leading-relaxed text-muted">
+                      {h.texto}
+                    </span>
+                    <button
+                      onClick={() => void olvidar(h.id)}
+                      aria-label="Que olvide esto"
+                      className="shrink-0 p-0.5 text-faint transition hover:text-ink"
+                    >
+                      <Icon.Close width={13} height={13} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              onClick={() => void olvidar()}
+              className="mt-3 w-full rounded-xl border border-line py-2 text-[12.5px] text-muted transition hover:text-ink"
+            >
+              Que lo olvide todo
+            </button>
+          </>
+        )}
+        <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
+          En un chat temporal no aprende nada, ni usa lo que ya sabía.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
  * La ubicación: apagada de fábrica, y con lo que hace escrito delante.
  *
  * Encenderla aquí no basta para que la aplicación sepa nada: al darle, se le
@@ -629,6 +739,8 @@ export default function SettingsDialog({
         <TemaBox />
 
         <UbicacionBox />
+
+        <MemoriaBox />
 
         {puedeCambiarNombre && (
           <NombreBox nombre={nombre} onNombre={onNombre} />

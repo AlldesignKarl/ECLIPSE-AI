@@ -27,6 +27,23 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.37",
+    // Que se acuerde de ti, y que lo que estaba roto funcione.
+    nombre: "Se acuerda",
+    titulo: "Cuanto más la uses, más te conoce",
+    entrada:
+      "ECLIPSE aprende lo que le vas contando y puede mirar de qué hablasteis otros días. Y arreglada la Biblioteca y los encargos programados.",
+    puntos: [
+      "Ya no hace falta explicarle cada vez a qué te dedicas ni cómo quieres las respuestas: se queda con lo que sirve para ayudarte mejor. Puedes ver TODO lo que sabe de ti en Ajustes → Memoria, quitar una cosa suelta o borrarlo entero.",
+      "Y puede mirar atrás: «sigue con lo de la web», «¿cómo llamamos al proyecto?». Se guarda un resumen de dos líneas de cada conversación, nunca las conversaciones: esas siguen solo en tu móvil. En un chat temporal no aprende nada ni usa lo que sabía.",
+      "La Biblioteca ya no da error: ahora busca en Wikimedia Commons y en museos como el Art Institute of Chicago, y si un archivo falla entra el siguiente.",
+      "Programar funciona de verdad. Antes, al abrir la pantalla intentaba hacer todos los encargos en la misma petición y el servidor la cortaba a los sesenta segundos: no se llegaba a ver ninguno. Y el reloj de cada noche se pedía un permiso que nadie le había dado.",
+      "En los grupos, «Invitar» está arriba y a la vista, y abre el compartir de tu móvil. A quien recibe el enlace se le dice a qué le invitan antes de meterlo dentro. Y el chat del grupo se lee: cada uno con su color, su hora y sus mensajes agrupados.",
+      "La llamada arranca antes —empieza a hablar con la primera frase, sin esperar a tenerlo todo escrito— y puedes elegir voz de hombre o de mujer, con la voz más natural que tenga tu móvil.",
+      "Responde más al grano y va menos por las ramas, se ríe si te ríes y te llama bro si le llamas bro. Y las imágenes salen a fotografía de verdad salvo que pidas un dibujo.",
+    ],
+  },
+  {
     version: "2.36",
     // Saber dónde estás, y enchufarse a lo tuyo.
     nombre: "Sobre el terreno",

@@ -7,6 +7,8 @@ import { gastar } from "@/lib/limites";
 import { CompatError, tieneVista, type CompatProvider } from "@/lib/openai-compat";
 import { crearFiltroDeNegativa } from "@/lib/negativa";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
+import { hechosDe, quien as quienEsMemoria } from "@/lib/memoria/almacen";
+import { comoFicha } from "@/lib/memoria/tipos";
 import { herramientasPara } from "@/lib/tools/registro";
 import { nombreActual } from "@/lib/auth";
 import { currentPlan } from "@/lib/plan-server";
@@ -55,6 +57,8 @@ interface Body {
    * traducir coordenadas en cada mensaje.
    */
   ubicacion?: { lat: number; lon: number; lugar?: string };
+  /** Chat temporal: ni se guarda ni se aprende nada de él. */
+  temporal?: boolean;
 }
 
 const PRO_MODES: Mode[] = ["code"];
@@ -183,6 +187,7 @@ async function runAnthropic(
   send: (e: StreamEvent) => void,
   opts: {
     body: Body;
+    memoria?: string;
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
@@ -242,6 +247,7 @@ async function runAnthropic(
                 nombre: opts.nombre,
                 voz: opts.voz,
                 lugar: opts.body.ubicacion?.lugar,
+                memoria: opts.memoria,
               }),
           cache_control: { type: "ephemeral" },
         },
@@ -313,6 +319,7 @@ async function runGoogle(
   send: (e: StreamEvent) => void,
   opts: {
     body: Body;
+    memoria?: string;
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
@@ -343,6 +350,7 @@ async function runGoogle(
         nombre: opts.nombre,
         voz: opts.voz,
         lugar: opts.body.ubicacion?.lugar,
+        memoria: opts.memoria,
       });
 
   for await (const event of streamChat({
@@ -379,6 +387,7 @@ async function runCompat(
   opts: {
     provider: CompatProvider;
     body: Body;
+    memoria?: string;
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
@@ -470,6 +479,7 @@ async function runCompat(
           nombre: opts.nombre,
           voz: opts.voz,
           lugar: opts.body.ubicacion?.lugar,
+          memoria: opts.memoria,
         }),
     turns: opts.body.messages,
     speed: opts.speed,
@@ -562,6 +572,24 @@ export async function POST(req: NextRequest) {
   */
   body.messages = aligerarHistorial(body.messages ?? []);
   body.ubicacion = ubicacionLimpia(body.ubicacion);
+
+  /*
+    Lo que ya se sabe de quien escribe.
+
+    Se lee una vez por petición y no una vez por vuelta de herramienta: son
+    cuatro líneas, pero una lectura de base de datos por vuelta serían tres o
+    cuatro por respuesta para leer siempre lo mismo. Un chat temporal no la
+    manda: ahí no se guarda nada y tampoco se recuerda nada.
+  */
+  let memoria = "";
+  if (!body.temporal) {
+    try {
+      const quien = await quienEsMemoria();
+      if (quien) memoria = comoFicha((await hechosDe(quien)).slice(0, 20));
+    } catch {
+      /* sin memoria se responde igual; simplemente no se acuerda */
+    }
+  }
 
   const plan = await currentPlan();
   // Cómo quiere que le llamen. Se lee aquí, del servidor, y no de lo que mande
@@ -691,7 +719,7 @@ export async function POST(req: NextRequest) {
 
       try {
         send({ t: "status", v: "conectando" });
-        const shared = { body, mode, speed, plan, wantsWeb, nombre, voz: body.voz === true, signal: req.signal };
+        const shared = { body, mode, speed, plan, wantsWeb, nombre, memoria, voz: body.voz === true, signal: req.signal };
 
         const correr = async (quien: typeof provider) =>
           quien === "google"

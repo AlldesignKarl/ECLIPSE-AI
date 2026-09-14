@@ -4,6 +4,7 @@ import { herramientaBuscar } from "./buscar";
 import { herramientaDocumento } from "./documentos";
 import { herramientaImagen } from "./imagen";
 import { herramientaMapa } from "./mapa";
+import { herramientaRecuerdos } from "./recuerdos";
 import { herramientaSeo } from "./seo";
 import type { Contexto, Herramienta, Resultado } from "./tipos";
 
@@ -19,6 +20,7 @@ const TODAS: Herramienta[] = [
   herramientaDocumento,
   herramientaSeo,
   herramientaMapa,
+  herramientaRecuerdos,
 ];
 
 /**
@@ -35,7 +37,15 @@ const TODAS: Herramienta[] = [
  * archivos del proyecto, y una imagen suelta no pinta nada.
  */
 const POR_MODO: Record<Mode, string[]> = {
-  chat: ["buscar_web", "crear_imagen", "crear_archivo", "auditar_seo", "conexion", "mapa"],
+  chat: [
+    "buscar_web",
+    "crear_imagen",
+    "crear_archivo",
+    "auditar_seo",
+    "conexion",
+    "mapa",
+    "mis_conversaciones",
+  ],
   code: ["buscar_web"],
 };
 

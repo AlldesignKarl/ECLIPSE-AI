@@ -163,6 +163,10 @@ export default function ChatApp({
   /** Si la conversación de ahora no se guarda. Se mira desde sitios sin estado. */
   const temporalRef = useRef(false);
   const terminadoRef = useRef(false);
+  /** Para poder llamarla desde dentro de `runChat` sin encadenar dependencias. */
+  const aprenderDeEstaRef = useRef<((id: string) => Promise<void>) | null>(null);
+  /** Las conversaciones de ahora mismo, leíbles fuera del ciclo de React. */
+  const conversationsRef = useRef<Conversation[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
 
@@ -176,6 +180,10 @@ export default function ChatApp({
   useEffect(() => {
     temporalRef.current = Boolean(active?.temporal);
   }, [active]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   /* --------------------------- Carga inicial --------------------------- */
   useEffect(() => {
@@ -644,6 +652,9 @@ export default function ChatApp({
             ubicacion: ubicacion
               ? { lat: ubicacion.lat, lon: ubicacion.lon, lugar: ubicacion.lugar }
               : undefined,
+            // En un chat temporal no se recuerda nada, ni siquiera lo que ya
+            // se sabía: si fuera solo "no guardar", no sería temporal del todo.
+            temporal: temporalRef.current,
             // Continuar va con instrucciones mínimas: lo que no se manda en
             // instrucciones queda libre para terminar el archivo.
             continuar: Boolean(continuarDe),
@@ -922,11 +933,57 @@ export default function ChatApp({
 
       setStatus("idle");
       abortRef.current = null;
+
+      /*
+        Aprender de esta conversación, de fondo.
+
+        Aquí y no antes: cuando la respuesta ya está en pantalla, para que no le
+        cueste ni un milisegundo a quien está esperando. Se manda y no se espera
+        a nada —si falla, no pasa nada y no se entera nadie—, y el servidor
+        decide si de verdad toca aprender: hacerlo en cada mensaje sería tirar
+        la cuota del motor diez veces para saber lo mismo.
+
+        De un chat temporal, jamás. Es lo que significa temporal.
+      */
+      if (!temporalRef.current) void aprenderDeEstaRef.current?.(conversationId);
     },
     [convertir, plan, prefs.speed, prefs.deepSearch, retocar, scheduleFlush, terminarDeEscribir, upsert],
   );
 
   runChatRef.current = runChat;
+
+  /**
+   * Contarle al servidor de qué ha ido esto, para que se acuerde otro día.
+   *
+   * Se manda el título y los últimos turnos, no la conversación entera: de ahí
+   * salen una ficha de cuatro líneas y un resumen de dos, que es lo único que
+   * se guarda. Los mensajes siguen viviendo solo en este dispositivo.
+   */
+  const aprenderDeEsta = useCallback(
+    async (conversationId: string) => {
+      if (!user) return;
+      const c = conversationsRef.current.find((x) => x.id === conversationId);
+      if (!c || c.temporal || c.messages.length < 2) return;
+
+      try {
+        await fetch("/api/memoria", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: c.id,
+            titulo: c.title,
+            turnos: c.messages
+              .slice(-12)
+              .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) })),
+          }),
+        });
+      } catch {
+        /* que no aprenda hoy no es un problema de nadie */
+      }
+    },
+    [user],
+  );
+  aprenderDeEstaRef.current = aprenderDeEsta;
 
   const runImage = useCallback(
     /**
