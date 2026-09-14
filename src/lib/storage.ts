@@ -66,7 +66,16 @@ export function loadConversations(): Conversation[] {
 
 export function saveConversations(list: Conversation[]): void {
   if (typeof window === "undefined") return;
-  const trimmed = list.slice(0, MAX_CONVERSATIONS).map(slim);
+  /*
+    Las temporales no llegan a escribirse.
+
+    Aquí, y no en quien llama, porque este es el único sitio por el que pasan
+    todas: filtrándolo arriba, cualquier camino nuevo que guardase se saltaría
+    la promesa sin que nadie se diera cuenta. Y la promesa es de las que no
+    admiten un olvido.
+  */
+  const guardables = list.filter((c) => !c.temporal);
+  const trimmed = guardables.slice(0, MAX_CONVERSATIONS).map(slim);
   try {
     window.localStorage.setItem(KEY, JSON.stringify(trimmed));
   } catch {

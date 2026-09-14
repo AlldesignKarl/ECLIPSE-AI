@@ -37,13 +37,21 @@ export default function EclipseMark({
         <div className="eclipse-halo absolute inset-0 rounded-full" />
       )}
 
-      <svg viewBox="0 0 240 240" width={size} height={size} className="relative z-10">
+      <svg viewBox="0 0 240 240" width={size} height={size} className="relative z-10 text-ink">
         <defs>
+          {/*
+            El color lo pone quien lo usa, no el propio logo.
+
+            El eclipse es una corona clara recortada sobre negro, y escrito en
+            blanco desaparecía entero en el tema claro. Heredando el color del
+            texto se invierte solo: corona clara sobre fondo oscuro, y anillo
+            oscuro sobre fondo claro. Es el mismo dibujo, al derecho y al revés.
+          */}
           <linearGradient id="mark-flare" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#fff" stopOpacity="0" />
-            <stop offset="22%" stopColor="#e8ecf3" stopOpacity="0.72" />
-            <stop offset="55%" stopColor="#f6f8fb" stopOpacity="0.96" />
-            <stop offset="100%" stopColor="#fff" stopOpacity="1" />
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0" />
+            <stop offset="22%" stopColor="currentColor" stopOpacity="0.72" />
+            <stop offset="55%" stopColor="currentColor" stopOpacity="0.96" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="1" />
           </linearGradient>
         </defs>
 
@@ -52,7 +60,7 @@ export default function EclipseMark({
           <path d={flare} fill="url(#mark-flare)" transform="translate(240,0) scale(-1,1)" />
         </g>
 
-        <circle cx="120" cy="120" r="58" fill="none" stroke="#fff" strokeWidth="10" />
+        <circle cx="120" cy="120" r="58" fill="none" stroke="currentColor" strokeWidth="10" />
       </svg>
     </div>
   );

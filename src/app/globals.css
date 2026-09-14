@@ -32,6 +32,59 @@
   color-scheme: dark;
 }
 
+/*
+  El tema claro.
+  ---------------------------------------------------------------------------
+  Todo el diseño va por estas variables, así que un tema entero es volver a
+  definirlas. No es un invento: es la prueba de que estaban bien puestas.
+
+  Dos decisiones que no son de gusto:
+
+  - Los bloques de código se quedan OSCUROS también aquí. El coloreado de
+    sintaxis está afinado sobre fondo oscuro, y pasarlo a claro sería reescribir
+    una paleta entera para que se lea peor; un bloque oscuro sobre página clara
+    es además como se ve el código en casi todas partes.
+  - El azul del bocadillo de quien escribe se aclara mucho, pero su texto sigue
+    siendo el de siempre —oscuro— porque el color del texto también cambia. Si
+    solo se cambiara el fondo, quedaría blanco sobre azul pálido.
+*/
+:root[data-tema="claro"] {
+  color-scheme: light;
+
+  --color-void: #f6f7fa;
+  --color-surface: #ffffff;
+  --color-panel: #f0f2f6;
+  --color-raised: #e7eaf1;
+  --color-line: #d5dae4;
+  --color-line-soft: #e4e8ef;
+  --color-ink: #11141b;
+  --color-muted: #555d6c;
+  --color-faint: #7c8494;
+  --color-halo: #4a556b;
+  --color-pro: #6742e8;
+  --color-tuyo: #dbe6fb;
+  --color-tuyo-borde: #aac3ee;
+  --color-danger: #c62828;
+  --color-ok: #17794a;
+}
+
+:root[data-tema="claro"] .eclipse-backlight,
+:root[data-tema="claro"] .eclipse-halo {
+  /* El resplandor es luz sobre negro. Sobre blanco no es luz: es una mancha
+     gris. Se apaga, y el anillo oscuro se sostiene solo. */
+  opacity: 0.18;
+}
+
+:root[data-tema="claro"] ::selection {
+  background: rgba(30, 58, 111, 0.18);
+}
+
+/* Sin esto, el código sería texto oscuro sobre el fondo oscuro del bloque. */
+:root[data-tema="claro"] .prose-eclipse pre,
+:root[data-tema="claro"] .prose-eclipse pre code {
+  color: #e7eaf2;
+}
+
 html,
 body {
   height: 100%;

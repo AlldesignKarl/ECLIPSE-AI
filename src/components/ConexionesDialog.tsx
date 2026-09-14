@@ -32,7 +32,7 @@ interface Campo {
 interface Servicio {
   id: string;
   nombre: string;
-  familia: "tienda" | "web" | "dominio" | "mercado";
+  familia: "tienda" | "web" | "dominio" | "mercado" | "trabajo";
   resumen: string;
   pasos: string[];
   enlace: string;
@@ -63,6 +63,11 @@ const FAMILIAS: { id: Servicio["familia"]; titulo: string; entrada: string }[] =
     id: "dominio",
     titulo: "Tus dominios",
     entrada: "El DNS, que es donde todo el mundo se atasca y donde un error deja la web caída.",
+  },
+  {
+    id: "trabajo",
+    titulo: "Tu trabajo",
+    entrada: "Donde tienes apuntado lo que hay que hacer, y el código en el que trabajas.",
   },
   {
     id: "mercado",

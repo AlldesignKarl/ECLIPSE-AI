@@ -14,6 +14,8 @@ interface Props {
   plan: Plan;
   onSelect: (id: string) => void;
   onNew: () => void;
+  /** Una conversación que no se guarda en ningún sitio. */
+  onTemporal: () => void;
   /** Abre una conversación nueva de ECLIPSE CODE. */
   onCode: () => void;
   onDelete: (id: string) => void;
@@ -36,6 +38,7 @@ export default function Sidebar({
   plan,
   onSelect,
   onNew,
+  onTemporal,
   onCode,
   onDelete,
   onRename,
@@ -120,6 +123,25 @@ export default function Sidebar({
           >
             <Icon.Plus width={17} height={17} />
             Nueva conversación
+          </button>
+
+          {/*
+            El chat temporal, al lado del normal y no escondido en un menú.
+
+            Lo que hace es una promesa —esto no se guarda— y una promesa que hay
+            que ir a buscar no se cumple nunca: cuando te acuerdas, ya has
+            escrito. Aquí se elige antes de empezar, que es el único momento en
+            que sirve.
+          */}
+          <button
+            onClick={() => {
+              onTemporal();
+              onClose();
+            }}
+            className="flex w-full items-center gap-2.5 rounded-xl border border-line-soft px-3.5 py-2.5 text-sm text-muted transition hover:border-line hover:text-ink"
+          >
+            <Icon.Ghost width={17} height={17} />
+            <span className="flex-1 text-left">Chat temporal</span>
           </button>
 
           {/*

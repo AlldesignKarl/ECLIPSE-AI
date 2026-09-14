@@ -139,6 +139,8 @@ export default function ChatApp({
     de lo guardado se ve ya.
   */
   const ritmoRef = useRef<Ritmo | null>(null);
+  /** Si la conversación de ahora no se guarda. Se mira desde sitios sin estado. */
+  const temporalRef = useRef(false);
   const terminadoRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -148,6 +150,11 @@ export default function ChatApp({
     () => conversations.find((c) => c.id === activeId) ?? null,
     [conversations, activeId],
   );
+
+  // Para poder mirarlo desde sitios que no ven el estado de React.
+  useEffect(() => {
+    temporalRef.current = Boolean(active?.temporal);
+  }, [active]);
 
   /* --------------------------- Carga inicial --------------------------- */
   useEffect(() => {
@@ -283,13 +290,17 @@ export default function ChatApp({
   }, []);
 
   const newConversation = useCallback(
-    (nuevoModo: Mode = "chat") => {
+    (nuevoModo: Mode = "chat", temporal = false) => {
       if (busy) return;
       const fresh = emptyConversation();
       // El título se pone ya: una conversación de CODE se reconoce en la lista
       // sin tener que abrirla.
       fresh.mode = nuevoModo;
       if (nuevoModo === "code") fresh.title = "ECLIPSE CODE";
+      if (temporal) {
+        fresh.temporal = true;
+        fresh.title = "Chat temporal";
+      }
       setConversations((list) => [fresh, ...list]);
       setActiveId(fresh.id);
       setInput("");
@@ -324,6 +335,17 @@ export default function ChatApp({
 
       const { text, thinking } = bufferRef.current;
       if (!text.trim()) return;
+
+      /*
+        En una conversación temporal, tampoco esto.
+
+        Lo que se guarda aquí es la respuesta a medias, para que no se pierda si
+        el móvil descarta la página. Pero se guarda en el mismo disco, y una
+        promesa de "esto no se guarda" que deja la mitad escrita no es una
+        promesa. Se acepta el riesgo de perder una respuesta a medias: es lo que
+        se está pidiendo.
+      */
+      if (temporalRef.current) return;
 
       saveEnCurso({ conversationId, content: text, thinking, mode: currentMode, at: ahora });
     },
@@ -1048,6 +1070,7 @@ export default function ChatApp({
           setMode(modoVigente(elegida?.mode ?? elegida?.messages.at(-1)?.mode));
         }}
         onNew={() => newConversation("chat")}
+        onTemporal={() => newConversation("chat", true)}
         onCode={() => {
           if (plan !== "pro") return setUpgradeOpen(true);
           newConversation("code");
@@ -1085,6 +1108,20 @@ export default function ChatApp({
             <span className="truncate text-[13.5px] text-muted">
               {active?.title ?? "Nueva conversación"}
             </span>
+            {/*
+              Que se vea SIEMPRE que esta conversación no se guarda.
+
+              Una promesa que solo se dice al empezar se olvida a los tres
+              mensajes, y entonces o no te fías o escribes cosas creyendo que se
+              guardan. La etiqueta va en la cabecera, encima de todo, mientras
+              dure.
+            */}
+            {active?.temporal && (
+              <span className="flex shrink-0 items-center gap-1 rounded-md bg-panel px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-faint">
+                <Icon.Ghost width={11} height={11} />
+                No se guarda
+              </span>
+            )}
           </div>
 
           {plan === "free" && (

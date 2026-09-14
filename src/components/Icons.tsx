@@ -227,3 +227,12 @@ export const Plug = (p: P) => (
     <path d="M12 17v4.5" />
   </svg>
 );
+
+/** El chat temporal: lo que se dice aquí no queda escrito en ningún sitio. */
+export const Ghost = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M5 20V10a7 7 0 0 1 14 0v10l-2.3-1.8L14.4 20l-2.4-1.8L9.6 20 7.3 18.2z" />
+    <circle cx="9.7" cy="10.5" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="14.3" cy="10.5" r="1.1" fill="currentColor" stroke="none" />
+  </svg>
+);

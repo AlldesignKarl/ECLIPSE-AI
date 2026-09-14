@@ -29,15 +29,15 @@ export default function EclipseLogo({ size = 28, active = false, className = "",
     >
       <defs>
         <radialGradient id="ecl-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="55%" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="55%" stopColor="currentColor" stopOpacity="0" />
           <stop offset="80%" stopColor="#cfd6e6" stopOpacity="0.35" />
           <stop offset="100%" stopColor="#cfd6e6" stopOpacity="0" />
         </radialGradient>
         <linearGradient id="ecl-flare" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0" />
           <stop offset="22%" stopColor="#e8ecf3" stopOpacity="0.72" />
           <stop offset="55%" stopColor="#f6f8fb" stopOpacity="0.96" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="1" />
         </linearGradient>
       </defs>
 
@@ -70,7 +70,7 @@ export default function EclipseLogo({ size = 28, active = false, className = "",
       </g>
 
       {/* Anillo principal */}
-      <circle cx="120" cy="120" r="58" fill="none" stroke="#ffffff" strokeWidth="10" />
+      <circle cx="120" cy="120" r="58" fill="none" stroke="currentColor" strokeWidth="10" />
 
       {/* Arco que gira mientras piensa */}
       {active && (
@@ -79,7 +79,7 @@ export default function EclipseLogo({ size = 28, active = false, className = "",
           cy="120"
           r="58"
           fill="none"
-          stroke="#06070a"
+          stroke="var(--color-void)"
           strokeWidth="10.5"
           strokeLinecap="round"
           strokeDasharray="26 338"

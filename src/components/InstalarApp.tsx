@@ -40,11 +40,40 @@ function esIPhone(): boolean {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
-export default function InstalarApp() {
+/**
+ * ¿Móvil u ordenador?
+ *
+ * No es lo mismo lo que hay que decirle a cada uno: en el móvil se "añade a la
+ * pantalla de inicio" y queda al lado de WhatsApp; en el ordenador se "instala"
+ * y queda como un programa con su ventana. Decirle a alguien en su portátil que
+ * lo añada a la pantalla de inicio es no decirle nada.
+ */
+function esMovil(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(pointer: coarse)").matches || /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+export default function InstalarApp({
+  /**
+   * Enseñarlo YA, sin esperar los cuarenta y cinco segundos.
+   *
+   * Es para justo después de crear la cuenta: ahí acaba de decidir que quiere
+   * usar esto, y es el mejor momento del día para ofrecerle tenerlo a mano. El
+   * resto del tiempo sigue siendo un aviso que espera y no molesta.
+   */
+  forzar = false,
+}: {
+  forzar?: boolean;
+} = {}) {
   const [evento, setEvento] = useState<EventoInstalar | null>(null);
   const [aLaVista, setALaVista] = useState(false);
+  const [movil, setMovil] = useState(true);
   // En iPhone no hay forma de instalar desde código: solo se puede explicar.
   const [explicarIPhone, setExplicarIPhone] = useState(false);
+
+  useEffect(() => {
+    setMovil(esMovil());
+  }, []);
 
   useEffect(() => {
     if (yaInstalada()) return;
@@ -61,13 +90,13 @@ export default function InstalarApp() {
     };
     window.addEventListener("beforeinstallprompt", alPoder);
 
-    const reloj = window.setTimeout(() => setALaVista(true), ESPERA_MS);
+    const reloj = window.setTimeout(() => setALaVista(true), forzar ? 400 : ESPERA_MS);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", alPoder);
       window.clearTimeout(reloj);
     };
-  }, []);
+  }, [forzar]);
 
   const apartar = () => {
     setALaVista(false);
@@ -88,8 +117,9 @@ export default function InstalarApp() {
     apartar();
   };
 
-  // En Android hace falta que Chrome nos deje; en iPhone, basta con ser iPhone.
-  const sePuede = Boolean(evento) || esIPhone();
+  // En Android hace falta que Chrome nos deje; en iPhone y en el ordenador
+  // siempre se puede al menos explicar cómo se hace.
+  const sePuede = Boolean(evento) || esIPhone() || !movil;
   if (!aLaVista || !sePuede) return null;
 
   return (
@@ -97,10 +127,21 @@ export default function InstalarApp() {
       <div className="pointer-events-auto w-full max-w-sm rounded-2xl border border-line bg-panel/95 p-3.5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.95)] backdrop-blur">
         {explicarIPhone ? (
           <>
-            <p className="text-[13.5px] font-medium text-ink">Para tenerla en tu pantalla de inicio</p>
+            <p className="text-[13.5px] font-medium text-ink">
+              {movil ? "Para tenerla en tu pantalla de inicio" : "Para tenerla en tu escritorio"}
+            </p>
             <ol className="mt-2 space-y-1 text-[12.5px] leading-relaxed text-muted">
-              <li>1. Pulsa el botón de compartir, abajo en el centro.</li>
-              <li>2. Baja y elige «Añadir a pantalla de inicio».</li>
+              {movil ? (
+                <>
+                  <li>1. Pulsa el botón de compartir, abajo en el centro.</li>
+                  <li>2. Baja y elige «Añadir a pantalla de inicio».</li>
+                </>
+              ) : (
+                <>
+                  <li>1. Abre el menú del navegador, arriba a la derecha.</li>
+                  <li>2. Elige «Instalar ECLIPSE» o «Instalar aplicación».</li>
+                </>
+              )}
             </ol>
             <button
               onClick={apartar}
@@ -117,7 +158,9 @@ export default function InstalarApp() {
                 Ten ECLIPSE a mano
               </p>
               <p className="mt-0.5 text-[12px] leading-snug text-muted">
-                Añádela a tu pantalla de inicio y se abre como una app.
+                {movil
+                  ? "Añádela a tu pantalla de inicio y se abre como una app."
+                  : "Instálala y se abre como un programa, con su ventana."}
               </p>
             </div>
 
@@ -136,7 +179,7 @@ export default function InstalarApp() {
             onClick={instalar}
             className="mt-3 w-full rounded-xl bg-ink py-2.5 text-[13.5px] font-medium text-void transition hover:opacity-90"
           >
-            Añadir a la pantalla de inicio
+            {movil ? "Añadir a la pantalla de inicio" : "Instalar ECLIPSE"}
           </button>
         )}
       </div>

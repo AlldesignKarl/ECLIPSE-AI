@@ -27,6 +27,14 @@ export default function Shell() {
   const [view, setView] = useState<View>("portada");
   const [ready, setReady] = useState(false);
   const [wantsIn, setWantsIn] = useState(false);
+  /*
+    Acaba de crear la cuenta: es el mejor momento para ofrecerle instalarla.
+
+    Ahí es cuando ha decidido que esto le sirve. Media hora después ya está
+    metido en otra cosa y el aviso es una interrupción; justo al terminar de
+    darse de alta, es el paso siguiente natural.
+  */
+  const [reciénRegistrado, setReciénRegistrado] = useState(false);
   const [auth, setAuth] = useState<{ enabled: boolean; user: string | null; nombre: string }>({
     enabled: false,
     user: null,
@@ -90,6 +98,7 @@ export default function Shell() {
         onDone={(user, nombre) => {
           setAuth((a) => ({ ...a, user, nombre }));
           remember();
+          setReciénRegistrado(true);
           setView("app");
         }}
       />
@@ -112,7 +121,7 @@ export default function Shell() {
     <>
       {pantalla}
       <Novedades />
-      <InstalarApp />
+      <InstalarApp forzar={reciénRegistrado} />
     </>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, JetBrains_Mono, Newsreader } from "next/font/google";
 import { ICONOS } from "@/lib/iconos";
+import { GUION_ANTES_DE_PINTAR } from "@/lib/tema";
 import { SITE_DESCRIPTION as DESCRIPTION, SITE_URL } from "@/lib/site";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
@@ -95,7 +96,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#06070a",
+  // La barra de estado del móvil, a juego con cada tema.
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#06070a" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f7fa" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -110,6 +115,16 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
+      <head>
+        {/*
+          El tema, decidido antes de pintar una sola letra.
+
+          Puesto en React llegaría tarde: la página arrancaría oscura y daría un
+          fogonazo blanco al montar. Son cuatro líneas y evitan lo que peor
+          sienta de un tema claro mal puesto.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: GUION_ANTES_DE_PINTAR }} />
+      </head>
       <body>
         {children}
         <Analytics />

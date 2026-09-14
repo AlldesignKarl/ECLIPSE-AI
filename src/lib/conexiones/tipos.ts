@@ -66,7 +66,7 @@ export interface Servicio {
   id: string;
   nombre: string;
   /** Para agrupar en la pantalla de Conexiones. */
-  familia: "tienda" | "web" | "dominio" | "mercado";
+  familia: "tienda" | "web" | "dominio" | "mercado" | "trabajo";
   /** Una línea de qué se puede hacer conectándolo. */
   resumen: string;
   /** Cómo conseguir la clave, paso a paso y sin dar nada por sabido. */

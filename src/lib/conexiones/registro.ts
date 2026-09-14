@@ -1,7 +1,9 @@
 import { credencialesDe } from "./almacen";
 import { ErrorConexion } from "./http";
+import { github } from "./github";
 import { ionos } from "./ionos";
 import { mercados } from "./mercados";
+import { notion } from "./notion";
 import { shopify } from "./shopify";
 import type { EstadoConexion, Permiso, Servicio } from "./tipos";
 import { wix } from "./wix";
@@ -14,7 +16,7 @@ import { woocommerce } from "./woocommerce";
  * Conexiones, ni la API, ni la herramienta que usa el modelo saben cuántos hay
  * ni cuáles son: todo sale de aquí.
  */
-export const SERVICIOS: Servicio[] = [shopify, woocommerce, wix, ionos, mercados];
+export const SERVICIOS: Servicio[] = [shopify, woocommerce, wix, ionos, notion, github, mercados];
 
 export function servicioDe(id: string): Servicio | undefined {
   return SERVICIOS.find((s) => s.id === id);

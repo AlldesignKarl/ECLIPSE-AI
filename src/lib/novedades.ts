@@ -27,6 +27,20 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.32",
+    // Tema claro, chat que no se guarda, y dos conexiones más.
+    nombre: "A tu manera",
+    titulo: "Ahora ECLIPSE se adapta a ti",
+    entrada:
+      "Tema claro, un chat que no se guarda en ningún sitio, y dos conexiones nuevas: Notion y GitHub.",
+    puntos: [
+      "Tema claro, oscuro o el que tenga puesto tu móvil. Se elige en Ajustes y se guarda en cada dispositivo: el móvil de noche y el ordenador de día no tienen por qué ir igual.",
+      "Chat temporal: lo que escribas ahí no se guarda ni en tu propio móvil, y desaparece al cerrarlo. Para lo que no quieres que quede escrito, sin tener que acordarte de borrarlo.",
+      "Notion: que lea tus notas, tus tareas y tus bases de datos, y escriba dentro. GitHub: que mire el código que ya tienes y te abra incidencias.",
+      "Y al crear la cuenta, después de decirnos cómo quieres que te llamemos, te ofrecemos instalarla: en la pantalla de inicio si estás en el móvil, como programa si estás en el ordenador.",
+    ],
+  },
+  {
     version: "2.31",
     // Las fotos viejas dejan de reenviarse en cada mensaje.
     nombre: "Sin repetirse",

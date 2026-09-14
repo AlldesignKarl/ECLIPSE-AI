@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { aplicarTema, guardarTema, temaGuardado, type Tema } from "@/lib/tema";
 import Modal from "./Modal";
 import * as Icon from "./Icons";
 import type { Plan } from "@/lib/types";
@@ -109,6 +110,64 @@ function Row({ ok, label, hint }: { ok: boolean; label: string; hint: string }) 
         <span className="block text-[11.5px] text-faint">{ok ? "Listo" : hint}</span>
       </span>
     </li>
+  );
+}
+
+/**
+ * Claro, oscuro o el del móvil.
+ *
+ * Va lo primero de Ajustes porque es lo que más gente busca al entrar aquí, y
+ * porque es lo único de esta pantalla que se ve al instante: se pulsa y la
+ * aplicación entera cambia delante.
+ */
+function TemaBox() {
+  const [tema, setTema] = useState<Tema>("oscuro");
+
+  // Lo guardado solo se puede leer ya montados: en el servidor no hay móvil.
+  useEffect(() => {
+    setTema(temaGuardado());
+  }, []);
+
+  // Con "el del sistema" puesto, si el móvil cambia de modo a media tarde, la
+  // aplicación cambia con él sin tener que tocar nada.
+  useEffect(() => {
+    if (tema !== "sistema") return;
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    const alCambiar = () => aplicarTema("sistema");
+    media.addEventListener("change", alCambiar);
+    return () => media.removeEventListener("change", alCambiar);
+  }, [tema]);
+
+  const opciones: { id: Tema; etiqueta: string }[] = [
+    { id: "oscuro", etiqueta: "Oscuro" },
+    { id: "claro", etiqueta: "Claro" },
+    { id: "sistema", etiqueta: "El del móvil" },
+  ];
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Aspecto</div>
+      <div className="flex gap-1.5 rounded-xl border border-line-soft bg-panel/40 p-1">
+        {opciones.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => {
+              setTema(o.id);
+              guardarTema(o.id);
+            }}
+            className={`flex-1 rounded-lg px-3 py-2 text-[13px] transition ${
+              tema === o.id ? "bg-raised text-ink" : "text-muted hover:text-ink"
+            }`}
+          >
+            {o.etiqueta}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
+        Se guarda en este dispositivo: el móvil de noche y el ordenador de día no tienen por qué
+        ir igual.
+      </p>
+    </div>
   );
 }
 
@@ -468,6 +527,8 @@ export default function SettingsDialog({
   return (
     <Modal open={open} onClose={onClose} title="Ajustes">
       <div className="space-y-5">
+        <TemaBox />
+
         {puedeCambiarNombre && (
           <NombreBox nombre={nombre} onNombre={onNombre} />
         )}

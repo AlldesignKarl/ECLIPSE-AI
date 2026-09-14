@@ -111,6 +111,15 @@ export interface Conversation {
    * de ECLIPSE CODE y se contesta como si fuera un chat normal.
    */
   mode?: Mode;
+  /**
+   * Temporal: no se guarda en ningún sitio y desaparece al cerrarla.
+   *
+   * Sirve para lo que uno no quiere que quede escrito en su propio móvil —una
+   * consulta médica, una nómina, una idea a medias— sin tener que acordarse de
+   * borrarla después. Y "no se guarda" es literal: no llega ni a escribirse,
+   * no es que se escriba y se borre.
+   */
+  temporal?: boolean;
 }
 
 /** Estados que se muestran junto al eclipse animado. */
