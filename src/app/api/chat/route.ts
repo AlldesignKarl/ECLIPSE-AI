@@ -303,6 +303,8 @@ async function runGoogle(
     system: sistema,
     turns: opts.body.messages,
     speed: opts.speed,
+    // Sin esto, con Google el archivo de ECLIPSE CODE salía cortado siempre.
+    modo: opts.mode,
     webSearch: opts.wantsWeb,
     key,
     signal: opts.signal,

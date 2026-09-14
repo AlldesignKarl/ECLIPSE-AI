@@ -1,7 +1,7 @@
 import { crearSeparador } from "./pensamiento";
 import { googleKeyFromEnv } from "./keys";
 import { looksLikeDomain } from "./sources";
-import type { Attachment, Speed } from "./types";
+import type { Attachment, Mode, Speed } from "./types";
 
 /**
  * Motor de Google (Gemini). Es el que permite usar ECLIPSE gratis: la capa
@@ -119,8 +119,18 @@ function toContents(turns: Turn[]): Content[] {
   });
 }
 
-/** Cuántas palabras dejamos escribir según lo que haya pedido el usuario. */
-function maxTokens(speed: Speed): number {
+/**
+ * Cuánto se le deja escribir.
+ *
+ * Aquí faltaba el modo, y se notaba justo donde más duele. En ECLIPSE CODE la
+ * respuesta es un archivo entero: una página con diseño de verdad pasa de las
+ * seiscientas líneas y no cabe en 8.192 tokens, así que con Google el archivo
+ * salía cortado siempre, daba igual el cupo que tuviera la cuenta. El otro
+ * camino —Groq, Mistral— ya pedía 32.768 para programar; este se había quedado
+ * con el presupuesto de conversar.
+ */
+function maxTokens(speed: Speed, modo: Mode = "chat"): number {
+  if (modo === "code") return speed === "rapido" ? 12288 : 32768;
   if (speed === "rapido") return 4096;
   if (speed === "profundo") return 16384;
   return 8192;
@@ -187,6 +197,8 @@ export async function* streamChat(opts: {
   system: string;
   turns: Turn[];
   speed: Speed;
+  /** Conversar o programar: cambia cuánto se le deja escribir de una vez. */
+  modo?: Mode;
   webSearch: boolean;
   /** Clave resuelta por quien llama (variable de entorno o dispositivo). */
   key: string;
@@ -208,6 +220,7 @@ async function* unaVuelta(opts: {
   system: string;
   turns: Turn[];
   speed: Speed;
+  modo?: Mode;
   webSearch: boolean;
   key: string;
   signal?: AbortSignal;
@@ -224,7 +237,7 @@ async function* unaVuelta(opts: {
     contents: toContents(opts.turns),
     ...(opts.webSearch ? { tools: [{ google_search: {} }] } : {}),
     generationConfig: {
-      maxOutputTokens: maxTokens(opts.speed),
+      maxOutputTokens: maxTokens(opts.speed, opts.modo),
       temperature: 0.7,
     },
   });
