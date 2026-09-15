@@ -54,6 +54,9 @@ function comoSeVe(grupo: Grupo, email: string) {
       yo: m.email === email,
     })),
     soyDueno: grupo.miembros.some((m) => m.email === email && m.dueno),
+    // Si lleva día, es una quedada: el chat enseña arriba cuándo es y de qué va.
+    fecha: grupo.fecha,
+    nota: grupo.nota,
     // Los grupos de antes de que esto existiera no lo tienen guardado, y se
     // estaban comportando exactamente como el modo por defecto.
     eclipse: grupo.eclipse ?? MODO_POR_DEFECTO,
@@ -85,6 +88,9 @@ export async function GET(req: NextRequest) {
         nombre: grupo.nombre,
         personas: grupo.miembros.length,
         hueco: grupo.miembros.length < MAX_PERSONAS,
+        // A una quedada se entra sabiendo qué día es, que es la mitad de la
+        // información. "Te invitan a algo" no es una invitación.
+        fecha: grupo.fecha,
         // Si ya estaba dentro, no hay nada que aceptar.
         yaDentro: Boolean(email && estaDentro(grupo, email)),
       },
@@ -107,7 +113,12 @@ export async function POST(req: NextRequest) {
   if (!email)
     return no("Para los grupos hay que entrar con tu cuenta: es cómo te ven los demás.", 401, "sin_cuenta");
 
-  const cuerpo = (await req.json().catch(() => ({}))) as { nombre?: string; invitacion?: string };
+  const cuerpo = (await req.json().catch(() => ({}))) as {
+    nombre?: string;
+    invitacion?: string;
+    fecha?: string;
+    nota?: string;
+  };
 
   // Entrar. No hace falta Pro: paga quien monta la mesa, no quien se sienta.
   if (typeof cuerpo.invitacion === "string" && cuerpo.invitacion) {
@@ -121,7 +132,14 @@ export async function POST(req: NextRequest) {
   const nombre = (cuerpo.nombre ?? "").replace(/\s+/g, " ").trim();
   if (!nombre) return no("Ponle un nombre al grupo.", 400);
 
-  const grupo = await crearGrupo(nombre);
+  // Con día es una quedada; sin día, un grupo de siempre. Por dentro es lo
+  // mismo, así que no hay dos caminos que mantener.
+  const fecha = typeof cuerpo.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(cuerpo.fecha)
+    ? cuerpo.fecha
+    : undefined;
+  const nota = typeof cuerpo.nota === "string" ? cuerpo.nota.replace(/\s+/g, " ").trim() : "";
+
+  const grupo = await crearGrupo(nombre, { fecha, nota });
   if (!grupo) return no("Ya tienes demasiados grupos. Sal de alguno para crear otro.", 400);
   return Response.json({ grupo: comoSeVe(grupo, email) });
 }

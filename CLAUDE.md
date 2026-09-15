@@ -109,7 +109,7 @@ src/
                                 de sus propios mensajes (sin llamar al modelo)
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        69 pruebas. Ver pruebas/LEEME.md
+pruebas/                        70 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -285,7 +285,17 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
 - **Que `planear.ts` NO ejecute nada.** Planificar contesta en segundos porque
   solo escribe; ejecutar cuesta medio minuto por encargo, y esperar eso era
   justo lo que había que quitar de en medio.
-- **Las 69 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que el chat de una quedada NO se pinte dentro del modal de Programar.**
+  Dos modales anidados es un fondo oscuro `fixed inset-0` por encima del de
+  dentro: se ve todo perfecto y no responde ni un toque. Por eso `ProgramarDialog`
+  guarda la quedada abierta y, cuando la hay, pinta `Sala` EN LUGAR de su modal.
+- **Que las fotos de un grupo vivan en su propia clave de Redis** y que el
+  mensaje solo lleve el identificador. Metidas dentro del mensaje, abrir un
+  grupo con cuarenta fotos se trae megabytes antes de enseñar nada.
+- **Que `pedirUbicacion()` comparta una sola promesa en curso** y se acuerde de
+  que acaba de fallar. Sin eso el navegador enseña el cartel del permiso dos
+  veces por pregunta, que es justo lo que hace que se diga que no.
+- **Las 70 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -298,7 +308,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 69 pruebas (~5,8 min)
+npm run prueba           # las 70 pruebas (~6 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

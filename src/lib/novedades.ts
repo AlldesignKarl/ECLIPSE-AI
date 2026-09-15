@@ -27,6 +27,22 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.41",
+    // Quedadas con calendario, fotos en los grupos y poder borrar lo que sobra.
+    nombre: "Quedadas",
+    titulo: "Un calendario para quedar, y fotos en el grupo",
+    entrada:
+      "Eliges día, pones de qué va, y ya tienes el chat montado con tus amigos dentro.",
+    puntos: [
+      "Programar abre en un CALENDARIO: tocas el día, escribes la nota («Cena en casa de Ana, traed postre») y caes directo en el chat de esa quedada, con el día y la nota siempre arriba a la vista.",
+      "Dentro del chat están tus amigos y, si queréis, ECLIPSE para que os lo planifique: se enciende y se apaga tocando la gente del grupo. Se entra por un enlace que compartes, y solo con cuenta hecha: a tu quedada no se cuela nadie.",
+      "Ya se pueden mandar FOTOS en los grupos y en las quedadas. Van aparte de los mensajes, así que abrir el chat sigue siendo instantáneo aunque haya cuarenta.",
+      "Y se puede borrar: tocas un mensaje tuyo y sale «Borrar»; quien montó el grupo puede borrar cualquiera, y el grupo entero con sus mensajes y sus fotos.",
+      "El permiso de ubicación se pide UNA vez, no dos por pregunta. Si dices que no, no se vuelve a preguntar.",
+      "Y el fondo: el eclipse, detrás de todo, en el tema oscuro.",
+    ],
+  },
+  {
     version: "2.40",
     // Contestar mejor con menos: al grano, más natural y con menos tokens.
     nombre: "Al grano",

@@ -100,6 +100,33 @@ body {
   margin: 0;
 }
 
+/*
+  El fondo de ECLIPSE.
+  ---------------------------------------------------------------------------
+  La imagen que eligió Carlos: el eclipse en el centro sobre negro. Va fija
+  (no se mueve al desplazar) y cubriendo, así que en cualquier móvil se ve
+  centrada y sin deformarse.
+
+  Tres decisiones que importan:
+
+  - Solo en el tema oscuro. La foto es casi negra: en tema claro dejaría el
+    texto oscuro sobre un fondo oscuro, que es ilegible.
+  - Con un velo encima (`--color-void` al 82%). Sin él, el eclipse compite con
+    la conversación y los bocadillos dejan de leerse. Con él se intuye, que es
+    lo que tiene que hacer un fondo.
+  - En WebP y a 900 píxeles de ancho: 10 KB. El original eran 1,08 MB, y un
+    megabyte de fondo es un segundo de espera en cada arranque con datos.
+*/
+:root:not([data-tema="claro"]) body {
+  background-image:
+    linear-gradient(rgba(6, 7, 10, 0.82), rgba(6, 7, 10, 0.82)),
+    url("/fondo.webp");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }

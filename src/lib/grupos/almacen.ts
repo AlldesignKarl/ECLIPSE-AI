@@ -6,6 +6,8 @@ import {
   comoSeLeVe,
   estaDentro,
   MAX_GRUPOS,
+  MAX_IMAGEN,
+  MAX_IMAGENES,
   MAX_MENSAJES,
   MAX_PERSONAS,
   MODO_POR_DEFECTO,
@@ -30,6 +32,8 @@ const claveMensajes = (id: string) => `eclipse:grupo:mensajes:${id}`;
 const claveMios = (email: string) => `eclipse:grupos:${email}`;
 /** De la invitación al grupo, para poder entrar solo con el enlace. */
 const claveInvitacion = (codigo: string) => `eclipse:invitacion:${codigo}`;
+/** Cada foto en su propia clave: ver el comentario de `MensajeGrupo.imagen`. */
+const claveImagen = (id: string) => `eclipse:grupo:foto:${id}`;
 
 async function leer<T>(k: string): Promise<T | null> {
   try {
@@ -88,7 +92,11 @@ async function desapuntar(email: string, id: string): Promise<void> {
   await set(claveMios(email), JSON.stringify(ids.filter((x) => x !== id)));
 }
 
-export async function crearGrupo(nombre: string): Promise<Grupo | null> {
+export async function crearGrupo(
+  nombre: string,
+  /** Si lleva día, es una quedada. Lo demás funciona exactamente igual. */
+  quedada?: { fecha?: string; nota?: string },
+): Promise<Grupo | null> {
   const email = await quien();
   if (!email) return null;
   if ((await misGrupos()).length >= MAX_GRUPOS) return null;
@@ -97,6 +105,8 @@ export async function crearGrupo(nombre: string): Promise<Grupo | null> {
     id: randomUUID(),
     nombre: nombre.slice(0, 50),
     creado: Date.now(),
+    ...(quedada?.fecha ? { fecha: quedada.fecha } : {}),
+    ...(quedada?.nota ? { nota: quedada.nota.slice(0, 300) } : {}),
     // 16 bytes al azar: adivinar una invitación tiene que ser imposible, no
     // difícil. Es la única llave que hay para entrar.
     invitacion: randomBytes(16).toString("base64url"),
@@ -165,6 +175,7 @@ export async function salirse(id: string): Promise<boolean> {
   await desapuntar(email, id);
 
   if (grupo.miembros.length === 0) {
+    await borrarSusFotos(id);
     await del(clave(id));
     await del(claveMensajes(id));
     await del(claveInvitacion(grupo.invitacion));
@@ -194,6 +205,7 @@ export async function salirDeTodos(email: string): Promise<void> {
 
     grupo.miembros = grupo.miembros.filter((m) => m.email !== email);
     if (grupo.miembros.length === 0) {
+      await borrarSusFotos(id);
       await del(clave(id));
       await del(claveMensajes(id));
       await del(claveInvitacion(grupo.invitacion));
@@ -267,9 +279,33 @@ export async function apuntarMensaje(
 ): Promise<MensajeGrupo> {
   const lista = await mensajesDe(id);
   const nuevo: MensajeGrupo = { ...mensaje, id: randomUUID(), cuando: Date.now() };
+
   // Los últimos al final, y se tira lo más viejo: un grupo que lleva un año
   // abierto no puede crecer sin fin.
-  await set(claveMensajes(id), JSON.stringify([...lista, nuevo].slice(-MAX_MENSAJES)));
+  const quedan = [...lista, nuevo].slice(-MAX_MENSAJES);
+
+  /*
+    Y las fotos de más, fuera de verdad.
+
+    Un mensaje que se cae de la lista con una foto dentro dejaría su foto
+    guardada para siempre, invisible y ocupando sitio. Se borran las que se han
+    caído y las que pasan del tope, de la más vieja a la más nueva.
+  */
+  const vivas = new Set(quedan.map((m) => m.imagen).filter(Boolean));
+  for (const m of lista) {
+    if (m.imagen && !vivas.has(m.imagen)) await del(claveImagen(m.imagen)).catch(() => {});
+  }
+
+  const fotos = quedan.map((m) => m.imagen).filter((x): x is string => Boolean(x));
+  const sobran = fotos.slice(0, Math.max(0, fotos.length - MAX_IMAGENES));
+  for (const foto of sobran) await del(claveImagen(foto)).catch(() => {});
+
+  await set(
+    claveMensajes(id),
+    JSON.stringify(
+      quedan.map((m) => (m.imagen && sobran.includes(m.imagen) ? { ...m, imagen: undefined } : m)),
+    ),
+  );
   return nuevo;
 }
 
@@ -280,9 +316,66 @@ export async function borrarGrupo(id: string): Promise<boolean> {
   const grupo = await grupoDe(id);
   if (!grupo || !grupo.miembros.some((m) => m.email === email && m.dueno)) return false;
 
+  // Las fotos primero: están en claves aparte y, si no se borran aquí, se
+  // quedan en la base de datos para siempre sin que nadie pueda verlas ya.
+  await borrarSusFotos(id);
   for (const m of grupo.miembros) await desapuntar(m.email, id);
   await del(clave(id));
   await del(claveMensajes(id));
   await del(claveInvitacion(grupo.invitacion));
+  return true;
+}
+
+/* -------------------------------- Las fotos ------------------------------- */
+
+/** Guarda la foto aparte y devuelve su nombre, que es lo que va al mensaje. */
+export async function guardarImagen(grupoId: string, dataUrl: string): Promise<string | null> {
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(dataUrl)) return null;
+  if (dataUrl.length > MAX_IMAGEN) return null;
+
+  const id = `${grupoId}:${randomUUID()}`;
+  await set(claveImagen(id), dataUrl);
+  return id;
+}
+
+export async function imagenDe(id: string): Promise<string | null> {
+  const v = await get(claveImagen(id)).catch(() => null);
+  return v ? String(v) : null;
+}
+
+/** Las fotos de un grupo, de la más vieja a la más nueva. */
+async function fotosDelGrupo(id: string): Promise<string[]> {
+  return (await mensajesDe(id)).map((m) => m.imagen).filter((x): x is string => Boolean(x));
+}
+
+async function borrarSusFotos(id: string): Promise<void> {
+  for (const foto of await fotosDelGrupo(id)) await del(claveImagen(foto)).catch(() => {});
+}
+
+/**
+ * Borrar un mensaje.
+ *
+ * Lo tuyo siempre; y quien creó el grupo puede quitar cualquiera, que es lo que
+ * hace falta cuando alguien sube algo que no debía. Lo de ECLIPSE lo puede
+ * quitar el dueño: es el único que no tiene a nadie que le defienda.
+ */
+export async function borrarMensaje(id: string, mensajeId: string): Promise<boolean> {
+  const email = await quien();
+  if (!email) return false;
+
+  const grupo = await grupoDe(id);
+  if (!grupo || !estaDentro(grupo, email)) return false;
+
+  const lista = await mensajesDe(id);
+  const mensaje = lista.find((m) => m.id === mensajeId);
+  if (!mensaje) return false;
+
+  const esDueno = grupo.miembros.some((m) => m.email === email && m.dueno);
+  if (mensaje.de !== email && !esDueno) return false;
+
+  // La foto se va con él: dejarla guardada es guardar lo que alguien acaba de
+  // pedir que se borre.
+  if (mensaje.imagen) await del(claveImagen(mensaje.imagen)).catch(() => {});
+  await set(claveMensajes(id), JSON.stringify(lista.filter((m) => m.id !== mensajeId)));
   return true;
 }

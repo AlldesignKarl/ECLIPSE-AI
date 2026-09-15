@@ -39,7 +39,7 @@ const MODOS: { id: ModoEclipse; corto: string; explicacion: string }[] = [
   { id: "no", corto: "No está", explicacion: "No lee ni contesta nada." },
 ];
 
-interface Grupo {
+export interface Grupo {
   id: string;
   nombre: string;
   miembros: Miembro[];
@@ -47,6 +47,21 @@ interface Grupo {
   invitacion?: string;
   hueco: boolean;
   eclipse?: ModoEclipse;
+  /** Si lleva día, es una quedada: un grupo con fecha. */
+  fecha?: string;
+  nota?: string;
+}
+
+/** "sábado, 20 de septiembre", que es como se dice una fecha. */
+function comoSeLeeLaFecha(fecha: string): string {
+  const [ano, mes, dia] = fecha.split("-").map(Number);
+  if (!ano || !mes || !dia) return fecha;
+  return new Date(Date.UTC(ano, mes - 1, dia)).toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
 }
 
 /** Lo que se puede saber de un grupo SIN estar dentro. */
@@ -65,8 +80,45 @@ interface Mensaje {
   cuando: number;
   mio: boolean;
   deEclipse: boolean;
+  /** El nombre de la foto, si la lleva. La foto se pide aparte. */
+  imagen?: string;
+  /** Si esta persona puede quitarlo: lo suyo, o cualquiera si creó el grupo. */
+  borrable?: boolean;
   /** Pintado ya, todavía sin confirmar por el servidor. */
   enCamino?: boolean;
+  /** Vista previa local mientras sube: la foto se ve antes de llegar. */
+  previa?: string;
+}
+
+/**
+ * Una foto de móvil, lista para un grupo.
+ *
+ * Se encoge AQUÍ, antes de subirla. Una foto de móvil son cuatro megas y en un
+ * grupo la bajan todos: subirla tal cual es gastar los datos de cinco personas
+ * para enseñar algo que se va a ver en una pantalla de seis pulgadas.
+ */
+function encogerFoto(fichero: File): Promise<string> {
+  return new Promise((listo, falla) => {
+    const lector = new FileReader();
+    lector.onerror = () => falla(new Error("No se ha podido leer la foto."));
+    lector.onload = () => {
+      const img = new Image();
+      img.onerror = () => falla(new Error("Ese archivo no es una foto."));
+      img.onload = () => {
+        const LADO = 1280;
+        const escala = Math.min(1, LADO / Math.max(img.width, img.height));
+        const lienzo = document.createElement("canvas");
+        lienzo.width = Math.round(img.width * escala);
+        lienzo.height = Math.round(img.height * escala);
+        const pincel = lienzo.getContext("2d");
+        if (!pincel) return falla(new Error("Este navegador no puede prepararla."));
+        pincel.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+        listo(lienzo.toDataURL("image/jpeg", 0.72));
+      };
+      img.src = String(lector.result);
+    };
+    lector.readAsDataURL(fichero);
+  });
 }
 
 interface Props {
@@ -449,7 +501,44 @@ function cuandoDe(momento: number): string {
 }
 
 /** Dentro del grupo. */
-function Sala({
+/**
+ * La foto de un mensaje.
+ *
+ * Mientras sube se enseña la que hay en el móvil (`previa`), así que se ve al
+ * instante; cuando el servidor la tiene, se pide por su dirección y el
+ * navegador la guarda en su caché para siempre. Las fotos NO viajan dentro de
+ * la lista de mensajes, que se pide cada segundo y medio: eso sería reenviarlas
+ * todas, a todos, todo el rato.
+ */
+function Foto({ mensaje, grupo }: { mensaje: Mensaje; grupo: string }) {
+  const src =
+    mensaje.previa ??
+    (mensaje.imagen
+      ? `/api/grupos/mensajes?id=${grupo}&foto=${encodeURIComponent(mensaje.imagen)}`
+      : "");
+  if (!src) return null;
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className={`mb-1 max-h-72 w-auto max-w-full rounded-2xl border border-line-soft ${
+        mensaje.enCamino ? "opacity-70" : ""
+      }`}
+    />
+  );
+}
+
+/**
+ * El chat de un grupo. Se exporta porque las QUEDADAS lo reutilizan tal cual.
+ *
+ * Una quedada es un grupo con fecha, así que su chat es este mismo: las fotos,
+ * el invitar, el borrar y ECLIPSE dentro ya funcionan aquí. Escribir un segundo
+ * chat para las quedadas habría sido mantener dos cosas iguales y que una de
+ * las dos se quedara atrás.
+ */
+export function Sala({
   grupo,
   open,
   onVolver,
@@ -471,6 +560,11 @@ function Sala({
   const [cambiandoEclipse, setCambiandoEclipse] = useState(false);
   /** El último mensaje para el que ya se ha pedido respuesta. */
   const pedido = useRef("");
+  /** El mensaje que se ha tocado, para poder borrarlo. */
+  const [tocado, setTocado] = useState<string | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const foto = useRef<HTMLInputElement>(null);
   const fondo = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(async () => {
@@ -493,7 +587,9 @@ function Sala({
       setMensajes((previos) => [
         ...llegados,
         ...previos.filter(
-          (m) => m.enCamino && !llegados.some((s) => s.mio && s.texto === m.texto),
+          (m) =>
+            m.enCamino &&
+            !llegados.some((s) => s.mio && s.texto === m.texto && Boolean(s.imagen) === Boolean(m.previa)),
         ),
       ]);
       // Quién hay dentro también cambia mientras se mira: si no se refresca,
@@ -563,10 +659,11 @@ function Sala({
    * sus segundos, es la que le pide la respuesta a ECLIPSE. No se espera a la
    * segunda para nada: la respuesta cae sola en el siguiente vistazo.
    */
-  const enviar = () => {
+  const enviar = (imagen?: string) => {
     const dicho = texto.trim();
-    if (!dicho) return;
+    if (!dicho && !imagen) return;
     setTexto("");
+    setAviso(null);
 
     setMensajes((m) => [
       ...m,
@@ -578,6 +675,7 @@ function Sala({
         mio: true,
         deEclipse: false,
         enCamino: true,
+        previa: imagen,
       },
     ]);
 
@@ -586,8 +684,14 @@ function Sala({
         const r = await fetch("/api/grupos/mensajes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: grupo.id, texto: dicho }),
+          body: JSON.stringify({ id: grupo.id, texto: dicho, imagen }),
         });
+        if (!r.ok) {
+          const d = (await r.json().catch(() => ({}))) as { error?: string };
+          setAviso(d.error ?? "No se ha podido mandar.");
+          setMensajes((m) => m.filter((x) => !x.enCamino));
+          return;
+        }
         const d = (await r.json()) as { contesta?: boolean; id?: string };
         // Apuntado como pedido: si no, el vistazo de dentro de un segundo lo
         // pediría otra vez por su cuenta.
@@ -611,6 +715,15 @@ function Sala({
         /* al recargar se verá si llegó */
       }
     })();
+  };
+
+  const borrarMensaje = async (id: string) => {
+    setTocado(null);
+    setMensajes((m) => m.filter((x) => x.id !== id));
+    await fetch(`/api/grupos/mensajes?id=${grupo.id}&mensaje=${id}`, { method: "DELETE" }).catch(
+      () => {},
+    );
+    void cargar();
   };
 
   const enlace =
@@ -638,6 +751,7 @@ function Sala({
 
           <button
             onClick={() => setGente(!gente)}
+            aria-label="Quién está"
             className="ml-auto flex min-w-0 items-center gap-1.5 text-[12.5px] text-faint transition hover:text-ink"
           >
             <span className="flex -space-x-1.5">
@@ -668,6 +782,27 @@ function Sala({
 
           <BotonInvitar grupo={grupo} enlace={enlace} />
         </div>
+
+        {/*
+          Si es una quedada, cuándo es. Arriba y siempre a la vista: es la mitad
+          de la información de una quedada, y tenerla que buscar en el chat es
+          justo lo que se venía a evitar.
+        */}
+        {grupo.fecha && (
+          <div className="mt-2.5 flex items-start gap-2.5 rounded-xl border border-pro/25 bg-pro/[0.06] px-3.5 py-2.5">
+            <Icon.Calendar width={15} height={15} className="mt-0.5 shrink-0 text-pro" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12.5px] font-medium capitalize text-ink">
+                {comoSeLeeLaFecha(grupo.fecha)}
+              </span>
+              {grupo.nota && (
+                <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted">
+                  {grupo.nota}
+                </span>
+              )}
+            </span>
+          </div>
+        )}
 
         {gente && (
           <div className="mt-2.5 rounded-xl border border-line-soft bg-panel/40 p-3">
@@ -734,9 +869,34 @@ function Sala({
               ))}
             </ul>
             <p className="mt-2.5 border-t border-line-soft pt-2.5 text-[11.5px] leading-relaxed text-faint">
-              Nadie ve el correo de nadie: solo el nombre que cada uno eligió. Quien abra la
-              invitación entra en el grupo, así que mándala solo a quien quieras dentro.
+              Nadie ve el correo de nadie: solo el nombre que cada uno eligió. Para entrar hay que
+              tener cuenta en ECLIPSE, así que manda la invitación solo a quien quieras dentro.
             </p>
+
+            {/*
+              La puerta de salida, que faltaba.
+
+              No había forma de deshacerse de un grupo: ni borrarlo quien lo
+              montó ni salirse los demás. Un sitio del que no se puede salir no
+              es un sitio, es una trampa.
+            */}
+            <button
+              onClick={async () => {
+                const suyo = grupo.soyDueno;
+                const texto = suyo
+                  ? `¿Borrar «${grupo.nombre}» para todos? Se va con sus mensajes y sus fotos, y no se puede deshacer.`
+                  : `¿Salirte de «${grupo.nombre}»?`;
+                if (!confirm(texto)) return;
+                await fetch(`/api/grupos?id=${grupo.id}${suyo ? "&borrar=1" : ""}`, {
+                  method: "DELETE",
+                }).catch(() => {});
+                onVolver();
+              }}
+              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-line py-2 text-[12.5px] text-faint transition hover:border-danger/40 hover:text-danger"
+            >
+              <Icon.Trash width={13} height={13} />
+              {grupo.soyDueno ? "Borrar el grupo" : "Salirme del grupo"}
+            </button>
           </div>
         )}
 
@@ -777,11 +937,27 @@ function Sala({
               return (
                 <div key={m.id} className={`flex justify-end ${seguido ? "-mt-1.5" : ""}`}>
                   <div className={`max-w-[80%] ${m.enCamino ? "opacity-60" : ""}`}>
-                    <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md border border-tuyo-borde bg-tuyo px-3.5 py-2 text-[14px] leading-relaxed text-ink">
-                      {m.texto}
-                    </div>
-                    <span className="mt-0.5 block text-right text-[10.5px] text-faint">
-                      {cuandoDe(m.cuando)}
+                    <button
+                      onClick={() => setTocado(tocado === m.id ? null : m.id)}
+                      className="block w-full text-left"
+                    >
+                      <Foto mensaje={m} grupo={grupo.id} />
+                      {m.texto && (
+                        <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md border border-tuyo-borde bg-tuyo px-3.5 py-2 text-[14px] leading-relaxed text-ink">
+                          {m.texto}
+                        </div>
+                      )}
+                    </button>
+                    <span className="mt-0.5 flex items-center justify-end gap-2.5">
+                      {tocado === m.id && m.borrable && (
+                        <button
+                          onClick={() => void borrarMensaje(m.id)}
+                          className="text-[11px] text-faint transition hover:text-danger"
+                        >
+                          Borrar
+                        </button>
+                      )}
+                      <span className="text-[10.5px] text-faint">{cuandoDe(m.cuando)}</span>
                     </span>
                   </div>
                 </div>
@@ -814,13 +990,29 @@ function Sala({
                       <span className="text-[10.5px] text-faint">{cuandoDe(m.cuando)}</span>
                     </span>
                   )}
-                  <div
-                    className={`whitespace-pre-wrap break-words rounded-2xl rounded-tl-md px-3.5 py-2 text-[14px] leading-relaxed text-ink ${
-                      m.deEclipse ? "border border-pro/20 bg-pro/[0.06]" : "bg-panel"
-                    }`}
+                  <button
+                    onClick={() => setTocado(tocado === m.id ? null : m.id)}
+                    className="block w-full text-left"
                   >
-                    {m.texto}
-                  </div>
+                    <Foto mensaje={m} grupo={grupo.id} />
+                    {m.texto && (
+                      <div
+                        className={`whitespace-pre-wrap break-words rounded-2xl rounded-tl-md px-3.5 py-2 text-[14px] leading-relaxed text-ink ${
+                          m.deEclipse ? "border border-pro/20 bg-pro/[0.06]" : "bg-panel"
+                        }`}
+                      >
+                        {m.texto}
+                      </div>
+                    )}
+                  </button>
+                  {tocado === m.id && m.borrable && (
+                    <button
+                      onClick={() => void borrarMensaje(m.id)}
+                      className="mt-0.5 text-[11px] text-faint transition hover:text-danger"
+                    >
+                      Borrar
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -851,7 +1043,37 @@ function Sala({
           )}
         </div>
 
+        {aviso && <p className="pt-1 text-[12px] leading-relaxed text-danger">{aviso}</p>}
+
         <div className="flex gap-2 border-t border-line-soft pt-3">
+          <button
+            onClick={() => foto.current?.click()}
+            disabled={subiendo}
+            aria-label="Mandar una foto"
+            className="shrink-0 rounded-xl border border-line px-3 text-muted transition hover:text-ink disabled:opacity-50"
+          >
+            <Icon.Image width={17} height={17} />
+          </button>
+          <input
+            ref={foto}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (!f) return;
+              setSubiendo(true);
+              setAviso(null);
+              try {
+                enviar(await encogerFoto(f));
+              } catch (err) {
+                setAviso(err instanceof Error ? err.message : "No se ha podido usar esa foto.");
+              } finally {
+                setSubiendo(false);
+              }
+            }}
+          />
           <input
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
@@ -866,7 +1088,7 @@ function Sala({
             className="min-w-0 flex-1 rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[14px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
           />
           <button
-            onClick={enviar}
+            onClick={() => enviar()}
             disabled={!texto.trim()}
             aria-label="Enviar"
             className="shrink-0 rounded-xl bg-ink px-4 text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"

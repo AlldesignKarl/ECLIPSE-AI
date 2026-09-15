@@ -7,7 +7,15 @@ import { conversarConHerramientas } from "@/lib/tools/bucle";
 import type { CompatProvider } from "@/lib/openai-compat";
 import { del as olvidar, tomarTurno } from "@/lib/store";
 import { unaRespuesta } from "@/lib/una-respuesta";
-import { apuntarMensaje, grupoDe, mensajesDe, quien } from "@/lib/grupos/almacen";
+import {
+  apuntarMensaje,
+  borrarMensaje,
+  grupoDe,
+  guardarImagen,
+  imagenDe,
+  mensajesDe,
+  quien,
+} from "@/lib/grupos/almacen";
 import { comoSeLeVe, estaDentro, leHablanAEclipse, MODO_POR_DEFECTO } from "@/lib/grupos/tipos";
 
 export const runtime = "nodejs";
@@ -90,7 +98,40 @@ async function puerta(id: string) {
 
 /** Lo que se ha dicho. El navegador lo pide cada pocos segundos. */
 export async function GET(req: NextRequest) {
-  const id = new URL(req.url).searchParams.get("id") ?? "";
+  const url = new URL(req.url);
+  const id = url.searchParams.get("id") ?? "";
+
+  /*
+    Una foto del grupo.
+
+    Se sirve aquí y no dentro de la lista de mensajes porque la lista se pide
+    cada segundo y medio: mandar las fotos ahí dentro sería reenviarlas todas,
+    a todos, todo el rato. Así cada foto se baja una vez y el navegador la
+    guarda en su caché.
+  */
+  const foto = url.searchParams.get("foto");
+  if (foto) {
+    const paso = await puerta(id);
+    if ("error" in paso) return Response.json({ error: paso.error }, { status: paso.status });
+    // Que la foto sea de ESTE grupo: el identificador lleva el grupo delante.
+    if (!foto.startsWith(`${id}:`))
+      return Response.json({ error: "Esa foto no es de este grupo." }, { status: 403 });
+
+    const datos = await imagenDe(foto);
+    if (!datos) return Response.json({ error: "Esa foto ya no está." }, { status: 404 });
+
+    const [cabecera, base64] = datos.split(",");
+    const tipo = /data:([^;]+)/.exec(cabecera)?.[1] ?? "image/jpeg";
+    return new Response(Buffer.from(base64, "base64"), {
+      headers: {
+        "Content-Type": tipo,
+        // Una foto no cambia nunca: se guarda en el navegador y no se vuelve a
+        // pedir. Privada, que es de un grupo y no de internet.
+        "Cache-Control": "private, max-age=31536000, immutable",
+      },
+    });
+  }
+
   const paso = await puerta(id);
   if ("error" in paso) return Response.json({ error: paso.error }, { status: paso.status });
 
@@ -105,6 +146,12 @@ export async function GET(req: NextRequest) {
       cuando: m.cuando,
       mio: m.de === paso.email,
       deEclipse: m.de === null,
+      imagen: m.imagen,
+      // Se puede borrar lo tuyo; y quien creó el grupo puede quitar cualquiera,
+      // que es lo que hace falta cuando alguien sube algo que no debía.
+      borrable:
+        m.de === paso.email ||
+        paso.grupo.miembros.some((x) => x.email === paso.email && x.dueno),
     })),
     /*
       Y quién hay dentro ahora mismo.
@@ -136,16 +183,43 @@ export async function GET(req: NextRequest) {
  * esto guarda y contesta al instante; la respuesta de ECLIPSE se pide aparte y
  * cae sola en el grupo cuando está.
  */
+/**
+ * Quitar un mensaje.
+ *
+ * El tuyo siempre; y si creaste el grupo, cualquiera: es lo que hace falta
+ * cuando alguien sube algo que no debía y no está para borrarlo él.
+ */
+export async function DELETE(req: NextRequest) {
+  const url = new URL(req.url);
+  const hecho = await borrarMensaje(
+    url.searchParams.get("id") ?? "",
+    url.searchParams.get("mensaje") ?? "",
+  );
+  if (!hecho) return Response.json({ error: "Ese mensaje no se puede borrar." }, { status: 403 });
+  return Response.json({ ok: true });
+}
+
 export async function POST(req: NextRequest) {
   const url = new URL(req.url);
   if (url.searchParams.get("responder") === "1") return responder(req);
 
-  const { id, texto } = (await req.json().catch(() => ({}))) as { id?: string; texto?: string };
+  const { id, texto, imagen } = (await req.json().catch(() => ({}))) as {
+    id?: string;
+    texto?: string;
+    imagen?: string;
+  };
   const paso = await puerta(String(id ?? ""));
   if ("error" in paso) return Response.json({ error: paso.error }, { status: paso.status });
 
   const dicho = (texto ?? "").trim().slice(0, 4000);
-  if (!dicho) return Response.json({ error: "No has escrito nada." }, { status: 400 });
+  // Con foto no hace falta texto: una foto ya es un mensaje.
+  const foto = imagen ? await guardarImagen(paso.grupo.id, imagen) : null;
+  if (imagen && !foto)
+    return Response.json(
+      { error: "Esa foto no se ha podido subir. Prueba con otra: tienen que ser JPG, PNG o WEBP." },
+      { status: 400 },
+    );
+  if (!dicho && !foto) return Response.json({ error: "No has escrito nada." }, { status: 400 });
 
   const yo = paso.grupo.miembros.find((m) => m.email === paso.email);
   const anteriores = await mensajesDe(paso.grupo.id);
@@ -154,6 +228,7 @@ export async function POST(req: NextRequest) {
     de: paso.email,
     nombre: yo?.nombre ?? "alguien",
     texto: dicho,
+    ...(foto ? { imagen: foto } : {}),
   });
 
   const modo = paso.grupo.eclipse ?? MODO_POR_DEFECTO;
@@ -213,7 +288,10 @@ async function responder(req: NextRequest) {
 
   const historia = mensajes
     .slice(-40)
-    .map((m) => (m.de === null ? `ECLIPSE: ${m.texto}` : `${m.nombre}: ${m.texto}`))
+    .map((m) => {
+      const foto = m.imagen ? " [ha mandado una foto al grupo; tú no puedes verla]" : "";
+      return m.de === null ? `ECLIPSE: ${m.texto}` : `${m.nombre}: ${m.texto}${foto}`;
+    })
     .join("\n");
 
   const peticion = `Esto es lo que se ha dicho en el grupo «${paso.grupo.nombre}»:\n\n${historia}\n\nContesta a lo último.`;

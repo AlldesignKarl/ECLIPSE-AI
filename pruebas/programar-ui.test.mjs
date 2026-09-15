@@ -106,8 +106,13 @@ try {
   await entrada.click();
   await p.waitForTimeout(1500);
 
+  // Programar abre en QUEDADAS desde que hay calendario; los encargos están en
+  // su pestaña, al lado.
+  await p.getByRole("button", { name: "Encargos" }).click();
+  await p.waitForTimeout(800);
+
   ok(await p.getByText("Que te lo planifique ECLIPSE").isVisible(),
-     "lo primero que hay, sin nada puesto, es que te lo planifique él");
+     "en Encargos, lo primero sin nada puesto es que te lo planifique él");
   await p.screenshot({ path: `${AQUI}pr1-vacio.png` });
 
   console.log("\nPedirle el plan");

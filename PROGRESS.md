@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-Última actualización: **15 de septiembre de 2026** (segunda sesión del día)
+Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.40**
+usuario: **2.41**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,11 +11,11 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 69 pruebas en verde.
-En esta sesión se han hecho las tres cosas que pidió Carlos: ECLIPSE se ve y se
-configura dentro de los grupos, hay 21 conexiones en vez de 9, y Programar tiene
-calendario y monta el plan él solo. Lo que queda son mejoras y dos decisiones
-suyas pendientes, no averías.
+La aplicación está **en producción y funcionando**, con 70 pruebas en verde.
+Lo último: Programar abre en un **calendario de quedadas** que te mete en su
+chat, en los grupos ya se mandan **fotos** y se puede **borrar** lo que sobre
+—mensajes y el grupo entero—, la **ubicación se pide una sola vez** y el eclipse
+está de fondo. Lo que queda son mejoras, no averías.
 
 ---
 
@@ -105,6 +105,45 @@ Qué se ha hecho:
    ayudarle otro día, y cabe en una frase). Y en la duda, no se guarda.
 8. **`pruebas/contexto.test.mjs`**: un presupuesto escrito de lo que puede
    ocupar todo esto. Si alguien añade reglas de más, falla ahí.
+
+---
+
+## 3 bis. Quedadas, fotos, borrar y la ubicación
+
+Lo que pidió Carlos, entero:
+
+1. **Un calendario para quedar.** `Programar` abre ahora en **Quedadas** (los
+   encargos siguen ahí, en su pestaña). Se toca un día del mes, se escribe la
+   nota y se cae **directo dentro del chat** de esa quedada, con el día escrito
+   en cristiano ("martes, 21 de octubre") y la nota arriba, siempre a la vista.
+   Por dentro **una quedada es un grupo con fecha**: nace con el invitar por
+   enlace, las fotos, el borrar y ECLIPSE dentro con su interruptor. Un segundo
+   chat paralelo habría sido mantener dos cosas iguales y que una se quedara
+   atrás.
+2. **Solo se entra con cuenta.** El enlace enseña de qué va la quedada y de
+   quién es, y para pasar hay que estar registrado. Era condición suya.
+3. **Fotos en los grupos y en las quedadas.** La foto se encoge en el móvil
+   (1280 px, JPEG) y se guarda **en su propia clave de Redis**; el mensaje solo
+   lleva su identificador. Metidas dentro del mensaje, abrir un grupo con
+   cuarenta fotos se traería megabytes antes de enseñar nada. Se sirven con
+   `Cache-Control: private` y solo a quien está dentro del grupo (a los demás,
+   403). Tope de 40 por grupo: al entrar la 41, se va la más vieja con su foto.
+4. **Borrar.** Tocas un mensaje tuyo y sale «Borrar». Quien montó el grupo puede
+   borrar cualquiera, y el grupo entero —con sus mensajes y sus fotos—; los
+   demás pueden salirse. Un sitio del que no se puede salir no es un sitio.
+5. **La ubicación, una vez.** Se pedía dos veces por pregunta: había dos
+   llamadas a la vez y ninguna sabía de la otra. Ahora comparte una sola promesa
+   en curso, mira el permiso antes de pedirlo (si está denegado no enseña nada)
+   y si falla se apunta 12 horas sin volver a molestar.
+6. **El fondo.** El eclipse que mandó Carlos, en `public/fondo.webp` (10 KB: del
+   PNG de 1,08 MB, que en un móvil con datos era medio segundo en blanco). Solo
+   en tema oscuro, con una capa por encima para que el texto siga legible.
+
+Y un fallo que salió al probarlo en un navegador de verdad: el chat de la
+quedada se pintaba **dentro** del modal de Programar, y un modal dentro de otro
+modal deja el fondo oscuro del de fuera por encima: se veía perfecto y no
+respondía ni un toque. Ahora `ProgramarDialog` pinta el chat **en lugar de** su
+modal.
 
 ---
 
@@ -282,10 +321,10 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**67 archivos, todas en verde.** Viven en `pruebas/`.
+**70 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
-npm run prueba           # todas (~5 min)
+npm run prueba           # todas (~6 min)
 npm run prueba:ligeras   # las 53 sin navegador (~10 s) ← para trabajar
 node pruebas/mapa.test.mjs   # una suelta
 ```
@@ -321,8 +360,7 @@ hace falta, la aplicación entera con Playwright. Detalles en `pruebas/LEEME.md`
    queda por separar es el envío y el estado de la conversación.
 4. **Que la memoria avise cuando no puede aprender** (problema 4 de arriba), o
    al menos que se vea en Ajustes.
-5. **Adjuntar imágenes en los grupos.** Ahora solo texto.
-6. **Notificaciones push** cuando termina un encargo programado.
+5. **Notificaciones push** cuando termina un encargo programado.
 
 ### Lo que NO hay que hacer aunque parezca buena idea
 

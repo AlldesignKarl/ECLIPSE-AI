@@ -88,6 +88,7 @@ function sesion() {
       const v = par.slice(i + 1);
       if (v) g.set(par.slice(0, i), v); else g.delete(par.slice(0, i));
     }
+    if (opciones.crudo) return { estado: r.status, json: null, respuesta: r };
     const t = await r.text();
     let json = null; try { json = JSON.parse(t); } catch { /* */ }
     return { estado: r.status, json };
@@ -175,6 +176,55 @@ try {
   const alModelo = JSON.stringify(globalThis.__ultimo ?? {});
   ok(/Ana:/.test(alModelo) && /Luis:/.test(alModelo), "al modelo le llega quién dijo qué");
   ok(/GRUPO/.test(alModelo), "y que esto es un grupo");
+
+  console.log("\nFotos en el grupo");
+  // Un JPEG de un píxel: lo que importa aquí no es la foto, es el camino.
+  const PIXEL =
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+  const conFoto = await ana("/api/grupos/mensajes", { method: "POST", body: JSON.stringify({ id: grupo.id, imagen: PIXEL }) });
+  ok(conFoto.json?.ok === true, "se puede mandar una foto sin escribir nada: una foto ya es un mensaje");
+
+  const conImagenes = await luis(`/api/grupos/mensajes?id=${grupo.id}`);
+  const laFoto = (conImagenes.json?.mensajes ?? []).find((m) => m.imagen);
+  ok(Boolean(laFoto), "la foto aparece en el grupo para los demás");
+  ok(!JSON.stringify(conImagenes.json).includes("/9j/4AAQ"),
+     "pero la foto NO viaja dentro de la lista de mensajes, que se pide cada segundo y medio");
+
+  const bajada = (await luis(`/api/grupos/mensajes?id=${grupo.id}&foto=${encodeURIComponent(laFoto.imagen)}`, { crudo: true })).respuesta;
+  ok(bajada.headers.get("content-type")?.startsWith("image/"), "se baja aparte, como una imagen de verdad");
+  ok((bajada.headers.get("cache-control") ?? "").includes("private"), "y en privado: es de un grupo, no de internet");
+
+  const deFuera = sesion();
+  await deFuera("/api/auth", { method: "POST", body: JSON.stringify({ action: "signup", email: `foto${Date.now()}@ejemplo.com`, password: "eclipse2026" }) });
+  const ajena = await deFuera(`/api/grupos/mensajes?id=${grupo.id}&foto=${encodeURIComponent(laFoto.imagen)}`);
+  ok(ajena.estado === 403, `quien no está en el grupo no ve sus fotos (${ajena.estado})`);
+
+  const grande = await ana("/api/grupos/mensajes", { method: "POST", body: JSON.stringify({ id: grupo.id, imagen: `data:image/jpeg;base64,${"A".repeat(950_000)}` }) });
+  ok(grande.estado === 400, "una foto sin encoger se rechaza en vez de reventar la base de datos");
+
+  console.log("\nBorrar un mensaje");
+  const paraBorrar = await ana(`/api/grupos/mensajes?id=${grupo.id}`);
+  const mio = (paraBorrar.json?.mensajes ?? []).find((m) => m.mio);
+  ok(mio?.borrable === true, "lo tuyo se puede borrar");
+  const suyoDeOtro = (paraBorrar.json?.mensajes ?? []).find((m) => !m.mio && !m.deEclipse);
+  ok(suyoDeOtro?.borrable === true, "y quien creó el grupo puede quitar cualquiera");
+
+  const fuera = await ana(`/api/grupos/mensajes?id=${grupo.id}&mensaje=${mio.id}`, { method: "DELETE" });
+  ok(fuera.json?.ok === true, "se borra");
+  const despuesDeBorrar = await ana(`/api/grupos/mensajes?id=${grupo.id}`);
+  ok(!(despuesDeBorrar.json?.mensajes ?? []).some((m) => m.id === mio.id), "y ya no está para nadie");
+
+  const borradoAjeno = await deFuera(`/api/grupos/mensajes?id=${grupo.id}&mensaje=${suyoDeOtro.id}`, { method: "DELETE" });
+  ok(borradoAjeno.estado === 403, "y alguien de fuera no puede borrar nada");
+
+  console.log("\nUna quedada es un grupo con día");
+  const quedada = await ana("/api/grupos", { method: "POST", body: JSON.stringify({ nombre: "Cena", fecha: "2026-10-03", nota: "En casa de Ana, traed postre" }) });
+  ok(quedada.json?.grupo?.fecha === "2026-10-03", "se crea con su fecha");
+  ok(/postre/.test(quedada.json?.grupo?.nota ?? ""), "y con su nota");
+  const mirada = await ana(`/api/grupos?invitacion=${quedada.json.grupo.invitacion}`);
+  ok(mirada.json?.ojeada?.fecha === "2026-10-03", "quien recibe la invitación ve qué día es antes de entrar");
+  const malaFecha = await ana("/api/grupos", { method: "POST", body: JSON.stringify({ nombre: "X", fecha: "el jueves" }) });
+  ok(!malaFecha.json?.grupo?.fecha, "una fecha que no es una fecha no se guarda");
 
   console.log("\nQuien no está dentro, no entra");
   const ajeno = sesion();

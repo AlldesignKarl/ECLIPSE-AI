@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "./Modal";
 import * as Icon from "./Icons";
 import type { Plan } from "@/lib/types";
+import { Sala, type Grupo } from "./GruposDialog";
+import { comoSeLeeLaFecha } from "@/lib/grupos/tipos";
 import {
   DIAS,
   fechaDe,
@@ -116,6 +118,21 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
   /** Cuántos encargos quedan por hacer hoy, y si se están haciendo ahora. */
   const [porHacer, setPorHacer] = useState(0);
   const [haciendo, setHaciendo] = useState<string | null>(null);
+  /*
+    Dos cosas distintas en la misma pantalla, y con razón: las dos son
+    "programar". Las QUEDADAS son con gente y tienen día; los ENCARGOS los hace
+    ECLIPSE solo. Se abre en quedadas, que es lo que se usa a diario.
+  */
+  const [vista, setVista] = useState<"quedadas" | "encargos">("quedadas");
+
+  /*
+    La quedada abierta vive AQUÍ y no dentro del calendario.
+
+    Su chat es un modal, y un modal dentro de otro modal no se puede tocar: el
+    fondo oscuro del de fuera queda por encima y se come los toques. Así que
+    cuando hay una quedada abierta, Programar no se pinta y se pinta el chat.
+  */
+  const [quedada, setQuedada] = useState<Grupo | null>(null);
 
   const recargar = useCallback(async () => {
     setCargando(true);
@@ -192,20 +209,58 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
 
   const sinLeer = resultados.filter((r) => r.nueva).length;
 
+  if (open && quedada)
+    return (
+      <Sala
+        grupo={quedada}
+        open
+        onVolver={() => setQuedada(null)}
+        onClose={() => {
+          setQuedada(null);
+          onClose();
+        }}
+      />
+    );
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="Programar"
       subtitle={
-        tareas.length
-          ? `${tareas.length === 1 ? "Un encargo" : `${tareas.length} encargos`}. ECLIPSE los hace solo y te los deja aquí.`
-          : "Déjale dicho algo una vez y lo hace solo, cada día o cada semana."
+        vista === "quedadas"
+          ? "Quedadas con gente, y encargos que ECLIPSE hace solo."
+          : tareas.length
+            ? `${tareas.length === 1 ? "Un encargo" : `${tareas.length} encargos`}. ECLIPSE los hace solo y te los deja aquí.`
+            : "Déjale dicho algo una vez y lo hace solo, cada día o cada semana."
       }
       wide
     >
       <div className="space-y-5">
-        {plan !== "pro" ? (
+        <div className="flex gap-1.5 rounded-xl border border-line-soft bg-panel/40 p-1">
+          {([
+            { id: "quedadas" as const, nombre: "Quedadas" },
+            { id: "encargos" as const, nombre: "Encargos" },
+          ]).map((v) => (
+            <button
+              key={v.id}
+              onClick={() => setVista(v.id)}
+              className={`flex-1 rounded-lg px-3 py-2 text-[13px] transition ${
+                vista === v.id ? "bg-raised text-ink" : "text-muted hover:text-ink"
+              }`}
+            >
+              {v.nombre}
+              {v.id === "encargos" && sinLeer > 0 && (
+                <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-pro align-middle" aria-hidden />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {vista === "quedadas" && (
+          <Quedadas plan={plan} onUpgrade={onUpgrade} dentro={quedada} setDentro={setQuedada} />
+        )}
+        {vista === "encargos" && plan !== "pro" ? (
           <div className="rounded-xl border border-pro/25 bg-gradient-to-r from-pro/10 to-transparent p-4">
             <div className="flex items-center gap-2 text-[13.5px] font-medium text-ink">
               <Icon.Sparkle width={15} height={15} className="text-pro" />
@@ -222,13 +277,13 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
               Ver el plan Pro
             </button>
           </div>
-        ) : problema ? (
+        ) : vista === "encargos" && problema ? (
           <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
             <p className="text-[12.5px] leading-relaxed text-muted">{problema}</p>
           </div>
         ) : null}
 
-        {plan === "pro" && !problema && (
+        {vista === "encargos" && plan === "pro" && !problema && (
           <>
             {/*
               Mientras se pone al día.
@@ -902,6 +957,245 @@ function Planificador({ tareas, onCreado }: { tareas: Tarea[]; onCreado: () => v
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  QUEDADAS                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Quedar con gente: un calendario, una nota y un chat.
+ *
+ * Lo pidió Carlos así: "un calendario en el que eliges fecha y pones una nota,
+ * luego te mete a un chat en el que aparece el calendario y los mensajes que tú
+ * y tus amigos mandéis".
+ *
+ * Por dentro una quedada NO es una cosa nueva: es un GRUPO con fecha. Eso hace
+ * que nazca ya con todo lo que costó hacer bien —invitar por enlace, fotos,
+ * borrar mensajes, ECLIPSE dentro con su interruptor, entrar solo con cuenta— y
+ * que no haya dos chats distintos que mantener, con uno quedándose atrás.
+ */
+function Quedadas({
+  plan,
+  onUpgrade,
+  dentro,
+  setDentro,
+}: {
+  plan: Plan;
+  onUpgrade: () => void;
+  dentro: Grupo | null;
+  setDentro: (g: Grupo | null) => void;
+}) {
+  const [quedadas, setQuedadas] = useState<Grupo[]>([]);
+  const [mes, setMes] = useState(() => {
+    const h = new Date();
+    return { ano: h.getUTCFullYear(), mes: h.getUTCMonth() };
+  });
+  const [dia, setDia] = useState<string | null>(null);
+  const [nota, setNota] = useState("");
+  const [creando, setCreando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cargar = useCallback(async () => {
+    try {
+      const d = (await (await fetch("/api/grupos")).json()) as { grupos?: Grupo[] };
+      setQuedadas((d.grupos ?? []).filter((g) => g.fecha));
+    } catch {
+      /* se verá al siguiente intento */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!dentro) void cargar();
+  }, [cargar, dentro]);
+
+  // Si hay una quedada abierta, el calendario no se pinta: manda el chat, y lo
+  // saca ProgramarDialog en lugar de su propio modal.
+  if (dentro) return null;
+
+  const hoy = fechaDe(new Date());
+  const primero = new Date(Date.UTC(mes.ano, mes.mes, 1));
+  const cuantos = new Date(Date.UTC(mes.ano, mes.mes + 1, 0)).getUTCDate();
+  // La semana empieza en lunes, que es como se leen los calendarios de aquí.
+  const hueco = (primero.getUTCDay() + 6) % 7;
+  const nombreMes = primero.toLocaleDateString("es-ES", { month: "long", year: "numeric", timeZone: "UTC" });
+
+  const delDia = (f: string) => quedadas.filter((q) => q.fecha === f);
+  const proximas = [...quedadas].sort((a, b) => (a.fecha ?? "").localeCompare(b.fecha ?? ""));
+
+  const crear = async () => {
+    const texto = nota.trim();
+    if (!dia || !texto || creando) return;
+    setCreando(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/grupos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: texto.slice(0, 50), fecha: dia, nota: texto }),
+      });
+      const d = (await r.json()) as { grupo?: Grupo; error?: string };
+      if (!r.ok || !d.grupo) throw new Error(d.error ?? "No se ha podido crear.");
+      setNota("");
+      setDia(null);
+      await cargar();
+      // Y directo al chat: es lo siguiente que se quiere hacer siempre.
+      setDentro(d.grupo);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se ha podido crear.");
+    } finally {
+      setCreando(false);
+    }
+  };
+
+  if (plan !== "pro")
+    return (
+      <div className="rounded-xl border border-pro/25 bg-gradient-to-r from-pro/10 to-transparent p-4">
+        <div className="flex items-center gap-2 text-[13.5px] font-medium text-ink">
+          <Icon.Sparkle width={15} height={15} className="text-pro" />
+          Las quedadas son del plan Pro
+        </div>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+          Eliges un día, pones de qué va y se abre un chat con quien invites. Ellos no necesitan
+          Pro para entrar: paga quien monta la quedada.
+        </p>
+        <button
+          onClick={onUpgrade}
+          className="mt-3 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-void transition hover:opacity-90"
+        >
+          Ver el plan Pro
+        </button>
+      </div>
+    );
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-line-soft bg-panel/40 p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <button
+            onClick={() => setMes((m) => (m.mes === 0 ? { ano: m.ano - 1, mes: 11 } : { ...m, mes: m.mes - 1 }))}
+            aria-label="Mes anterior"
+            className="p-1 text-faint transition hover:text-ink"
+          >
+            <Icon.ChevronLeft width={16} height={16} />
+          </button>
+          <span className="text-[13px] font-medium capitalize text-ink">{nombreMes}</span>
+          <button
+            onClick={() => setMes((m) => (m.mes === 11 ? { ano: m.ano + 1, mes: 0 } : { ...m, mes: m.mes + 1 }))}
+            aria-label="Mes siguiente"
+            className="rotate-180 p-1 text-faint transition hover:text-ink"
+          >
+            <Icon.ChevronLeft width={16} height={16} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {["L", "M", "X", "J", "V", "S", "D"].map((d, i) => (
+            <span key={`${d}-${i}`} className="py-1 text-[9.5px] uppercase text-faint">
+              {d}
+            </span>
+          ))}
+          {Array.from({ length: hueco }, (_, i) => (
+            <span key={`hueco-${i}`} />
+          ))}
+          {Array.from({ length: cuantos }, (_, i) => {
+            const f = `${mes.ano}-${String(mes.mes + 1).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`;
+            const tiene = delDia(f).length;
+            const pasado = f < hoy;
+            return (
+              <button
+                key={f}
+                onClick={() => {
+                  setDia(dia === f ? null : f);
+                  setError(null);
+                }}
+                className={`rounded-lg py-1.5 transition ${
+                  dia === f ? "bg-raised" : "hover:bg-panel"
+                } ${f === hoy ? "ring-1 ring-pro/40" : ""}`}
+              >
+                <span className={`block text-[13px] ${pasado && !tiene ? "text-faint" : "text-ink"}`}>
+                  {i + 1}
+                </span>
+                <span className="mt-0.5 flex h-1.5 items-center justify-center gap-0.5">
+                  {Array.from({ length: Math.min(tiene, 3) }, (_, p) => (
+                    <span key={p} className="h-1 w-1 rounded-full bg-pro" aria-hidden />
+                  ))}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {dia && (
+          <div className="mt-2.5 border-t border-line-soft pt-2.5">
+            <span className="block text-[12px] capitalize text-muted">{comoSeLeeLaFecha(dia)}</span>
+
+            {delDia(dia).map((q) => (
+              <button
+                key={q.id}
+                onClick={() => setDentro(q)}
+                className="mt-1.5 flex w-full items-center gap-2 rounded-lg border border-line-soft bg-panel/60 px-3 py-2 text-left transition hover:border-line"
+              >
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{q.nombre}</span>
+                <span className="shrink-0 text-[11px] text-faint">
+                  {q.miembros.length} {q.miembros.length === 1 ? "persona" : "personas"}
+                </span>
+              </button>
+            ))}
+
+            <div className="mt-2 flex gap-2">
+              <input
+                value={nota}
+                onChange={(e) => setNota(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void crear()}
+                maxLength={120}
+                placeholder="Cena en casa de Ana, traed postre"
+                className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-[13px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
+              />
+              <button
+                onClick={() => void crear()}
+                disabled={!nota.trim() || creando}
+                className="shrink-0 rounded-xl bg-ink px-3 text-[12.5px] font-medium text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"
+              >
+                {creando ? "…" : "Quedar"}
+              </button>
+            </div>
+            {error && <p className="mt-1.5 text-[12px] leading-relaxed text-danger">{error}</p>}
+          </div>
+        )}
+      </div>
+
+      {proximas.length > 0 && (
+        <div>
+          <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Tus quedadas</div>
+          <div className="space-y-2">
+            {proximas.map((q) => (
+              <button
+                key={q.id}
+                onClick={() => setDentro(q)}
+                className="flex w-full items-center gap-3 rounded-xl border border-line-soft bg-panel/40 p-3.5 text-left transition hover:border-line hover:bg-panel"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13.5px] font-medium text-ink">{q.nombre}</span>
+                  <span className="mt-0.5 block text-[11.5px] capitalize text-faint">
+                    {q.fecha ? comoSeLeeLaFecha(q.fecha) : ""} · {q.miembros.length}{" "}
+                    {q.miembros.length === 1 ? "persona" : "personas"}
+                  </span>
+                </span>
+                <Icon.ChevronLeft width={15} height={15} className="shrink-0 rotate-180 text-faint" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-[11.5px] leading-relaxed text-faint">
+        Toca un día, escribe de qué va y se abre un chat para esa quedada. Dentro puedes invitar
+        con un enlace, mandar fotos y encender a ECLIPSE si queréis que os ayude a planificarlo.
+        Para entrar hace falta tener cuenta en ECLIPSE.
+      </p>
     </div>
   );
 }

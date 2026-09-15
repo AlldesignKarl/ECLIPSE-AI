@@ -73,6 +73,16 @@ export interface MensajeGrupo {
   nombre: string;
   texto: string;
   cuando: number;
+  /**
+   * La foto, si la lleva. Aquí va solo su IDENTIFICADOR, no la foto.
+   *
+   * Los mensajes de un grupo viven todos juntos en una sola clave de la base de
+   * datos. Meter ahí las fotos sería guardar treinta megas en una clave que se
+   * lee entera cada tres segundos: el grupo se volvería lentísimo para todos,
+   * incluidos los que solo escriben texto. Cada foto va en su propia clave y
+   * aquí queda su nombre.
+   */
+  imagen?: string;
 }
 
 export interface Grupo {
@@ -82,6 +92,17 @@ export interface Grupo {
   miembros: Miembro[];
   /** La llave para entrar. Quien la tiene, entra. */
   invitacion: string;
+  /**
+   * La fecha de la quedada, si este grupo es una quedada. "2026-09-20".
+   *
+   * Una quedada no es otra cosa distinta de un grupo: es un grupo con día. Todo
+   * lo que ya funciona —invitar, las fotos, borrar, ECLIPSE dentro— vale igual,
+   * y lo único que cambia es que arriba pone cuándo es y que se crea desde un
+   * calendario en vez de desde un nombre.
+   */
+  fecha?: string;
+  /** Lo que hay que saber de la quedada: "cena en casa de Ana, traed postre". */
+  nota?: string;
   /**
    * Si ECLIPSE está en el grupo y cuándo abre la boca.
    *
@@ -98,6 +119,37 @@ export interface Ojeada {
   nombre: string;
   personas: number;
   hueco: boolean;
+  /** Si es una quedada, cuándo es: sin eso, "te invitan" no dice a qué. */
+  fecha?: string;
+}
+
+/** Cuántas fotos se guardan de un grupo. Al llenarse, cae la más vieja. */
+export const MAX_IMAGENES = 40;
+
+/**
+ * Lo que puede pesar una foto ya encogida, en caracteres de su data URL.
+ *
+ * Se encoge en el navegador antes de subirla (1.280 píxeles de lado largo,
+ * JPEG). Un móvil hace fotos de cuatro megas; subir eso a un grupo donde luego
+ * se lee cada tres segundos no lo aguanta nadie.
+ */
+export const MAX_IMAGEN = 900_000;
+
+/** Una quedada es un grupo con día. */
+export function esQuedada(grupo: Pick<Grupo, "fecha">): boolean {
+  return Boolean(grupo.fecha);
+}
+
+/** "sábado, 20 de septiembre", que es como se dice una fecha. */
+export function comoSeLeeLaFecha(fecha: string): string {
+  const [ano, mes, dia] = fecha.split("-").map(Number);
+  if (!ano || !mes || !dia) return fecha;
+  return new Date(Date.UTC(ano, mes - 1, dia)).toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
 }
 
 export function esDueno(grupo: Grupo, email: string): boolean {
