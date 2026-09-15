@@ -12,20 +12,23 @@ const ok = (cond, que) => { console.log(`  ${cond ? "✓" : "✗"} ${que}`); if 
 console.log("\nLos tres sitios donde puede estar");
 ok(MODOS.length === 3, "hay tres formas de estar en el grupo");
 ok(MODOS.every((m) => m.corto && m.explicacion), "y las tres se explican en cristiano, sin tecnicismos");
-ok(MODO_POR_DEFECTO === "nombrado", "un grupo nace con ECLIPSE dentro pero callado hasta que le nombran");
+// Cambiado a propósito: antes era "nombrado" y lo que pasaba en un móvil de
+// verdad es que nadie daba con la palabra y el grupo parecía vacío.
+ok(MODO_POR_DEFECTO === "siempre", "un grupo nace con ECLIPSE dentro y contestando, sin palabras mágicas");
 
-console.log("\nCuando le nombran (lo de siempre, y lo de los grupos que ya existían)");
+console.log("\nPor defecto: está y contesta");
 ok(leHablanAEclipse("eclipse, búscanos un hotel"), "le hablan por su nombre");
-ok(leHablanAEclipse("@eclipse esto qué es"), "con arroba también");
-ok(leHablanAEclipse("ECLIPSE dinos la hora"), "en mayúsculas igual");
-ok(leHablanAEclipse("dinos tres sitios para cenar"), "una orden directa cuenta aunque no le nombren");
-ok(!leHablanAEclipse("yo mañana no puedo"), "y lo que se dicen entre ellos lo lee y se calla");
-ok(!leHablanAEclipse("jajajaja"), "una risa no es una pregunta");
-ok(leHablanAEclipse("hola", true), "al primer mensaje del grupo sí contesta: si no, parece que no hay nadie");
-// Sin decirle el modo se comporta como siempre: los grupos guardados antes de
-// que esto existiera no llevan el dato dentro.
-ok(leHablanAEclipse("eclipse ayuda") === leHablanAEclipse("eclipse ayuda", false, "nombrado"),
-   "un grupo antiguo, sin el dato guardado, se comporta igual que antes");
+ok(leHablanAEclipse("hola"), "y también sin nombrarle, que es lo que espera cualquiera que lo mete en un grupo");
+ok(leHablanAEclipse("ECLIPSE"), "escribir solo «ECLIPSE» contesta: era el caso que fallaba en el móvil de Carlos");
+
+console.log("\nEl modo de antes, para quien lo quiera");
+ok(leHablanAEclipse("eclipse, búscanos un hotel", false, "nombrado"), "le hablan por su nombre");
+ok(leHablanAEclipse("@eclipse esto qué es", false, "nombrado"), "con arroba también");
+ok(leHablanAEclipse("ECLIPSE dinos la hora", false, "nombrado"), "en mayúsculas igual");
+ok(leHablanAEclipse("dinos tres sitios para cenar", false, "nombrado"), "una orden directa cuenta aunque no le nombren");
+ok(!leHablanAEclipse("yo mañana no puedo", false, "nombrado"), "y lo que se dicen entre ellos lo lee y se calla");
+ok(!leHablanAEclipse("jajajaja", false, "nombrado"), "una risa no es una pregunta");
+ok(leHablanAEclipse("hola", true, "nombrado"), "al primer mensaje del grupo sí contesta: si no, parece que no hay nadie");
 
 console.log("\nPuesto a contestar a todo");
 ok(leHablanAEclipse("yo mañana no puedo", false, "siempre"), "contesta a cualquier cosa");

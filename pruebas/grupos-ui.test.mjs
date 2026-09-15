@@ -149,8 +149,12 @@ try {
 
   await karl.p.getByPlaceholder(/Escribe al grupo/i).fill("ECLIPSE, ¿nos propones plan?");
   await karl.p.keyboard.press("Enter");
-  await karl.p.waitForTimeout(4000);
-  ok(await karl.p.getByText(/sábado por la mañana/).first().isVisible(), "y ECLIPSE contesta cuando le nombran");
+  // Lo tuyo se ve al momento, sin esperar a nadie.
+  await karl.p.waitForTimeout(300);
+  ok(await karl.p.getByText("ECLIPSE, ¿nos propones plan?").first().isVisible(),
+     "lo que escribes aparece al instante, sin esperar a que conteste nadie");
+  await karl.p.waitForTimeout(5000);
+  ok(await karl.p.getByText(/sábado por la mañana/).first().isVisible(), "y ECLIPSE contesta");
   await karl.p.screenshot({ path: `${AQUI}gr3-chat.png` });
 
   console.log("\nECLIPSE está a la vista, y se decide cuándo habla");
@@ -159,21 +163,21 @@ try {
   await karl.p.waitForTimeout(700);
   ok(await karl.p.getByText("ECLIPSE", { exact: true }).first().isVisible(),
      "ECLIPSE sale en la lista de quién hay, como uno más");
-  ok(await karl.p.getByText(/Contesta cuando alguien dice/).isVisible(),
-     "y dice cuándo contesta, en vez de dejar que se adivine");
-  ok(await karl.p.getByRole("button", { name: "A todo" }).isVisible(),
-     "quien creó el grupo puede ponerle a contestar a todo");
+  ok(await karl.p.getByText("Contesta a todos los mensajes del grupo.").isVisible(),
+     "y de fábrica contesta a todo, sin palabras mágicas");
+  ok(await karl.p.getByRole("button", { name: "Si le nombráis" }).isVisible(),
+     "quien creó el grupo puede volver a que solo conteste si le nombran");
   await karl.p.screenshot({ path: `${AQUI}gr4-eclipse.png` });
 
-  await karl.p.getByRole("button", { name: "A todo" }).click();
+  await karl.p.getByRole("button", { name: "Si le nombráis" }).click();
   await karl.p.waitForTimeout(1500);
-  ok(await karl.p.getByText("Contesta a todos los mensajes del grupo.").isVisible(),
+  ok(await karl.p.getByText(/Contesta cuando alguien dice/).isVisible(),
      "al cambiarlo se dice qué va a pasar ahora");
 
-  // Y lo ve el resto del grupo sin recargar: el vistazo de cada tres segundos
-  // trae también cómo está ECLIPSE.
+  // Y lo ve el resto del grupo sin recargar: el vistazo trae también cómo está
+  // ECLIPSE.
   await ana.p.waitForTimeout(4000);
-  ok(await ana.p.getByPlaceholder(/ECLIPSE contesta a todo/i).isVisible(),
+  ok(await ana.p.getByPlaceholder(/Di «ECLIPSE» para que conteste/i).isVisible(),
      "a la otra persona le cambia el hueco de escribir sola, sin recargar");
 
   // Las iniciales de cada uno, que es lo que hace legible un grupo.

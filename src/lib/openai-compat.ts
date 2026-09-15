@@ -1070,6 +1070,64 @@ export async function verifyCompatKey(
 }
 
 /** Una sola respuesta corta, sin streaming. Para títulos y cosas parecidas. */
+/**
+ * El modelo que esta cuenta puede usar de verdad, para una respuesta suelta.
+ *
+ * Aquí estaba un fallo que no se veía: las respuestas de una sola pieza —el
+ * título de una conversación, el plan de Programar— se mandaban al modelo
+ * ESCRITO A MANO en el preset, mientras que el chat resolvía cuál tenía la
+ * cuenta. Con una clave gratuita que no llega a ese modelo, el chat funcionaba
+ * y lo demás fallaba sin decir por qué. Ahora todo pregunta lo mismo.
+ */
+export async function modeloSuelto(provider: CompatProvider, key: string): Promise<string> {
+  const preset = presetDe(provider);
+  try {
+    return await elegirModelo(provider, preset, key, "chat");
+  } catch {
+    return preset.model;
+  }
+}
+
+/**
+ * Una respuesta entera, sin flujo y sin herramientas.
+ *
+ * Para lo que no es conversación: planificar, titular, escribir un prompt de
+ * imagen. Acepta instrucciones aparte porque un plan sin sus reglas delante no
+ * sale, y se puede cortar desde fuera para no dejar una petición colgada hasta
+ * que el hosting la mate.
+ */
+export async function unaVezCompat(opts: {
+  provider: CompatProvider;
+  key: string;
+  sistema?: string;
+  prompt: string;
+  tope?: number;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const preset = presetDe(opts.provider);
+  const modelo = await modeloSuelto(opts.provider, opts.key);
+
+  const res = await fetch(`${preset.base}/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${opts.key}` },
+    signal: opts.signal,
+    body: JSON.stringify({
+      model: modelo,
+      messages: [
+        ...(opts.sistema ? [{ role: "system", content: opts.sistema }] : []),
+        { role: "user", content: opts.prompt },
+      ],
+      max_tokens: opts.tope ?? 1200,
+      temperature: 0.4,
+    }),
+  });
+
+  if (!res.ok) throw new CompatError(await readError(res), res.status);
+
+  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  return json.choices?.[0]?.message?.content?.trim() ?? "";
+}
+
 export async function oneShotCompat(
   provider: CompatProvider,
   key: string,
@@ -1089,7 +1147,7 @@ export async function oneShotCompat(
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     signal,
     body: JSON.stringify({
-      model: envModel(provider) || resolved[provider] || preset.model,
+      model: envModel(provider) || (await modeloSuelto(provider, key)),
       messages: [{ role: "user", content: prompt }],
       max_tokens: tope,
       temperature: 0.3,

@@ -65,6 +65,8 @@ interface Mensaje {
   cuando: number;
   mio: boolean;
   deEclipse: boolean;
+  /** Pintado ya, todavía sin confirmar por el servidor. */
+  enCamino?: boolean;
 }
 
 interface Props {
@@ -460,7 +462,8 @@ function Sala({
 }) {
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [texto, setTexto] = useState("");
-  const [enviando, setEnviando] = useState(false);
+  /** ECLIPSE está escribiendo su respuesta ahora mismo. */
+  const [pensando, setPensando] = useState(false);
   const [gente, setGente] = useState(false);
   const [miembros, setMiembros] = useState<Miembro[]>(grupo.miembros);
   /** Cómo está ECLIPSE aquí dentro. Lo cambia el dueño y lo ven todos. */
@@ -476,7 +479,21 @@ function Sala({
         miembros?: Miembro[];
         eclipse?: ModoEclipse;
       };
-      setMensajes(d.mensajes ?? []);
+      /*
+        Lo que ya está en el servidor, más lo tuyo que va de camino.
+
+        Sin esta mezcla, tu propio mensaje desaparecía un segundo: se pintaba
+        al momento y el siguiente vistazo lo borraba hasta que el servidor lo
+        devolvía. Un mensaje que parpadea parece un mensaje que no se ha
+        enviado.
+      */
+      const llegados = d.mensajes ?? [];
+      setMensajes((previos) => [
+        ...llegados,
+        ...previos.filter(
+          (m) => m.enCamino && !llegados.some((s) => s.mio && s.texto === m.texto),
+        ),
+      ]);
       // Quién hay dentro también cambia mientras se mira: si no se refresca,
       // quien invitó sigue viendo "1 persona" después de que entre su amigo.
       if (d.miembros?.length) setMiembros(d.miembros);
@@ -497,30 +514,69 @@ function Sala({
   useEffect(() => {
     if (!open) return;
     void cargar();
-    const reloj = window.setInterval(() => void cargar(), 3000);
+    // Más a menudo mientras ECLIPSE escribe: es el rato en el que se está
+    // mirando la pantalla a ver si aparece algo.
+    const reloj = window.setInterval(() => void cargar(), pensando ? 900 : 1500);
     return () => window.clearInterval(reloj);
-  }, [open, cargar]);
+  }, [open, cargar, pensando]);
 
   useEffect(() => {
     fondo.current?.scrollTo({ top: fondo.current.scrollHeight, behavior: "smooth" });
   }, [mensajes.length]);
 
-  const enviar = async () => {
+  /**
+   * Mandar. Se ve al momento y no se espera a nadie.
+   *
+   * Dos peticiones a propósito: la primera guarda el mensaje y vuelve enseguida
+   * —es lo que hace que el grupo vaya rápido— y la segunda, que puede tardar
+   * sus segundos, es la que le pide la respuesta a ECLIPSE. No se espera a la
+   * segunda para nada: la respuesta cae sola en el siguiente vistazo.
+   */
+  const enviar = () => {
     const dicho = texto.trim();
-    if (!dicho || enviando) return;
+    if (!dicho) return;
     setTexto("");
-    setEnviando(true);
-    try {
-      await fetch("/api/grupos/mensajes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: grupo.id, texto: dicho }),
-      });
-    } catch {
-      /* al recargar se verá si llegó */
-    }
-    setEnviando(false);
-    void cargar();
+
+    setMensajes((m) => [
+      ...m,
+      {
+        id: `propio-${Date.now()}`,
+        nombre: "",
+        texto: dicho,
+        cuando: Date.now(),
+        mio: true,
+        deEclipse: false,
+        enCamino: true,
+      },
+    ]);
+
+    void (async () => {
+      try {
+        const r = await fetch("/api/grupos/mensajes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: grupo.id, texto: dicho }),
+        });
+        const d = (await r.json()) as { contesta?: boolean };
+        void cargar();
+
+        if (d?.contesta) {
+          setPensando(true);
+          fetch("/api/grupos/mensajes?responder=1", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: grupo.id }),
+          })
+            .catch(() => {})
+            .finally(() => {
+              setPensando(false);
+              void cargar();
+            });
+        }
+      } catch {
+        /* al recargar se verá si llegó */
+      }
+    })();
   };
 
   const enlace =
@@ -686,7 +742,7 @@ function Sala({
             if (m.mio)
               return (
                 <div key={m.id} className={`flex justify-end ${seguido ? "-mt-1.5" : ""}`}>
-                  <div className="max-w-[80%]">
+                  <div className={`max-w-[80%] ${m.enCamino ? "opacity-60" : ""}`}>
                     <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-md border border-tuyo-borde bg-tuyo px-3.5 py-2 text-[14px] leading-relaxed text-ink">
                       {m.texto}
                     </div>
@@ -735,13 +791,37 @@ function Sala({
               </div>
             );
           })}
+
+          {/*
+            Que se vea que está escribiendo.
+
+            Antes no había nada: mandabas algo y la pantalla se quedaba quieta
+            medio minuto sin decir si iba a contestar. Esto es la diferencia
+            entre "está pensando" y "esto no funciona".
+          */}
+          {pensando && (
+            <div className="flex gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pro/15 text-pro">
+                <Icon.Sparkle width={13} height={13} />
+              </span>
+              <div className="flex items-center gap-1 rounded-2xl rounded-tl-md bg-panel px-3.5 py-3">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="h-1.5 w-1.5 animate-pulse rounded-full bg-faint"
+                    style={{ animationDelay: `${i * 160}ms` }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 border-t border-line-soft pt-3">
           <input
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && void enviar()}
+            onKeyDown={(e) => e.key === "Enter" && enviar()}
             placeholder={
               eclipse === "siempre"
                 ? "Escribe al grupo. ECLIPSE contesta a todo."
@@ -752,8 +832,8 @@ function Sala({
             className="min-w-0 flex-1 rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[14px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
           />
           <button
-            onClick={() => void enviar()}
-            disabled={enviando || !texto.trim()}
+            onClick={enviar}
+            disabled={!texto.trim()}
             aria-label="Enviar"
             className="shrink-0 rounded-xl bg-ink px-4 text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"
           >

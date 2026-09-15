@@ -28,8 +28,18 @@
  */
 export type ModoEclipse = "siempre" | "nombrado" | "no";
 
-/** Con el que nace un grupo, y el que se supone en los que ya existían. */
-export const MODO_POR_DEFECTO: ModoEclipse = "nombrado";
+/**
+ * Con el que nace un grupo, y el que se supone en los que ya existían.
+ *
+ * Era `nombrado`, y el argumento parecía bueno: en una mesa de cinco, alguien
+ * que contesta a cada frase la hace inhabitable. Pero lo que pasaba de verdad
+ * era peor. Carlos montó un grupo, escribió «ECLIPSE» dos veces y no contestó
+ * nadie: para quien está dentro, un asistente que solo aparece si aciertas la
+ * palabra mágica es un asistente que no está. Ahora está y contesta, que es lo
+ * que se espera al meterlo en un grupo; quien quiera lo de antes lo cambia en
+ * dos toques y sigue ahí.
+ */
+export const MODO_POR_DEFECTO: ModoEclipse = "siempre";
 
 /** Cómo se lee cada modo en la pantalla, sin tecnicismos. */
 export const MODOS: { id: ModoEclipse; corto: string; explicacion: string }[] = [

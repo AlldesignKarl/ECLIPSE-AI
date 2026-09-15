@@ -24,9 +24,12 @@ ok(leHablanAEclipse("ECLIPSE dinos algo"), "en mayúsculas igual");
 ok(leHablanAEclipse("dinos tres planes para el sábado"), "una orden directa, sí");
 ok(leHablanAEclipse("búscanos un hotel"), "«búscanos», sí");
 ok(leHablanAEclipse("lo que sea", true), "y el primer mensaje del grupo siempre");
-ok(!leHablanAEclipse("yo el sábado no puedo"), "hablando entre ellos, NO");
-ok(!leHablanAEclipse("jajaja qué bueno"), "una risa tampoco");
-ok(!leHablanAEclipse("¿y tú puedes, Ana?"), "una pregunta a otra persona tampoco");
+// De fábrica contesta a todo; el modo «nombrado» es el que se calla, y sigue
+// ahí para quien lo prefiera. (Esto cambió a propósito: ver eclipse-grupo.)
+ok(leHablanAEclipse("yo el sábado no puedo"), "de fábrica contesta también a lo suyo");
+ok(!leHablanAEclipse("yo el sábado no puedo", false, "nombrado"), "y en «si le nombráis», hablando entre ellos NO");
+ok(!leHablanAEclipse("jajaja qué bueno", false, "nombrado"), "una risa tampoco");
+ok(!leHablanAEclipse("¿y tú puedes, Ana?", false, "nombrado"), "una pregunta a otra persona tampoco");
 
 console.log("\nCómo se le ve a cada uno");
 ok(comoSeLeVe("carlos@ejemplo.com", "Karl") === "Karl", "con nombre puesto, su nombre");
@@ -128,15 +131,38 @@ try {
   ok(visto.includes("Ana") && visto.includes("Luis"), "solo los nombres");
 
   console.log("\nHablar en el grupo");
+  // Mandar un mensaje NO espera a que conteste ECLIPSE: es lo que hace que el
+  // grupo vaya rápido. Se comprueba con el reloj, que es donde se notaba.
+  const empezo = Date.now();
   const entreEllos = await luis("/api/grupos/mensajes", { method: "POST", body: JSON.stringify({ id: grupo.id, texto: "¿y si vamos el finde?" }) });
-  ok(entreEllos.json?.contesta === true, "el primer mensaje siempre lo contesta");
+  const tardo = Date.now() - empezo;
+  ok(entreEllos.json?.ok === true, "el mensaje se guarda");
+  ok(tardo < 1500, `y vuelve al momento, sin esperar al modelo (${tardo} ms)`);
+  ok(entreEllos.json?.contesta === true, "y avisa de que ECLIPSE va a contestar");
 
-  await ana("/api/grupos/mensajes", { method: "POST", body: JSON.stringify({ id: grupo.id, texto: "yo el sábado no puedo" }) });
+  // De fábrica contesta a todo: es lo que espera cualquiera que mete una IA en
+  // un grupo, y lo contrario —adivinar la palabra mágica— es lo que hacía que
+  // pareciera que no estaba.
+  const cualquiera = await ana("/api/grupos/mensajes", { method: "POST", body: JSON.stringify({ id: grupo.id, texto: "yo el sábado no puedo" }) });
+  ok(cualquiera.json?.contesta === true, "contesta también a lo que no le nombra");
+
+  await luis("/api/grupos/mensajes?responder=1", { method: "POST", body: JSON.stringify({ id: grupo.id }) });
+  const conRespuesta = await luis(`/api/grupos/mensajes?id=${grupo.id}`);
+  ok((conRespuesta.json?.mensajes ?? []).some((m) => m.deEclipse), "y al pedirle la respuesta, contesta de verdad");
+
+  // Dos personas escribiendo a la vez piden la respuesta cada una por su
+  // cuenta: no puede contestar dos veces a lo mismo.
+  const repetida = await ana("/api/grupos/mensajes?responder=1", { method: "POST", body: JSON.stringify({ id: grupo.id }) });
+  ok(repetida.json?.contesta === false, "y no contesta dos veces a lo mismo");
+
+  console.log("\nY el modo de antes, para quien lo quiera");
+  await ana("/api/grupos", { method: "PATCH", body: JSON.stringify({ id: grupo.id, accion: "eclipse", modo: "nombrado" }) });
   const callado = await luis("/api/grupos/mensajes", { method: "POST", body: JSON.stringify({ id: grupo.id, texto: "vale, pues el domingo" }) });
-  ok(callado.json?.contesta === false, "hablando entre ellos, se calla");
+  ok(callado.json?.contesta === false, "puesto a «si le nombráis», hablando entre ellos se calla");
 
   const llamado = await ana("/api/grupos/mensajes", { method: "POST", body: JSON.stringify({ id: grupo.id, texto: "eclipse, ¿qué hacemos el domingo?" }) });
   ok(llamado.json?.contesta === true, "y cuando le nombran, contesta");
+  await ana("/api/grupos/mensajes?responder=1", { method: "POST", body: JSON.stringify({ id: grupo.id }) });
 
   const mensajes = await luis(`/api/grupos/mensajes?id=${grupo.id}`);
   const lista = mensajes.json?.mensajes ?? [];

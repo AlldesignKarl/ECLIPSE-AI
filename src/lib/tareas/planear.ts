@@ -1,8 +1,6 @@
 import { misConexiones } from "../conexiones/almacen";
 import { servicioDe } from "../conexiones/registro";
-import { resolveKey } from "../keys";
-import { oneShotCompat, type CompatProvider } from "../openai-compat";
-import { activeProvider } from "../provider";
+import { unaRespuesta } from "../una-respuesta";
 import { DIAS, fechaDe, MAX_TAREAS, type Cuando } from "./tipos";
 
 /**
@@ -217,22 +215,6 @@ export async function planificar(opciones: {
   ahora?: Date;
   signal?: AbortSignal;
 }): Promise<Resultado> {
-  const provider = await activeProvider();
-  if (!provider || provider === "anthropic" || provider === "google")
-    return {
-      ok: false,
-      error:
-        "Para planificar hace falta un motor con herramientas puesto en el servidor, que es el mismo que luego hará los encargos.",
-    };
-
-  const key = await resolveKey(provider);
-  if (!key)
-    return {
-      ok: false,
-      error:
-        "La clave del motor está solo en este navegador, y los encargos corren en el servidor cuando tú no estás.",
-    };
-
   const ahora = opciones.ahora ?? new Date();
   const sistema = instrucciones(
     ahora,
@@ -254,33 +236,40 @@ una opinión y no un cambio, contéstale en la "nota" y deja los encargos como
 estaban.`
     : `Lo que quiere conseguir: ${opciones.deseo}`;
 
-  try {
-    const crudo = await oneShotCompat(
-      provider as CompatProvider,
-      key,
-      `${sistema}\n\n${peticion}`,
-      1400,
-      opciones.signal
-        ? AbortSignal.any([opciones.signal, AbortSignal.timeout(LIMITE_MS)])
-        : AbortSignal.timeout(LIMITE_MS),
-    );
+  const reloj = opciones.signal
+    ? AbortSignal.any([opciones.signal, AbortSignal.timeout(LIMITE_MS)])
+    : AbortSignal.timeout(LIMITE_MS);
 
-    const plan = leerPlan(crudo, fechaDe(ahora));
-    if (!plan.encargos.length)
-      return {
-        ok: false,
-        error:
-          "No le ha salido un plan que valga. Vuelve a intentarlo, y si quieres dile con más detalle qué buscas.",
-      };
+  const r = await unaRespuesta({
+    sistema,
+    mensaje: peticion,
+    tope: 1400,
+    signal: reloj,
+  });
 
-    return { ok: true, plan };
-  } catch (err) {
+  /*
+    Cuando falla, se dice lo que ha dicho el motor.
+
+    Un "no se ha podido, inténtalo otra vez" es lo que había, y con eso no se
+    arregla nada: ni lo entiende quien lo lee ni se puede averiguar después qué
+    pasó. Si Mistral dice que esa clave no llega a ese modelo, eso es lo que
+    tiene que salir en pantalla.
+  */
+  if (!r.ok)
+    return {
+      ok: false,
+      error: reloj.aborted
+        ? "Ha tardado demasiado en planificarlo. Inténtalo otra vez."
+        : `No ha salido el plan: ${r.error}`,
+    };
+
+  const plan = leerPlan(r.texto, fechaDe(ahora));
+  if (!plan.encargos.length)
     return {
       ok: false,
       error:
-        (err as Error)?.name === "TimeoutError"
-          ? "Ha tardado demasiado en planificarlo. Inténtalo otra vez."
-          : "No se ha podido planificar ahora mismo. Inténtalo otra vez.",
+        "El motor ha contestado algo que no es un plan. Vuelve a intentarlo, y si quieres dile con más detalle qué buscas.",
     };
-  }
+
+  return { ok: true, plan };
 }

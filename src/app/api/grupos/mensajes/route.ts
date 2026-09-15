@@ -5,6 +5,7 @@ import { buildSystemPrompt } from "@/lib/prompts";
 import { activeProvider } from "@/lib/provider";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import type { CompatProvider } from "@/lib/openai-compat";
+import { unaRespuesta } from "@/lib/una-respuesta";
 import { apuntarMensaje, grupoDe, mensajesDe, quien } from "@/lib/grupos/almacen";
 import { comoSeLeVe, estaDentro, leHablanAEclipse, MODO_POR_DEFECTO } from "@/lib/grupos/tipos";
 
@@ -124,8 +125,20 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Decir algo. Y, si le hablan a ECLIPSE, que conteste. */
+/**
+ * Decir algo. Y nada más: esto NO espera a que conteste ECLIPSE.
+ *
+ * Era lo que hacía que un grupo pareciera lento hasta decir basta. El mensaje
+ * se guardaba enseguida, pero la petición se quedaba abierta medio minuto
+ * mientras el modelo escribía, así que el teléfono de quien lo mandaba no
+ * soltaba el botón y los demás no veían nada hasta el siguiente vistazo. Ahora
+ * esto guarda y contesta al instante; la respuesta de ECLIPSE se pide aparte y
+ * cae sola en el grupo cuando está.
+ */
 export async function POST(req: NextRequest) {
+  const url = new URL(req.url);
+  if (url.searchParams.get("responder") === "1") return responder(req);
+
   const { id, texto } = (await req.json().catch(() => ({}))) as { id?: string; texto?: string };
   const paso = await puerta(String(id ?? ""));
   if ("error" in paso) return Response.json({ error: paso.error }, { status: paso.status });
@@ -136,66 +149,118 @@ export async function POST(req: NextRequest) {
   const yo = paso.grupo.miembros.find((m) => m.email === paso.email);
   const anteriores = await mensajesDe(paso.grupo.id);
 
-  await apuntarMensaje(paso.grupo.id, {
+  const guardado = await apuntarMensaje(paso.grupo.id, {
     de: paso.email,
     nombre: yo?.nombre ?? "alguien",
     texto: dicho,
   });
 
   const modo = paso.grupo.eclipse ?? MODO_POR_DEFECTO;
-  if (!leHablanAEclipse(dicho, anteriores.length === 0, modo))
-    return Response.json({ contesta: false });
+  return Response.json({
+    ok: true,
+    id: guardado.id,
+    // Para que quien escribe vea "ECLIPSE está escribiendo…" en vez de mirar
+    // una pantalla quieta sin saber si va a contestar o no.
+    contesta: leHablanAEclipse(dicho, anteriores.length === 0, modo),
+  });
+}
 
-  const provider = await activeProvider();
-  if (!provider || provider === "anthropic" || provider === "google")
-    return Response.json({ contesta: false, aviso: "sin_motor" });
+/**
+ * Que conteste ECLIPSE a lo último que se ha dicho.
+ *
+ * Petición aparte, y por eso el grupo va rápido: mandar un mensaje no espera a
+ * nadie. Esta puede tardar sus segundos, y mientras tanto todo el mundo sigue
+ * escribiendo.
+ */
+async function responder(req: NextRequest) {
+  const { id } = (await req.json().catch(() => ({}))) as { id?: string };
+  const paso = await puerta(String(id ?? ""));
+  if ("error" in paso) return Response.json({ error: paso.error }, { status: paso.status });
 
-  const key = await resolveKey(provider);
-  if (!key) return Response.json({ contesta: false, aviso: "sin_clave" });
+  const modo = paso.grupo.eclipse ?? MODO_POR_DEFECTO;
+  if (modo === "no") return Response.json({ contesta: false });
+
+  const mensajes = await mensajesDe(paso.grupo.id);
+  const ultimo = mensajes.at(-1);
+  if (!ultimo) return Response.json({ contesta: false });
 
   /*
-    Lo que ha pasado en la mesa, con los nombres delante.
+    Si ya ha contestado a esto, no vuelve a contestar.
 
-    Todo va como un solo turno de "usuario" y no como una conversación de ida y
-    vuelta, porque no lo es: son cuatro personas hablando. Poniendo el nombre
-    delante de cada frase, el modelo puede seguir quién dijo qué, que es lo
-    único que hace falta para que conteste como alguien que estaba escuchando.
+    En un grupo escriben varios a la vez y cada uno pide la respuesta por su
+    cuenta: sin esto, tres personas escribiendo seguido sacarían tres respuestas
+    seguidas diciendo lo mismo.
   */
-  const historia = [...anteriores.slice(-40), { de: paso.email, nombre: yo?.nombre ?? "alguien", texto: dicho }]
+  if (ultimo.de === null) return Response.json({ contesta: false });
+  if (!leHablanAEclipse(ultimo.texto, mensajes.length === 1, modo))
+    return Response.json({ contesta: false });
+
+  const historia = mensajes
+    .slice(-40)
     .map((m) => (m.de === null ? `ECLIPSE: ${m.texto}` : `${m.nombre}: ${m.texto}`))
     .join("\n");
 
+  const peticion = `Esto es lo que se ha dicho en el grupo «${paso.grupo.nombre}»:\n\n${historia}\n\nContesta a lo último.`;
+  const sistema = `${buildSystemPrompt({ mode: "chat", plan: "pro", web: true })}\n\n${COMO_ESTAR}${
+    modo === "siempre" ? `\n\n${A_TODO}` : ""
+  }`;
+
+  const reloj = AbortSignal.any([req.signal, AbortSignal.timeout(LIMITE_MS)]);
   let respuesta = "";
-  try {
-    for await (const e of conversarConHerramientas({
-      provider: provider as CompatProvider,
-      key,
-      system: `${buildSystemPrompt({
-        mode: "chat",
-        plan: "pro",
-        web: true,
-        engine: provider,
-      })}\n\n${COMO_ESTAR}${modo === "siempre" ? `\n\n${A_TODO}` : ""}`,
-      turns: [
-        {
-          role: "user",
-          content: `Esto es lo que se ha dicho en el grupo «${paso.grupo.nombre}»:\n\n${historia}\n\nContesta a lo último que te han pedido.`,
-        },
-      ],
-      speed: "equilibrado",
-      mode: "chat",
-      plan: "pro",
-      signal: AbortSignal.any([req.signal, AbortSignal.timeout(LIMITE_MS)]),
-    })) {
-      if (e.texto) respuesta += e.texto;
+
+  /*
+    Con herramientas si se puede, y si no, contestando igual.
+
+    Con Mistral, Groq u OpenRouter puede buscar en la web y mirar lo que tengas
+    conectado, que es lo que hace útil una respuesta en un grupo. Con Google o
+    con Anthropic no hay bucle de herramientas, y hasta ahora eso significaba
+    QUEDARSE CALLADO: el aviso "sin_motor" volvía al navegador y no se pintaba
+    en ninguna parte. Contestar sin herramientas es infinitamente mejor que no
+    contestar.
+  */
+  const provider = await activeProvider();
+  if (provider === "groq" || provider === "mistral" || provider === "openrouter") {
+    const key = await resolveKey(provider);
+    if (key) {
+      try {
+        for await (const e of conversarConHerramientas({
+          provider: provider as CompatProvider,
+          key,
+          system: sistema,
+          turns: [{ role: "user", content: peticion }],
+          speed: "equilibrado",
+          mode: "chat",
+          plan: "pro",
+          signal: reloj,
+        })) {
+          if (e.texto) respuesta += e.texto;
+        }
+      } catch {
+        respuesta = "";
+      }
     }
-  } catch {
-    return Response.json({ contesta: false, aviso: "fallo" });
   }
 
-  const limpia = respuesta.trim();
-  if (!limpia) return Response.json({ contesta: false });
+  if (!respuesta.trim()) {
+    const r = await unaRespuesta({ sistema, mensaje: peticion, tope: 900, signal: reloj });
+    if (r.ok) respuesta = r.texto;
+    else {
+      /*
+        Y si tampoco, se dice EN EL GRUPO.
 
-  await apuntarMensaje(paso.grupo.id, { de: null, nombre: "ECLIPSE", texto: limpia });
+        Callarse era el peor de los finales posibles: quien escribía veía su
+        mensaje ahí puesto, sin respuesta, sin aviso y sin saber si había que
+        esperar. Un "no puedo, y por esto" se entiende y se arregla.
+      */
+      await apuntarMensaje(paso.grupo.id, {
+        de: null,
+        nombre: "ECLIPSE",
+        texto: `No he podido contestar a eso. ${r.error}`,
+      });
+      return Response.json({ contesta: false, error: r.error });
+    }
+  }
+
+  await apuntarMensaje(paso.grupo.id, { de: null, nombre: "ECLIPSE", texto: respuesta.trim() });
   return Response.json({ contesta: true });
 }
