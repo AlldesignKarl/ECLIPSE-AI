@@ -9,3 +9,12 @@ build
 next-env.d.ts
 .DS_Store
 .vercel
+
+# Lo que fabrican las pruebas al correr: fotos de ejemplo, conversiones,
+# capturas y los registros de la aplicación de mentira. Se rehace solo.
+pruebas/foto-movil.jpg
+pruebas/salida-*
+pruebas/app-*.log
+pruebas/redis-*.txt
+pruebas/*.png
+!pruebas/origen.png
