@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.42",
+    // Que los encargos vean de verdad las cuentas conectadas, y que no inventen.
+    nombre: "De verdad",
+    titulo: "Los encargos miran tus cuentas de verdad",
+    entrada:
+      "Y cuando no pueden mirar algo, lo dicen. Se acabaron los partes con cifras que no salían de ninguna parte.",
+    puntos: [
+      "Un encargo programado ya ve tus cuentas conectadas. Antes no: lo dispara el reloj de madrugada, cuando no hay nadie delante, y por ahí no encontraba tu tienda. El encargo hablaba de pedidos y de stock sin poder mirarlos, y rellenaba el hueco. Eso está arreglado de raíz.",
+      "Y si algo no se puede mirar —porque no está conectado, o porque falla— el parte lo dice en una línea y para. Nada de cifras aproximadas ni de «lo habitual en una tienda como la tuya»: un parte que se lee por la mañana y sobre el que se decide no puede llevar nada inventado.",
+      "Cuando ECLIPSE te monta el plan, ya solo propone encargos que de verdad podrá hacer el día que toquen. Si hace falta conectar algo, te lo dice ahí.",
+      "Nuevo: «cómo va mi tienda» en una sola pregunta. Trae el catálogo entero, qué está sin publicar, qué se ha quedado sin stock y qué va justo, los pedidos de los últimos días con su importe, lo que está pendiente de enviar o de cobrar y lo que más se vende. Shopify y WooCommerce.",
+      "Las voces: si tu móvil solo tiene una voz en tu idioma —le pasa a casi todos— «hombre» y «mujer» no podían cambiar nada. Ahora se le cambia el tono de verdad, y además se te dice lo que hay y cómo instalar más voces.",
+    ],
+  },
+  {
     version: "2.41",
     // Quedadas con calendario, fotos en los grupos y poder borrar lo que sobra.
     nombre: "Quedadas",

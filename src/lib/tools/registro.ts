@@ -82,6 +82,15 @@ export async function herramientasPara(
   plan: Plan,
   /** El último mensaje del usuario, para saber qué tiene sentido ofrecerle. */
   ultimo?: { texto: string; conImagen: boolean },
+  /**
+   * De quién son las conexiones, cuando no hay nadie delante.
+   *
+   * En el chat se saca de la cookie. En un encargo programado no hay cookie, y
+   * sin esto el modelo se quedaba sin la herramienta de conexiones justo en el
+   * sitio donde el encargo hablaba de "mi tienda": el resultado era un parte
+   * inventado. Se pasa el correo y deja de serlo.
+   */
+  dueno?: string,
 ): Promise<Herramienta[]> {
   const permitidas = POR_MODO[modo] ?? [];
   const candidatas = TODAS.filter(
@@ -107,7 +116,7 @@ export async function herramientasPara(
     que el modelo intente cosas que no puede.
   */
   if (permitidas.includes("conexion") && plan === "pro") {
-    const conexion = await herramientaConexion();
+    const conexion = await herramientaConexion(undefined, dueno);
     if (conexion) lista.push(conexion);
   }
 

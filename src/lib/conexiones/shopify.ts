@@ -123,6 +123,99 @@ export const shopify: Servicio = {
 
   acciones: [
     {
+      nombre: "resumen_tienda",
+      descripcion:
+        "TODA la tienda de un vistazo y en UNA llamada: cuántos productos hay y cuántos están sin publicar, qué se ha quedado sin stock o va justo, cuántos pedidos ha habido en los últimos días, cuánto suman, qué está pendiente de enviar o de cobrar y qué se vende más. Es por donde hay que empezar cuando alguien pregunta cómo va su tienda.",
+      argumentos: "dias (cuántos días de pedidos mirar, 1-90, por defecto 30)",
+      async ejecutar({ cred, args, signal }) {
+        const dias = tope(args.dias, 30, 90);
+        const desde = new Date(Date.now() - dias * 86_400_000).toISOString();
+
+        /*
+          Las tres consultas a la vez, y no una detrás de otra.
+
+          Esto corre dentro de una función del plan gratuito que se corta a los
+          sesenta segundos, y encadenadas eran tres viajes seguidos a Shopify.
+          En paralelo es un viaje.
+        */
+        const [tiendaInfo, productos, pedidos] = await Promise.all([
+          pedir<{ shop?: { name?: string; currency?: string; domain?: string; plan_name?: string } }>(
+            "Shopify",
+            url(cred, "shop.json"),
+            { cabeceras: cabeceras(cred), signal },
+          ).catch(() => ({ shop: undefined })),
+          pedir<{ products?: Producto[] }>("Shopify", url(cred, "products.json?limit=250"), {
+            cabeceras: cabeceras(cred),
+            signal,
+          }).catch(() => ({ products: [] })),
+          pedir<{ orders?: Pedido[] }>(
+            "Shopify",
+            url(cred, `orders.json?limit=250&status=any&created_at_min=${encodeURIComponent(desde)}`),
+            { cabeceras: cabeceras(cred), signal },
+          ).catch(() => ({ orders: [] })),
+        ]);
+
+        const lista = productos.products ?? [];
+        const ventas = pedidos.orders ?? [];
+        const moneda = ventas[0]?.currency || tiendaInfo.shop?.currency || "";
+
+        const variantes = lista.flatMap((p) =>
+          (p.variants ?? []).map((v) => ({ producto: p, variante: v })),
+        );
+        const agotados = variantes.filter(({ variante }) => (variante.inventory_quantity ?? 0) <= 0);
+        const justos = variantes.filter(
+          ({ variante }) =>
+            (variante.inventory_quantity ?? 0) > 0 && (variante.inventory_quantity ?? 0) <= 5,
+        );
+        const borradores = lista.filter((p) => p.status !== "active");
+        const sinDescripcion = lista.filter((p) => !(p.body_html || "").replace(/<[^>]+>/g, "").trim());
+
+        const total = ventas.reduce((suma, o) => suma + Number(o.total_price || 0), 0);
+        const sinEnviar = ventas.filter((o) => !o.fulfillment_status);
+        const sinCobrar = ventas.filter((o) => o.financial_status && o.financial_status !== "paid");
+
+        // Lo más vendido, contando unidades y no pedidos: dos camisetas en un
+        // pedido son dos camisetas.
+        const unidades = new Map<string, number>();
+        for (const o of ventas)
+          for (const l of o.line_items ?? [])
+            unidades.set(l.title, (unidades.get(l.title) ?? 0) + (l.quantity || 0));
+        const masVendido = [...unidades.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+        const trozo = (titulo: string, lineas: string[]) =>
+          lineas.length ? `\n${titulo}\n${lineas.join("\n")}` : "";
+
+        return [
+          `${tiendaInfo.shop?.name || tienda(cred)}${tiendaInfo.shop?.domain ? ` (${tiendaInfo.shop.domain})` : ""}${
+            tiendaInfo.shop?.plan_name ? ` · plan ${tiendaInfo.shop.plan_name}` : ""
+          }`,
+          "",
+          `CATÁLOGO: ${lista.length} producto(s)${lista.length === 250 ? " (tope de la consulta; puede haber más)" : ""}, ${variantes.length} variante(s).`,
+          `  Sin publicar: ${borradores.length}. Sin descripción: ${sinDescripcion.length}.`,
+          `  Sin stock: ${agotados.length}. Con 5 o menos: ${justos.length}.`,
+          "",
+          `VENTAS (últimos ${dias} días): ${ventas.length} pedido(s), ${total.toFixed(2)} ${moneda}.`,
+          `  Media por pedido: ${ventas.length ? (total / ventas.length).toFixed(2) : "0.00"} ${moneda}.`,
+          `  Pendientes de enviar: ${sinEnviar.length}. Pendientes de cobro: ${sinCobrar.length}.`,
+          trozo(
+            "SIN STOCK (hasta 15):",
+            agotados.slice(0, 15).map(({ producto, variante }) =>
+              `  · ${producto.title}${variante.sku ? ` [${variante.sku}]` : ""}`,
+            ),
+          ),
+          trozo(
+            "STOCK JUSTO (hasta 15):",
+            justos.slice(0, 15).map(({ producto, variante }) =>
+              `  · ${producto.title}${variante.sku ? ` [${variante.sku}]` : ""} — quedan ${variante.inventory_quantity}`,
+            ),
+          ),
+          trozo("LO QUE MÁS SE VENDE:", masVendido.map(([t, n]) => `  · ${n} uds · ${t}`)),
+        ]
+          .filter((l) => l !== null)
+          .join("\n");
+      },
+    },
+    {
       nombre: "listar_productos",
       descripcion:
         "Los productos de la tienda, con precio, stock, estado y enlace. Empieza siempre por aquí antes de cambiar nada.",

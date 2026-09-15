@@ -83,13 +83,25 @@ export async function* conversarConHerramientas(opts: {
   plan: Plan;
   /** Dónde está, si dio permiso. Solo la ve la herramienta de mapas. */
   ubicacion?: { lat: number; lon: number };
+  /**
+   * De quién son las conexiones, cuando no hay nadie delante.
+   *
+   * Lo usan los encargos programados, que corren sin cookie. Sin esto sus
+   * conexiones no se encontraban y el encargo escribía de memoria.
+   */
+  dueno?: string;
   signal?: AbortSignal;
 }): AsyncGenerator<EventoBucle> {
   const ultimoTurno = [...opts.turns].reverse().find((t) => t.role === "user");
-  const herramientas = await herramientasPara(opts.mode, opts.plan, {
-    texto: ultimoTurno?.content ?? "",
-    conImagen: Boolean(ultimoTurno?.attachments?.some((a) => a.kind === "image" && a.data)),
-  });
+  const herramientas = await herramientasPara(
+    opts.mode,
+    opts.plan,
+    {
+      texto: ultimoTurno?.content ?? "",
+      conImagen: Boolean(ultimoTurno?.attachments?.some((a) => a.kind === "image" && a.data)),
+    },
+    opts.dueno,
+  );
 
   // Sin herramientas que ofrecer, esto es una conversación normal y corriente.
   if (herramientas.length === 0) {

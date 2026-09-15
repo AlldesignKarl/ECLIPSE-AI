@@ -109,7 +109,7 @@ src/
                                 de sus propios mensajes (sin llamar al modelo)
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        71 pruebas. Ver pruebas/LEEME.md
+pruebas/                        72 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -299,7 +299,22 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
   de quedada.** Carlos lo pidió así con estas palabras: *"lo quiero solo en los
   chats de grupo no en lo demas"*. En la portada y en el chat de uno hay ya un
   eclipse de protagonista, y dos anillos cruzándose no dejan leer ninguno.
-- **Las 71 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que las conexiones se puedan leer con un correo explícito** (`misConexiones(email)`,
+  `credencialesDe(servicio, email)`, `ejecutarConexion({..., dueno})`). Sin eso
+  se buscan por la cookie, y un encargo programado lo dispara el reloj de
+  madrugada: sin cookie no encontraba nada, el modelo se quedaba sin la tienda
+  que el encargo daba por conectada, y el parte salía INVENTADO. Es el fallo que
+  más se notó en producción y no daba ningún error por ninguna parte.
+- **Que un encargo diga qué puede mirar y qué no** (`loQuePuedeMirar` en
+  `tareas/ejecutar.ts`). Un modelo con un encargo que pide datos y sin forma de
+  conseguirlos escribe cifras plausibles: parece bueno y es falso, que es lo peor
+  posible en algo que se lee por la mañana y sobre lo que se decide.
+- **Que `tonoPara()` mire si el móvil SUENA distinto**, no si cree tener voz de
+  hombre. En un Android el género se adivina por una letra de un código
+  (`es-es-x-eed-local`) y acierta a medias; y con una sola voz instalada —lo
+  normal— hombre y mujer devuelven forzosamente la misma. Ahí el único cambio
+  posible es el tono, y hay que hacerlo o el botón no hace nada.
+- **Las 72 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -312,7 +327,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 71 pruebas (~6 min)
+npm run prueba           # las 72 pruebas (~6 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

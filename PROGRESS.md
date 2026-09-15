@@ -2,7 +2,7 @@
 
 Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.41**
+usuario: **2.42**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,11 +11,12 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 71 pruebas en verde.
-Lo último: Programar abre en un **calendario de quedadas** que te mete en su
-chat, en los grupos ya se mandan **fotos** y se puede **borrar** lo que sobre
-—mensajes y el grupo entero—, la **ubicación se pide una sola vez** y el eclipse
-está de fondo. Lo que queda son mejoras, no averías.
+La aplicación está **en producción y funcionando**, con 72 pruebas en verde.
+Lo último y lo más importante: los **encargos programados ya ven de verdad las
+cuentas conectadas** —no las veían, y por eso los partes traían cifras
+inventadas—, hay **resumen entero de la tienda** en una sola pregunta, y las
+**voces** cambian de verdad aunque el móvil solo tenga una. Lo que queda son
+mejoras, no averías.
 
 ---
 
@@ -63,7 +64,55 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: cómo contesta, y lo que cuesta cada mensaje
+## 3. Lo último: que lo conectado esté conectado de verdad
+
+Carlos lo probó y dijo tres cosas. Las tres tenían causa, y las tres eran de
+verdad:
+
+1. **«En el calendario pone cosas falsas… y los datos que no se los invente».**
+   Esto no era el calendario: era que los encargos programados NO veían sus
+   cuentas conectadas. Las conexiones se buscaban por la cookie de quien está
+   delante, y un encargo lo dispara el reloj de madrugada, cuando no hay nadie
+   ni cookie. Resultado: un encargo que dice "mira los pedidos de ayer" se
+   ejecutaba sin la tienda, y el modelo rellenaba el hueco con cifras
+   plausibles. No daba ningún error en ninguna parte.
+
+   Arreglado por donde había que arreglarlo: `misConexiones(email)`,
+   `credencialesDe(servicio, email)` y `ejecutarConexion({..., dueno})` aceptan
+   ahora un dueño explícito, y `ejecutarUna` lo pasa. Además, antes de escribir
+   nada se le dice al modelo QUÉ tiene conectado de verdad y qué hacer cuando no
+   puede mirar algo: decirlo en una línea y parar. Nada de rangos, ni ejemplos,
+   ni "lo habitual en una tienda como la tuya". Y el planificador ya solo
+   propone encargos que podrá cumplir el día que toquen.
+
+2. **«Quiero que se conecte a todo realmente, que vea absolutamente toda tu
+   tienda».** Los conectores ya llamaban a las APIs de verdad, pero ver la
+   tienda entera eran cinco preguntas seguidas. Ahora hay `resumen_tienda` en
+   Shopify y en WooCommerce: en UNA llamada trae el catálogo, lo que está sin
+   publicar y sin descripción, lo agotado y lo que va justo con nombre y SKU,
+   los pedidos de los últimos N días con su importe y su media, lo pendiente de
+   enviar y de cobrar, y lo más vendido por unidades.
+
+3. **«Las voces no funcionan: pongo hombre y suena la de mujer».** Su móvil
+   tiene UNA sola voz en castellano —se ve en la captura: "Voz 1"—, así que
+   pedir hombre y pedir mujer devolvían forzosamente la misma y el botón no
+   podía hacer nada. Ahora `tonoPara()` comprueba lo que de verdad va a pasar
+   —si pidiendo hombre y pidiendo mujer sale la misma voz— y en ese caso le
+   mueve el tono de verdad (0,57 contra 1,27: se oye a la primera sílaba). Y la
+   pantalla dice lo que hay y cómo instalar más voces, en vez de dejar un botón
+   que aparenta funcionar.
+
+   Se dejó de fiar del truco de adivinar el género por el nombre: en un Android
+   las voces se llaman `es-es-x-eed-local` y eso es una letra de un código, no
+   un dato.
+
+Pruebas nuevas: `encargos-reales.test.mjs` (una tienda conectada que se lee sin
+cookie, y el resumen con los números que hay de verdad contra la tienda de
+mentira), más las de voces y las del encargo sin nada conectado.
+
+---
+
+## 3 bis. Antes: cómo contesta, y lo que cuesta cada mensaje
 
 Objetivo de Carlos: que ECLIPSE se sienta inteligente, rápido y natural, sin
 cambiar de modelo y sin gastar más tokens. Medido antes y después, en una
@@ -334,7 +383,7 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**71 archivos, todas en verde.** Viven en `pruebas/`.
+**72 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
 npm run prueba           # todas (~6 min)

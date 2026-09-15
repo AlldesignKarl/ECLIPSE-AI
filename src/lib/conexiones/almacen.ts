@@ -137,9 +137,19 @@ export interface Resumen {
   conectadoEl: number;
 }
 
-/** Las conexiones de quien está usando la aplicación ahora mismo. */
-export async function misConexiones(): Promise<Resumen[]> {
-  const email = await quien();
+/**
+ * Las conexiones de quien está usando la aplicación ahora mismo.
+ *
+ * O las de un correo concreto, que es lo que hace falta cuando NO hay nadie
+ * delante. Un encargo programado lo dispara el reloj a las cuatro de la mañana:
+ * ahí no hay cookie que leer, así que `quien()` devolvía null y esto devolvía
+ * una lista vacía. Y una lista vacía significa "no tienes nada conectado", con
+ * lo cual el encargo de "mírame las ventas de la tienda" se ejecutaba SIN la
+ * tienda y el parte salía inventado. Ese era el fallo, y de ahí sale el dueño
+ * explícito de aquí.
+ */
+export async function misConexiones(deQuien?: string): Promise<Resumen[]> {
+  const email = deQuien ?? (await quien());
   if (!email) return [];
 
   const ids = await leerIndice(email);
@@ -168,8 +178,10 @@ export async function olvidarTodasLasDe(email: string): Promise<void> {
 /** Las credenciales de un servicio, para usarlas y no para enseñarlas. */
 export async function credencialesDe(
   servicio: string,
+  /** El dueño, cuando no hay nadie delante (un encargo programado). */
+  deQuien?: string,
 ): Promise<{ cred: Credenciales; permiso: Permiso } | null> {
-  const email = await quien();
+  const email = deQuien ?? (await quien());
   if (!email) return null;
 
   const guardada = await leerGuardada(email, servicio);
@@ -185,8 +197,10 @@ export async function guardarConexion(
   cred: Credenciales,
   cuenta: string,
   permiso: Permiso,
+  /** El dueño, si no es quien está usando la aplicación ahora mismo. */
+  deQuien?: string,
 ): Promise<boolean> {
-  const email = await quien();
+  const email = deQuien ?? (await quien());
   if (!email) return false;
 
   const guardada: Guardada = {

@@ -10,10 +10,10 @@ import {
   guardarAjustes,
   IDIOMAS,
   leerAjustes,
-  loQueHay,
+  suenanDistinto,
   nombreDeVoz,
   RITMOS,
-  tonoDe,
+  tonoPara,
   velocidadDe,
   VOCES,
   vocesDelIdioma,
@@ -96,12 +96,20 @@ export default function Llamada({ abierta, onCerrar, nombre = "", onGuardar }: P
         const voz = new SpeechSynthesisUtterance(frase);
         voz.lang = ajustes.idioma;
         voz.rate = velocidadDe(ajustes.ritmo);
-        voz.pitch = tonoDe(ajustes.timbre);
 
         // La del aparato que más se parezca a lo que ha pedido.
         const voces = window.speechSynthesis.getVoices();
         const elegida = elegirVoz(voces, ajustes);
         const buena = elegida ? voces.find((v) => v.name === elegida.name && v.lang === elegida.lang) : null;
+        /*
+          El tono se calcula DESPUÉS de saber quién va a hablar.
+
+          Muchos móviles traen una sola voz por idioma, así que "hombre" y
+          "mujer" acababan siendo la misma y el botón no hacía nada. Si la voz
+          que va a sonar no es de quien se pidió, se le mueve el tono de verdad;
+          si sí lo es, no se toca.
+        */
+        voz.pitch = tonoPara(ajustes, voces);
         // Elegir voz es una mejora, no un requisito: si el aparato se queja,
         // se habla con la de por defecto antes que no hablar.
         try {
@@ -477,7 +485,7 @@ function AjustesDeVoz({
 }) {
   const [ajustes, setAjustes] = useState<AjustesVoz>(VOZ_POR_DEFECTO);
   /** Qué voces tiene ESTE aparato en ESTE idioma. Se pregunta, no se supone. */
-  const [hay, setHay] = useState({ mujer: true, hombre: true });
+  const [hay, setHay] = useState({ dos: true });
   /** Las voces de este móvil, para poder elegir una por el oído. */
   const [suyas, setSuyas] = useState<{ name: string; lang: string; localService?: boolean }[]>([]);
 
@@ -496,7 +504,7 @@ function AjustesDeVoz({
     const mirar = () => {
       try {
         const todas = window.speechSynthesis.getVoices();
-        setHay(loQueHay(todas, ajustes.idioma));
+        setHay({ dos: suenanDistinto(todas, ajustes.idioma) });
         setSuyas(vocesDelIdioma(todas, ajustes.idioma));
       } catch {
         /* sin voces en este aparato */
@@ -523,10 +531,11 @@ function AjustesDeVoz({
       );
       u.lang = config.idioma;
       u.rate = velocidadDe(config.ritmo);
-      u.pitch = tonoDe(config.timbre);
       const voces = window.speechSynthesis.getVoices();
       const elegida = elegirVoz(voces, config);
       const real = elegida ? voces.find((v) => v.name === elegida.name) : null;
+      // El tono, sabiendo ya quién va a hablar: ver `tonoPara`.
+      u.pitch = tonoPara(config, voces);
       if (real) u.voice = real;
       window.speechSynthesis.speak(u);
     } catch {
@@ -573,13 +582,13 @@ function AjustesDeVoz({
               haría pensar que el botón no funciona, cuando lo que pasa es que
               ahí no hay nada que elegir.
             */}
-            {!ajustes.vozExacta &&
-              ((ajustes.voz === "mujer" && !hay.mujer) || (ajustes.voz === "hombre" && !hay.hombre)) && (
-                <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
-                  Tu móvil no distingue voz de {ajustes.voz} en este idioma. Elígela abajo
-                  escuchándolas: eso siempre acierta.
-                </p>
-              )}
+            {!ajustes.vozExacta && ajustes.voz !== "cualquiera" && !hay.dos && (
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
+                Tu móvil solo tiene una voz en este idioma, así que no puede sonar a dos personas:
+                se le cambia el tono para acercarla a lo que pides. Para que suene otra de verdad,
+                se instalan más voces desde los ajustes del propio móvil.
+              </p>
+            )}
           </div>
 
           {/*

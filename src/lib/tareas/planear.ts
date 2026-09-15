@@ -144,9 +144,18 @@ function loQueYaHay(titulos: string[]): string {
 async function loQuePuedeMirar(): Promise<string> {
   const conectadas = await misConexiones().catch(() => []);
   if (!conectadas.length)
-    return `No tiene ninguna cuenta conectada, así que los encargos solo pueden apoyarse en
-buscar en internet y en lo que tú sepas. NO propongas nada que empiece por "mira
-en tu tienda" o "revisa tu Notion": no hay nada que mirar.`;
+    return `ESTA PERSONA NO TIENE NINGUNA CUENTA CONECTADA. Ni tienda, ni web, ni correo,
+ni agenda. Cero.
+
+Así que cada encargo que propongas tiene que poder hacerse SOLO con buscar en
+internet y con lo que tú sepas. Prohibido proponer nada que consulte sus datos:
+nada de "sus pedidos", "su stock", "sus ventas", "su inventario", "la API de su
+tienda", "su Notion", "su calendario", "su correo". Eso no existe aquí, y un
+encargo así solo puede acabar en un parte inventado el día que se ejecute.
+
+Si lo que te ha pedido necesita su tienda, dilo en la nota —qué tendría que
+conectar en Conexiones— y propón mientras tanto lo que SÍ se puede hacer
+buscando: precios de la competencia, novedades del sector, ideas de contenido.`;
 
   const nombres = conectadas
     .map((c) => servicioDe(c.servicio)?.nombre ?? c.servicio)
@@ -189,6 +198,9 @@ Cómo tiene que ser el plan:
   suman y qué producto se ha quedado sin stock" sí.
 - Nada que no puedas hacer: no mandas correos, no llamas por teléfono, no
   compras nada y no haces vídeos.
+- Y nada que no puedas MIRAR. Un encargo que el día que toque no tenga dónde
+  consultar los datos que promete no es un encargo: es un informe inventado
+  esperando a que llegue su día. Si dudas, no lo propongas.
 - Los títulos, de dos o tres palabras, para que se lean en una lista.
 - La "nota": qué has decidido y por qué, en dos líneas, hablándole de tú. Si te
   han pedido consejo, ahí va el consejo. Nada de "¡Aquí tienes tu plan!".`;

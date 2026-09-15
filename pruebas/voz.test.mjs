@@ -75,7 +75,7 @@ ok(V.IDIOMAS.every((i) => /^[a-z]{2}-[A-Z]{2}$/.test(i.id)), "todos con código 
 /*                        De mujer o de hombre, y buena                       */
 /* -------------------------------------------------------------------------- */
 
-const { vozDe, loQueHay, calidadDe, VOCES, elegirVoz } = V;
+const { vozDe, loQueHay, calidadDe, VOCES, elegirVoz, tonoDe, tonoPara } = V;
 
 console.log("\nDe quién es cada voz");
 ok(vozDe("Mónica") === "mujer", "Mónica, de mujer");
@@ -114,6 +114,35 @@ console.log("\nY se sabe qué tiene el aparato, para poder decirlo");
 ok(loQueHay(aparato, "es-ES").mujer && loQueHay(aparato, "es-ES").hombre, "en español hay de las dos");
 ok(!loQueHay(soloMujeres, "es-ES").hombre, "en un móvil sin voz de hombre, se sabe");
 ok(loQueHay([], "es-ES").mujer === false, "y sin voces, no hay ninguna");
+
+/*
+  Lo que contó Carlos: "pongo hombre y sigue sonando la de mujer".
+
+  Su móvil tiene UNA voz en castellano. Con una sola no hay dos personas entre
+  las que elegir, así que el botón no podía cambiar nada y parecía roto. Ahora,
+  cuando la voz que va a hablar no es de quien se ha pedido, se le mueve el tono
+  de verdad: no es otra persona, pero se oye distinto a la primera sílaba.
+*/
+console.log("\nCon una sola voz, hombre y mujer tienen que sonar distinto");
+const unaSola = [{ name: "es-es-x-eed-local", lang: "es-ES" }];
+const base = { timbre: "suave", idioma: "es-ES", ritmo: "normal" };
+const laUnica = elegirVoz(unaSola, { ...base, voz: "hombre" });
+ok(laUnica.name === elegirVoz(unaSola, { ...base, voz: "mujer" }).name, "el móvil devuelve la MISMA voz pida lo que pida (eso era el fallo)");
+
+const comoHombre = tonoPara({ ...base, voz: "hombre" }, unaSola);
+const comoMujer = tonoPara({ ...base, voz: "mujer" }, unaSola);
+ok(comoHombre < tonoDe("suave"), `pidiendo hombre, el tono baja (${comoHombre})`);
+ok(comoMujer > tonoDe("suave"), `pidiendo mujer, el tono sube (${comoMujer})`);
+ok(comoMujer - comoHombre > 0.35, `y la diferencia se OYE, no es un 2% (${(comoMujer - comoHombre).toFixed(2)})`);
+ok(comoHombre >= 0.4 && comoMujer <= 1.9, "sin salirse de lo que acepta un navegador");
+
+console.log("\nPero si el móvil sí tiene esa voz, no se le toca el tono");
+const lasDos = [{ name: "Jorge", lang: "es-ES" }, { name: "Mónica", lang: "es-ES" }];
+ok(tonoPara({ ...base, voz: "hombre" }, lasDos) === tonoDe("suave"), "con voz de hombre de verdad, el tono se queda como está");
+ok(tonoPara({ ...base, voz: "mujer" }, lasDos) === tonoDe("suave"), "y con una de mujer, igual");
+ok(tonoPara({ ...base, voz: "cualquiera" }, unaSola) === tonoDe("suave"), "«la mejor» no mueve nada: no se ha pedido nadie");
+ok(tonoPara({ ...base, voz: "hombre", vozExacta: laUnica.name }, unaSola) === tonoDe("suave"), "y una elegida a mano tampoco: esa la ha elegido el oído");
+ok(tonoPara({ ...base, timbre: "clara", voz: "cualquiera" }, lasDos) === tonoDe("clara"), "el timbre sigue mandando cuando no hay género que forzar");
 
 console.log("\nLa calidad se nota en el nombre");
 ok(calidadDe({ name: "Microsoft Elvira Online (Natural)" }) > calidadDe({ name: "Elvira" }), "una «Natural» puntúa más que la de siempre");

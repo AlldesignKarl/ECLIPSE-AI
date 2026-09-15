@@ -83,6 +83,53 @@ export function tonoDe(timbre: Timbre): number {
   return timbre === "suave" ? 0.92 : 1.06;
 }
 
+/**
+ * El tono de verdad, contando con lo que este móvil TIENE.
+ *
+ * Esto es lo que arregla el "pongo hombre y sigue sonando la de mujer".
+ *
+ * La causa no estaba en el código que elige: estaba en el aparato. Muchos
+ * móviles traen UNA sola voz por idioma —el de Carlos tiene una en castellano—,
+ * así que pedir "hombre" y pedir "mujer" devolvían forzosamente la misma, y
+ * desde fuera lo que se ve es un botón que no hace nada.
+ *
+ * Con una sola voz no se puede traer otra persona, pero sí se puede cambiar
+ * cómo suena: bajarle el tono de verdad si se pidió hombre, subirlo si se pidió
+ * mujer. No es un actor distinto, pero se oye distinto a la primera sílaba, que
+ * es lo que se estaba pidiendo.
+ *
+ * Y cuando el móvil SÍ tiene las dos voces no se toca nada, porque ahí el
+ * cambio de voz ya se nota y el tono solo estropearía una voz buena. Lo mismo
+ * si se ha elegido una a mano: esa la ha elegido el oído, y el oído gana.
+ *
+ * El desplazamiento es grande a propósito. Con un 5% no se nota, y una opción
+ * que no se nota es una opción rota.
+ */
+export function tonoPara(ajustes: AjustesVoz, voces: VozDelAparato[]): number {
+  const base = tonoDe(ajustes.timbre);
+  if (ajustes.voz === "cualquiera" || ajustes.vozExacta) return base;
+
+  /*
+    La pregunta correcta no es "¿hay voz de hombre?", es "¿suena distinto?".
+
+    Se comprueba ejecutando lo que de verdad va a pasar: qué voz saldría
+    pidiendo hombre y cuál pidiendo mujer. Si son la MISMA —el móvil solo tiene
+    una, o no sabe de quién es ninguna— el botón por sí solo no puede cambiar
+    nada y hay que mover el tono. Si son distintas, ya se nota y no se toca.
+
+    Preguntarlo así evita fiarse de adivinar el género por el nombre, que en un
+    Android es una letra de un código (`es-es-x-eed-local`) y acierta a medias.
+    Ahí estaba el "pongo hombre y suena la de mujer": se daba por buena una
+    suposición y encima se dejaba de hacer lo único que sí se podía hacer.
+  */
+  const conHombre = elegirVoz(voces, { ...ajustes, voz: "hombre", vozExacta: undefined });
+  const conMujer = elegirVoz(voces, { ...ajustes, voz: "mujer", vozExacta: undefined });
+  if (conHombre && conMujer && conHombre.name !== conMujer.name) return base;
+
+  const movido = ajustes.voz === "hombre" ? base * 0.62 : base * 1.38;
+  return Math.min(1.9, Math.max(0.4, Number(movido.toFixed(3))));
+}
+
 /* -------------------------------------------------------------------------- */
 /*                     Conocer las voces de cada aparato                      */
 /* -------------------------------------------------------------------------- */
@@ -220,6 +267,21 @@ export function nombreDeVoz(voz: VozDelAparato, numero: number): string {
   ].filter(Boolean);
 
   return pistas.length ? `${bonito} · ${pistas.join(" · ")}` : bonito;
+}
+
+/**
+ * ¿Puede este aparato sonar a dos personas distintas en este idioma?
+ *
+ * Es la pregunta que decide qué se le dice a la gente, y es la MISMA que usa
+ * `tonoPara`: si pidiendo hombre y pidiendo mujer sale la misma voz, no. Que la
+ * pantalla y el sonido contesten lo mismo es justo lo que faltaba: antes la
+ * pantalla decía que se podía elegir y el altavoz decía que no.
+ */
+export function suenanDistinto(voces: VozDelAparato[], idioma: string): boolean {
+  const base = { timbre: "suave", idioma, ritmo: "normal" } as const;
+  const h = elegirVoz(voces, { ...base, voz: "hombre" });
+  const m = elegirVoz(voces, { ...base, voz: "mujer" });
+  return Boolean(h && m && h.name !== m.name);
 }
 
 /** ¿Tiene este aparato voz de mujer y de hombre en este idioma? */

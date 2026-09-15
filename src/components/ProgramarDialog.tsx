@@ -134,6 +134,16 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
   */
   const [quedada, setQuedada] = useState<Grupo | null>(null);
 
+  /*
+    Qué tiene conectado de verdad.
+
+    Se enseña porque un encargo que habla de "tu tienda" sin tienda conectada no
+    puede mirar nada, y eso hay que decirlo ANTES de que el parte llegue por la
+    mañana. Que el parte diga "no he podido mirarlo" ya está arreglado por
+    dentro; esto es para no llevarse la sorpresa.
+  */
+  const [conectadas, setConectadas] = useState<number | null>(null);
+
   const recargar = useCallback(async () => {
     setCargando(true);
     try {
@@ -206,6 +216,18 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
       }
     })();
   }, [open, plan, recargar, ponerseAlDia, onLeidos]);
+
+  useEffect(() => {
+    if (!open || plan !== "pro") return;
+    void (async () => {
+      try {
+        const d = (await (await fetch("/api/conexiones")).json()) as { conexiones?: unknown[] };
+        setConectadas((d.conexiones ?? []).length);
+      } catch {
+        setConectadas(null);
+      }
+    })();
+  }, [open, plan]);
 
   const sinLeer = resultados.filter((r) => r.nueva).length;
 
@@ -310,6 +332,26 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
             {tareas.length === 0 && <Planificador tareas={tareas} onCreado={() => void recargar()} />}
 
             {tareas.length > 0 && <Calendario tareas={tareas} />}
+
+            {/*
+              Sin nada conectado, dicho antes de que duela.
+
+              Un encargo se escribe una vez y luego se ejecuta solo durante
+              meses. Si habla de la tienda y no hay tienda conectada, lo honesto
+              es avisar aquí: el parte dirá que no ha podido mirarlo, y saberlo
+              de antemano es la diferencia entre "esto funciona raro" y "ah,
+              claro, es que no lo he conectado".
+            */}
+            {tareas.length > 0 && conectadas === 0 && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-line-soft bg-panel/40 px-3.5 py-3">
+                <Icon.Plug width={15} height={15} className="mt-0.5 shrink-0 text-faint" />
+                <p className="text-[12.5px] leading-relaxed text-muted">
+                  No tienes ninguna cuenta conectada. Los encargos que hablen de tu tienda, tus
+                  ventas o tu stock no tienen dónde mirarlo: te lo dirán en una línea en vez de
+                  inventarse las cifras. Se conecta desde Conexiones, en el menú.
+                </p>
+              </div>
+            )}
 
             {resultados.length > 0 && (
               <div>

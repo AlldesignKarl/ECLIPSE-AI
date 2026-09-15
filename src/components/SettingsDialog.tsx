@@ -5,10 +5,12 @@ import { aplicarTema, guardarTema, temaGuardado, type Tema } from "@/lib/tema";
 import {
   elegirVoz,
   guardarAjustes,
+  IDIOMAS,
   leerAjustes,
+  suenanDistinto,
   nombreDeVoz,
   RITMOS,
-  tonoDe,
+  tonoPara,
   velocidadDe,
   VOCES,
   vocesDelIdioma,
@@ -1134,6 +1136,8 @@ function SeguridadBox({ onFuera }: { onFuera?: () => void }) {
 function VozBox() {
   const [ajustes, setAjustes] = useState<AjustesVoz>(VOZ_POR_DEFECTO);
   const [suyas, setSuyas] = useState<{ name: string; lang: string; localService?: boolean }[]>([]);
+  /** Si este móvil tiene de verdad voz de mujer y de hombre en este idioma. */
+  const [hay, setHay] = useState({ dos: true });
 
   useEffect(() => {
     setAjustes(leerAjustes());
@@ -1142,7 +1146,9 @@ function VozBox() {
   useEffect(() => {
     const mirar = () => {
       try {
-        setSuyas(vocesDelIdioma(window.speechSynthesis.getVoices(), ajustes.idioma));
+        const todas = window.speechSynthesis.getVoices();
+        setSuyas(vocesDelIdioma(todas, ajustes.idioma));
+        setHay({ dos: suenanDistinto(todas, ajustes.idioma) });
       } catch {
         /* este aparato no habla */
       }
@@ -1164,10 +1170,11 @@ function VozBox() {
       );
       u.lang = nuevo.idioma;
       u.rate = velocidadDe(nuevo.ritmo);
-      u.pitch = tonoDe(nuevo.timbre);
       const voces = window.speechSynthesis.getVoices();
       const elegida = elegirVoz(voces, nuevo);
       const real = elegida ? voces.find((v) => v.name === elegida.name) : null;
+      // El tono, sabiendo ya quién va a hablar: ver `tonoPara`.
+      u.pitch = tonoPara(nuevo, voces);
       if (real) u.voice = real;
       window.speechSynthesis.speak(u);
     } catch {
@@ -1198,6 +1205,25 @@ function VozBox() {
             </button>
           ))}
         </div>
+
+        {/*
+          Decir la verdad cuando el móvil no tiene las dos voces.
+
+          Este fue el "pongo hombre y sigue sonando la de mujer". No estaba
+          roto el botón: es que muchos móviles traen UNA sola voz por idioma, y
+          con una no hay dos personas que elegir. Ahora se le mueve el tono para
+          que al menos suene distinto, y se dice lo que pasa y cómo arreglarlo
+          de verdad, en vez de dejar un botón que aparenta hacer algo.
+        */}
+        {!ajustes.vozExacta && ajustes.voz !== "cualquiera" && !hay.dos && (
+          <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
+            Tu móvil solo tiene una voz en{" "}
+            {IDIOMAS.find((i) => i.id === ajustes.idioma)?.nombre ?? "este idioma"}, así que no
+            puede sonar a dos personas: se le baja o se le sube el tono para acercarla a lo que
+            pides. Para que suene otra persona de verdad, se instalan más voces desde los ajustes
+            del propio móvil (Ajustes → Idiomas → Salida de texto a voz).
+          </p>
+        )}
 
         <div className="mt-2 flex gap-1.5 rounded-xl border border-line-soft bg-panel p-1">
           {RITMOS.map((r) => (

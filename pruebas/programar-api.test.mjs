@@ -242,6 +242,19 @@ try {
   ok(despues.json?.resultados?.some((r) => r.tareaId === unDia.json.tarea.id), "«hacerlo ahora» entrega el parte sin esperar a mañana");
   ok(yaFue?.activa === false, "y un encargo de un día concreto se apaga solo al hacerse: si no, se repetiría cada día para siempre");
 
+  /*
+    Lo que contó Carlos: sus partes daban cifras de una tienda que no tiene
+    conectada. La causa estaba en que las conexiones se buscaban por la cookie
+    de quien está delante, y un encargo lo dispara el reloj cuando no hay nadie.
+    Aquí se comprueba lo que se le DICE al modelo, que es lo que decide si
+    contesta "no puedo mirarlo" o se lo inventa.
+  */
+  console.log("\nUn encargo sin nada conectado no puede acabar en cifras inventadas");
+  const dicho = pedidos.filter((p) => p.stream).map((p) => p.messages?.[0]?.content ?? "").join("\n");
+  ok(/NO TIENE NINGUNA CUENTA CONECTADA/.test(dicho), "se le dice, con todas las letras, que no hay nada conectado");
+  ok(/NO des cifras, ni rangos, ni ejemplos/.test(dicho), "y que no dé cifras ni ejemplos: eso es inventárselo");
+  ok(/qué tendría que conectar en Conexiones/.test(dicho), "y que diga qué habría que conectar para la próxima");
+
   console.log("\nCada uno los suyos");
   const otro = sesion();
   await otro("/api/auth", { method: "POST", body: JSON.stringify({ action: "signup", email: `otro${Date.now()}@ejemplo.com`, password: "eclipse2026" }) });

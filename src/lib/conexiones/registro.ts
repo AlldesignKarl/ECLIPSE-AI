@@ -137,6 +137,14 @@ export interface Peticion {
   accion: string;
   datos?: Record<string, unknown>;
   signal?: AbortSignal;
+  /**
+   * De quién es la cuenta, cuando no hay nadie delante.
+   *
+   * Los encargos programados los dispara el reloj: no hay cookie, así que sin
+   * esto no se encontraban las credenciales y el modelo se quedaba sin la
+   * tienda que el encargo daba por conectada.
+   */
+  dueno?: string;
 }
 
 /**
@@ -156,6 +164,7 @@ export async function ejecutarConexion({
   accion: idAccion,
   datos = {},
   signal,
+  dueno,
 }: Peticion): Promise<{ texto: string; error?: string }> {
   const servicio = servicioDe(idServicio);
   if (!servicio)
@@ -166,7 +175,7 @@ export async function ejecutarConexion({
       ).join(", ")}.`,
     };
 
-  const guardada = await credencialesDe(servicio.id);
+  const guardada = await credencialesDe(servicio.id, dueno);
   if (!guardada)
     return {
       texto: "",

@@ -1,4 +1,6 @@
 import { buildSystemPrompt } from "../prompts";
+import { misConexiones } from "../conexiones/almacen";
+import { servicioDe } from "../conexiones/registro";
 import { activeProvider } from "../provider";
 import { resolveKey } from "../keys";
 import { conversarConHerramientas } from "../tools/bucle";
@@ -43,6 +45,51 @@ directo y nadie te va a contestar. Así que entrega algo TERMINADO.
   que parezca que ha pasado algo es lo peor que puedes hacer aquí.
 - Sin saludos ni despedidas. Es un parte, no una carta.`;
 
+/**
+ * La regla que arregla los partes inventados.
+ *
+ * Un encargo se escribe una vez —"mírame las ventas de ayer"— y luego se
+ * ejecuta solo durante meses. Si la tienda no está conectada, o se desconectó,
+ * o la acción falla, el modelo tiene delante un encargo que habla de datos y
+ * ninguna forma de conseguirlos. Sin decirle nada, lo que hace es escribir un
+ * informe con números plausibles: parece bueno y es falso, que es la peor
+ * combinación posible en algo que se lee por la mañana y se decide encima.
+ *
+ * Por eso aquí se le dice, en el mismo mensaje, QUÉ tiene conectado de verdad y
+ * qué pasa cuando no lo tiene. Un parte que dice "no puedo mirarlo" sirve; uno
+ * que se lo inventa, no.
+ */
+function loQuePuedeMirar(conectadas: { servicio: string; cuenta: string; permiso: string }[]): string {
+  if (!conectadas.length)
+    return `ESTE USUARIO NO TIENE NINGUNA CUENTA CONECTADA. No tienes forma de ver
+su tienda, sus ventas, su stock, su correo ni su agenda.
+
+Si este encargo pide datos suyos, el parte entero es UNA línea: que no puedes
+mirarlo porque no hay nada conectado, y qué tendría que conectar en Conexiones
+para que la próxima vez sí. NO des cifras, ni rangos, ni ejemplos, ni "lo
+habitual en una tienda como la tuya": eso es inventárselo, y aquí nadie está
+delante para darse cuenta.`;
+
+  const lista = conectadas
+    .map((c) => {
+      const nombre = servicioDe(c.servicio)?.nombre ?? c.servicio;
+      const permiso = c.permiso === "escribir" ? "lectura y escritura" : "solo lectura";
+      return `- ${nombre} (${c.servicio}): ${c.cuenta} — ${permiso}`;
+    })
+    .join("\n");
+
+  return `Cuentas conectadas de este usuario, y las ÚNICAS que puedes mirar:
+${lista}
+
+Úsalas con la herramienta \`conexion\`, y cuenta lo que devuelvan con sus
+números delante.
+
+Y lo que no esté en esa lista, no lo tienes. Si el encargo pide datos de algo
+que no está conectado, o la consulta falla, dilo en una línea y para: no des
+cifras aproximadas, ni ejemplos, ni "más o menos". Un parte que dice "no he
+podido mirarlo" sirve; uno inventado hace tomar decisiones sobre datos falsos.`;
+}
+
 export interface Ejecucion {
   tarea: string;
   ok: boolean;
@@ -83,13 +130,22 @@ export async function ejecutarUna(email: string, tarea: Tarea): Promise<Ejecucio
   let texto = "";
 
   try {
+    /*
+      Sus conexiones, leídas con su correo y no con la cookie.
+
+      Aquí no hay cookie: esto lo dispara el reloj. Antes eso significaba que la
+      herramienta de conexiones ni se montaba, así que un encargo sobre "mi
+      tienda" se ejecutaba sin la tienda y el parte salía de la nada.
+    */
+    const conectadas = await misConexiones(email);
+
     const sistema = `${buildSystemPrompt({
       mode: "chat",
       // Las tareas son del plan Pro, así que aquí se trabaja como Pro.
       plan: "pro",
       web: true,
       engine: provider,
-    })}\n\n${COMO_CONTESTAR}`;
+    })}\n\n${COMO_CONTESTAR}\n\n${loQuePuedeMirar(conectadas)}`;
 
     for await (const evento of conversarConHerramientas({
       provider: provider as CompatProvider,
@@ -106,6 +162,7 @@ export async function ejecutarUna(email: string, tarea: Tarea): Promise<Ejecucio
       speed: "equilibrado",
       mode: "chat",
       plan: "pro",
+      dueno: email,
       signal: reloj,
     })) {
       if (evento.texto) texto += evento.texto;

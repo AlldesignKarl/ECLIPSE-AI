@@ -108,6 +108,79 @@ export const woocommerce: Servicio = {
 
   acciones: [
     {
+      nombre: "resumen_tienda",
+      descripcion:
+        "TODA la tienda de un vistazo y en UNA llamada: cuántos productos hay y cuántos sin publicar, qué se ha quedado sin stock o va justo, cuántos pedidos ha habido en los últimos días, cuánto suman, qué está pendiente y qué se vende más. Por aquí se empieza cuando alguien pregunta cómo va su tienda.",
+      argumentos: "dias (cuántos días de pedidos mirar, 1-90, por defecto 30)",
+      async ejecutar({ cred, args, signal }) {
+        const dias = tope(args.dias, 30, 90);
+        const desde = new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 19);
+
+        // Las dos a la vez: encadenadas son dos viajes al WordPress de alguien,
+        // que no siempre es rápido, dentro de una función que se corta a los 60s.
+        const [productos, pedidos] = await Promise.all([
+          pedir<Producto[]>("WooCommerce", url(cred, "products?per_page=100"), {
+            cabeceras: cabeceras(cred),
+            signal,
+          }).catch(() => [] as Producto[]),
+          pedir<Pedido[]>(
+            "WooCommerce",
+            url(cred, `orders?per_page=100&after=${encodeURIComponent(desde)}`),
+            { cabeceras: cabeceras(cred), signal },
+          ).catch(() => [] as Pedido[]),
+        ]);
+
+        const lista = productos ?? [];
+        const ventas = pedidos ?? [];
+        const moneda = ventas[0]?.currency || "";
+
+        const conStock = lista.filter((p) => typeof p.stock_quantity === "number");
+        const agotados = conStock.filter((p) => (p.stock_quantity ?? 0) <= 0);
+        const justos = conStock.filter(
+          (p) => (p.stock_quantity ?? 0) > 0 && (p.stock_quantity ?? 0) <= 5,
+        );
+        const borradores = lista.filter((p) => p.status !== "publish");
+        const sinDescripcion = lista.filter(
+          (p) => !`${p.description || ""}${p.short_description || ""}`.replace(/<[^>]+>/g, "").trim(),
+        );
+
+        const total = ventas.reduce((suma, o) => suma + Number(o.total || 0), 0);
+        const pendientes = ventas.filter((o) => ["pending", "on-hold", "processing"].includes(o.status));
+
+        const unidades = new Map<string, number>();
+        for (const o of ventas)
+          for (const l of o.line_items ?? [])
+            unidades.set(l.name, (unidades.get(l.name) ?? 0) + (l.quantity || 0));
+        const masVendido = [...unidades.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+        const trozo = (titulo: string, lineas: string[]) =>
+          lineas.length ? `\n${titulo}\n${lineas.join("\n")}` : "";
+
+        return [
+          `${sitio(cred)}`,
+          "",
+          `CATÁLOGO: ${lista.length} producto(s)${lista.length === 100 ? " (tope de la consulta; puede haber más)" : ""}.`,
+          `  Sin publicar: ${borradores.length}. Sin descripción: ${sinDescripcion.length}.`,
+          `  Con control de stock: ${conStock.length}. Sin stock: ${agotados.length}. Con 5 o menos: ${justos.length}.`,
+          "",
+          `VENTAS (últimos ${dias} días): ${ventas.length} pedido(s), ${total.toFixed(2)} ${moneda}.`,
+          `  Media por pedido: ${ventas.length ? (total / ventas.length).toFixed(2) : "0.00"} ${moneda}.`,
+          `  Sin terminar (pendientes, en espera o en curso): ${pendientes.length}.`,
+          trozo(
+            "SIN STOCK (hasta 15):",
+            agotados.slice(0, 15).map((p) => `  · ${p.name}${p.sku ? ` [${p.sku}]` : ""}`),
+          ),
+          trozo(
+            "STOCK JUSTO (hasta 15):",
+            justos
+              .slice(0, 15)
+              .map((p) => `  · ${p.name}${p.sku ? ` [${p.sku}]` : ""} — quedan ${p.stock_quantity}`),
+          ),
+          trozo("LO QUE MÁS SE VENDE:", masVendido.map(([t, n]) => `  · ${n} uds · ${t}`)),
+        ].join("\n");
+      },
+    },
+    {
       nombre: "listar_productos",
       descripcion: "Los productos con su precio, su stock y su estado.",
       argumentos: "limite (1-100, por defecto 50), buscar (texto)",

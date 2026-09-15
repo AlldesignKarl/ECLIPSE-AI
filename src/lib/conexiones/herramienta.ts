@@ -19,8 +19,10 @@ import type { Herramienta } from "../tools/tipos";
 export async function herramientaConexion(
   /** Las conexiones ya leídas, si quien llama las tiene. Si no, se leen aquí. */
   yaLeidas?: Resumen[],
+  /** De quién son, cuando no hay nadie delante (un encargo programado). */
+  dueno?: string,
 ): Promise<Herramienta | null> {
-  const conectadas = yaLeidas ?? (await misConexiones());
+  const conectadas = yaLeidas ?? (await misConexiones(dueno));
   if (!conectadas.length) return null;
 
   const vivas = conectadas
@@ -100,7 +102,7 @@ Reglas:
 
       ctx.avisar?.(`${servicioDe(servicio)?.nombre ?? servicio}: ${accion.replace(/_/g, " ")}`);
 
-      const r = await ejecutarConexion({ servicio, accion, datos, signal: ctx.signal });
+      const r = await ejecutarConexion({ servicio, accion, datos, signal: ctx.signal, dueno });
       return r.error ? { texto: "", error: r.error } : { texto: r.texto };
     },
   };
