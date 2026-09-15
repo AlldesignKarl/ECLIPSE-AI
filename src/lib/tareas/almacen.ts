@@ -173,6 +173,16 @@ export async function anotarEjecucion(
   await guardarTareas(email, tareas);
 }
 
+/** Borrar los encargos de alguien y lo que produjeron. Para irse del todo. */
+export async function olvidarTareasDe(email: string): Promise<void> {
+  await del(clave(email));
+  await del(claveResultados(email));
+  await set(
+    TODOS,
+    JSON.stringify((await leerLista<string>(TODOS)).filter((p) => p !== email)),
+  );
+}
+
 /* ----------------------------- Los resultados ---------------------------- */
 
 export async function resultadosDe(email: string): Promise<Resultado[]> {

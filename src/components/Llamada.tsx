@@ -11,10 +11,12 @@ import {
   IDIOMAS,
   leerAjustes,
   loQueHay,
+  nombreDeVoz,
   RITMOS,
   tonoDe,
   velocidadDe,
   VOCES,
+  vocesDelIdioma,
   VOZ_POR_DEFECTO,
   type AjustesVoz,
 } from "@/lib/voz-ajustes";
@@ -430,6 +432,17 @@ export default function Llamada({ abierta, onCerrar, nombre = "", onGuardar }: P
 
       {ajustesVisibles && (
         <AjustesDeVoz
+          /*
+            Cada cambio entra YA, no al cerrar.
+
+            Era el fallo que hacía pensar que los botones no servían para nada:
+            cambiabas a voz de hombre, oías la prueba bien, cerrabas y ECLIPSE
+            seguía hablando igual el resto de la llamada, porque los ajustes se
+            habían leído al descolgar y no se volvían a mirar.
+          */
+          onCambio={(nuevos) => {
+            ajustesRef.current = nuevos;
+          }}
           onCerrar={() => {
             setAjustesVisibles(false);
             ajustesRef.current = leerAjustes();
@@ -455,10 +468,18 @@ function segundos(total: number): string {
  * leyendo en el idioma que no es. Obligar a colgar, buscar Ajustes y volver a
  * llamar para arreglar eso es perder la llamada.
  */
-function AjustesDeVoz({ onCerrar }: { onCerrar: () => void }) {
+function AjustesDeVoz({
+  onCerrar,
+  onCambio,
+}: {
+  onCerrar: () => void;
+  onCambio?: (ajustes: AjustesVoz) => void;
+}) {
   const [ajustes, setAjustes] = useState<AjustesVoz>(VOZ_POR_DEFECTO);
   /** Qué voces tiene ESTE aparato en ESTE idioma. Se pregunta, no se supone. */
   const [hay, setHay] = useState({ mujer: true, hombre: true });
+  /** Las voces de este móvil, para poder elegir una por el oído. */
+  const [suyas, setSuyas] = useState<{ name: string; lang: string; localService?: boolean }[]>([]);
 
   useEffect(() => {
     setAjustes(leerAjustes());
@@ -474,7 +495,9 @@ function AjustesDeVoz({ onCerrar }: { onCerrar: () => void }) {
   useEffect(() => {
     const mirar = () => {
       try {
-        setHay(loQueHay(window.speechSynthesis.getVoices(), ajustes.idioma));
+        const todas = window.speechSynthesis.getVoices();
+        setHay(loQueHay(todas, ajustes.idioma));
+        setSuyas(vocesDelIdioma(todas, ajustes.idioma));
       } catch {
         /* sin voces en este aparato */
       }
@@ -488,6 +511,7 @@ function AjustesDeVoz({ onCerrar }: { onCerrar: () => void }) {
     const nuevo = { ...ajustes, ...cambios };
     setAjustes(nuevo);
     guardarAjustes(nuevo);
+    onCambio?.(nuevo);
   };
 
   /** Una frase de prueba, para oírlo antes de decidir. */
@@ -531,8 +555,10 @@ function AjustesDeVoz({ onCerrar }: { onCerrar: () => void }) {
                 <button
                   key={v.id}
                   onClick={() => {
-                    cambiar({ voz: v.id });
-                    probar({ ...ajustes, voz: v.id });
+                    // Volver a lo automático: si no, se elegiría "hombre" y
+                    // seguiría sonando la voz concreta de antes.
+                    cambiar({ voz: v.id, vozExacta: undefined });
+                    probar({ ...ajustes, voz: v.id, vozExacta: undefined });
                   }}
                   className={`flex-1 rounded-lg px-3 py-2 text-[13px] transition ${
                     ajustes.voz === v.id ? "bg-raised text-ink" : "text-muted hover:text-ink"
@@ -547,13 +573,68 @@ function AjustesDeVoz({ onCerrar }: { onCerrar: () => void }) {
               haría pensar que el botón no funciona, cuando lo que pasa es que
               ahí no hay nada que elegir.
             */}
-            {((ajustes.voz === "mujer" && !hay.mujer) || (ajustes.voz === "hombre" && !hay.hombre)) && (
-              <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
-                Tu móvil no trae voz de {ajustes.voz} en este idioma, así que usará la mejor que
-                tenga. Se pueden añadir más en los ajustes de voz del propio móvil.
-              </p>
-            )}
+            {!ajustes.vozExacta &&
+              ((ajustes.voz === "mujer" && !hay.mujer) || (ajustes.voz === "hombre" && !hay.hombre)) && (
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
+                  Tu móvil no distingue voz de {ajustes.voz} en este idioma. Elígela abajo
+                  escuchándolas: eso siempre acierta.
+                </p>
+              )}
           </div>
+
+          {/*
+            Las voces del móvil, una por una.
+
+            Esto es lo que de verdad arregla el "le doy a hombre y suena igual".
+            En un Android las voces se llaman `es-es-x-eed-local` y ahí no hay
+            forma de saber de quién es cada una: por bien que se adivine, a
+            veces las dos opciones son la misma voz. Tocando una se oye, y la
+            que suene bien se queda.
+          */}
+          {suyas.length > 1 && (
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[11.5px] uppercase tracking-wide text-faint">
+                  Voces de tu móvil
+                </span>
+                {ajustes.vozExacta && (
+                  <button
+                    onClick={() => cambiar({ vozExacta: undefined })}
+                    className="text-[11.5px] text-faint transition hover:text-ink"
+                  >
+                    Volver a la automática
+                  </button>
+                )}
+              </div>
+              <div className="scroll-thin max-h-44 space-y-1 overflow-y-auto pr-1">
+                {suyas.map((v, i) => (
+                  <button
+                    key={v.name}
+                    onClick={() => {
+                      const nuevo = { ...ajustes, vozExacta: v.name };
+                      cambiar({ vozExacta: v.name });
+                      probar(nuevo);
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left transition ${
+                      ajustes.vozExacta === v.name
+                        ? "border-halo/50 bg-panel"
+                        : "border-line-soft bg-panel/40 hover:border-line"
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">
+                      {nombreDeVoz(v, i + 1)}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-faint">escuchar</span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
+                Las que ponen «suena mejor» son las que tu móvil baja de internet: son las que no
+                suenan a robot. Si no tienes ninguna, se instalan desde los ajustes de voz de
+                Android o del iPhone.
+              </p>
+            </div>
+          )}
 
           <div>
             <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Timbre</div>

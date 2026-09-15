@@ -1,26 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Composer from "./Composer";
 import EclipseLogo from "./EclipseLogo";
 import * as Icon from "./Icons";
 import MessageItem from "./MessageItem";
 import Pasos from "./Pasos";
-import SettingsDialog, {
-  EMPTY_KEY_SOURCES,
-  type Capabilities,
-  type Engine,
-  type KeySources,
-} from "./SettingsDialog";
+import { EMPTY_KEY_SOURCES, type Capabilities, type Engine, type KeySources } from "./SettingsDialog";
 import Sidebar from "./Sidebar";
 import ThinkingBar from "./ThinkingBar";
-import UpgradeDialog, { type Billing } from "./UpgradeDialog";
-import ConexionesDialog from "./ConexionesDialog";
-import ProgramarDialog from "./ProgramarDialog";
-import BibliotecaDialog from "./BibliotecaDialog";
-import Llamada from "./Llamada";
-import GruposDialog from "./GruposDialog";
+import { type Billing } from "./UpgradeDialog";
 import Welcome from "./Welcome";
+
+/*
+  Las pantallas que se abren desde el menú, traídas solo cuando se abren.
+
+  Son ocho diálogos —Ajustes, Conexiones, Programar, Grupos, la Biblioteca, la
+  llamada, el panel del proyecto y el de Pro— y todos viajaban en la primera
+  carga aunque no se abriera ninguno. Eso es medio megabyte de JavaScript que
+  un móvil con datos tiene que bajar y ejecutar ANTES de poder escribir la
+  primera pregunta, para enseñar una pantalla de chat. Ahora cada uno llega
+  cuando se toca, que es cuando de verdad hace falta.
+*/
+const SettingsDialog = dynamic(() => import("./SettingsDialog"), { ssr: false });
+const UpgradeDialog = dynamic(() => import("./UpgradeDialog"), { ssr: false });
+const ConexionesDialog = dynamic(() => import("./ConexionesDialog"), { ssr: false });
+const ProgramarDialog = dynamic(() => import("./ProgramarDialog"), { ssr: false });
+const BibliotecaDialog = dynamic(() => import("./BibliotecaDialog"), { ssr: false });
+const Llamada = dynamic(() => import("./Llamada"), { ssr: false });
+const GruposDialog = dynamic(() => import("./GruposDialog"), { ssr: false });
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
 import {
   aligerarHistorial,
@@ -80,6 +89,8 @@ interface ChatAppProps {
   user?: string | null;
   /** Cómo quiere que le llamen. Lo eligió al crear la cuenta. */
   nombre?: string;
+  /** Su foto de perfil, ya pequeña, para enseñarla en el menú. */
+  foto?: string;
   onNombre?: (nombre: string) => void;
   onSignOut?: () => void;
   /** Volver a la portada, la que explica qué es la aplicación. */
@@ -89,6 +100,7 @@ interface ChatAppProps {
 export default function ChatApp({
   user = null,
   nombre = "",
+  foto = "",
   onNombre,
   onSignOut,
   onInicio,
@@ -1195,6 +1207,8 @@ export default function ChatApp({
           onInicio?.();
         }}
         user={user}
+        foto={foto}
+        nombre={nombre}
         onSignOut={async () => {
           await fetch("/api/auth", { method: "DELETE" }).catch(() => {});
           setSidebar(false);

@@ -25,6 +25,17 @@ export interface AjustesVoz {
   /** Código de idioma completo, como `es-ES`. */
   idioma: string;
   ritmo: Ritmo;
+  /**
+   * Una voz concreta del aparato, elegida a mano y por el oído.
+   *
+   * Existe porque adivinar falla más de lo que parece. En un Android las voces
+   * se llaman `es-es-x-eed-local`: ahí no hay nombre de persona, ni "female",
+   * ni nada de donde deducir de quién es. Con eso, pedir "hombre" o "mujer"
+   * devolvía LA MISMA VOZ las dos veces, y desde fuera lo que se ve es que el
+   * botón no hace nada. Elegir la que suena bien escuchándolas siempre
+   * funciona, en cualquier móvil y sin adivinar nada.
+   */
+  vozExacta?: string;
 }
 
 export const VOZ_POR_DEFECTO: AjustesVoz = {
@@ -98,14 +109,26 @@ const HOMBRES =
 /**
  * El apaño para las voces de Google, que no llevan nombre de persona.
  *
- * Android las llama `es-es-x-eed-local` y Google Cloud `es-ES-Standard-A`. En
- * los dos casos la letra final alterna: A y C son de mujer, B y D de hombre.
- * No es una promesa de nadie, así que va la última, después de todo lo demás.
+ * Son dos formas distintas de lo mismo. Google Cloud las llama
+ * `es-ES-Standard-A` y Android `es-es-x-eed-local`. En las dos, la última letra
+ * del código alterna entre una voz y otra, así que sirve para repartirlas en
+ * dos grupos y que "hombre" y "mujer" al menos suenen DISTINTO, que es lo que
+ * fallaba: sin esto, las dos opciones devolvían la misma voz y el botón parecía
+ * roto.
+ *
+ * No es una promesa de nadie —Google no publica de quién es cada una—, así que
+ * va la última, después de todo lo demás, y por eso existe también la lista de
+ * voces a mano: lo que de verdad acierta es el oído de quien escucha.
  */
 function porLetraDeGoogle(nombre: string): Voz | null {
-  const m = /-(?:standard|wavenet|neural2|news|polyglot|studio)-([a-f])\b/i.exec(nombre);
-  if (!m) return null;
-  return /[ace]/i.test(m[1]) ? "mujer" : "hombre";
+  const nube = /-(?:standard|wavenet|neural2|news|polyglot|studio|chirp\d?[a-z-]*)-([a-z])\b/i.exec(nombre);
+  if (nube) return /[ace]/i.test(nube[1]) ? "mujer" : "hombre";
+
+  // Android: es-es-x-eed-local → la letra que cuenta es la última del código.
+  const android = /-x-[a-z]{2}([a-z])(?:-(?:local|network))?$/i.exec(nombre.trim());
+  if (android) return /[aceg]/i.test(android[1]) ? "mujer" : "hombre";
+
+  return null;
 }
 
 /** ¿De quién parece esta voz? `null` si no hay forma de saberlo. */
@@ -129,11 +152,20 @@ export function calidadDe(voz: { name: string; localService?: boolean }): number
   let puntos = 0;
   if (/neural|natural/i.test(n)) puntos += 6;
   if (/premium|enhanced|siri/i.test(n)) puntos += 5;
-  if (/wavenet|studio|polyglot/i.test(n)) puntos += 5;
+  if (/wavenet|studio|polyglot|chirp/i.test(n)) puntos += 5;
+  /*
+    Las de red, muy por encima de todo lo demás.
+
+    Es la diferencia que de verdad se oye en un Android: la voz `-local` es la
+    de hace quince años, la que suena a GPS, y la `-network` es la que suena a
+    persona. Las dos están instaladas en el mismo móvil y con el mismo nombre
+    salvo esa palabra, así que si no se mira, toca la mala la mitad de las
+    veces.
+  */
+  if (/-network\b/i.test(n)) puntos += 8;
+  if (/-local\b/i.test(n)) puntos -= 3;
   if (/google/i.test(n)) puntos += 3;
-  // Las de red suenan mejor que las que trae el aparato dentro. Se nota sobre
-  // todo en Android, donde la local es la de toda la vida.
-  if (voz.localService === false) puntos += 2;
+  if (voz.localService === false) puntos += 3;
   if (/compact|eloquence|espeak|pico/i.test(n)) puntos -= 6;
   return puntos;
 }
@@ -158,6 +190,38 @@ function delIdioma(voces: VozDelAparato[], idioma: string): VozDelAparato[] {
   return voces.filter((v) => normal(v).startsWith(`${lengua}-`) || normal(v) === lengua);
 }
 
+/**
+ * Las voces del idioma pedido, de la que mejor suena a la que peor.
+ *
+ * Para poder enseñarlas y que se elija por el oído, que es lo único que no
+ * falla nunca.
+ */
+export function vocesDelIdioma(voces: VozDelAparato[], idioma: string): VozDelAparato[] {
+  return [...delIdioma(voces, idioma)].sort((a, b) => calidadDe(b) - calidadDe(a));
+}
+
+/**
+ * El nombre de una voz, dicho para una persona.
+ *
+ * `es-es-x-eed-network` no le dice nada a nadie. "Voz 4 · suena mejor" sí.
+ */
+export function nombreDeVoz(voz: VozDelAparato, numero: number): string {
+  const n = voz.name;
+  // Las que ya tienen nombre de persona se dejan como están: "Mónica" se
+  // entiende mejor que cualquier cosa que pongamos nosotros.
+  const bonito = /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+/.test(n) && !/^[a-z]{2}-[a-z]{2}-/i.test(n)
+    ? n
+    : `Voz ${numero}`;
+
+  const quien = vozDe(n);
+  const pistas = [
+    quien === "mujer" ? "mujer" : quien === "hombre" ? "hombre" : "",
+    /-network\b/i.test(n) || voz.localService === false ? "suena mejor" : "",
+  ].filter(Boolean);
+
+  return pistas.length ? `${bonito} · ${pistas.join(" · ")}` : bonito;
+}
+
 /** ¿Tiene este aparato voz de mujer y de hombre en este idioma? */
 export function loQueHay(voces: VozDelAparato[], idioma: string): { mujer: boolean; hombre: boolean } {
   const candidatas = delIdioma(voces, idioma);
@@ -177,6 +241,18 @@ export function loQueHay(voces: VozDelAparato[], idioma: string): { mujer: boole
  */
 export function elegirVoz(voces: VozDelAparato[], ajustes: AjustesVoz): VozDelAparato | null {
   if (!voces.length) return null;
+
+  /*
+    Lo que se haya elegido a mano manda sobre cualquier cosa que adivinemos.
+
+    Salvo que ya no esté: las voces de un móvil cambian cuando se actualiza el
+    sistema o se borra un idioma, y quedarse mudo porque falta una voz que se
+    eligió hace tres meses sería absurdo.
+  */
+  if (ajustes.vozExacta) {
+    const suya = voces.find((v) => v.name === ajustes.vozExacta);
+    if (suya) return suya;
+  }
 
   const candidatas = delIdioma(voces, ajustes.idioma);
   if (!candidatas.length) return null;
@@ -202,6 +278,7 @@ export function leerAjustes(): AjustesVoz {
       timbre: v.timbre === "clara" ? "clara" : "suave",
       idioma: IDIOMAS.some((i) => i.id === v.idioma) ? (v.idioma as string) : VOZ_POR_DEFECTO.idioma,
       ritmo: RITMOS.some((r) => r.id === v.ritmo) ? (v.ritmo as Ritmo) : VOZ_POR_DEFECTO.ritmo,
+      vozExacta: typeof v.vozExacta === "string" ? v.vozExacta : undefined,
     };
   } catch {
     return VOZ_POR_DEFECTO;

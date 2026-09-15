@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 
+import { memoriaApagada } from "@/lib/auth";
 import {
   hechosDe,
   memoriaLista,
@@ -32,9 +33,11 @@ export async function GET() {
   const email = await quien();
   if (!email) return Response.json({ hechos: [], temas: [], sinCuenta: true, hay: false });
 
+  const apagada = await memoriaApagada(email);
   return Response.json({
-    hechos: await hechosDe(email),
-    temas: await resumenesDe(email),
+    hechos: apagada ? [] : await hechosDe(email),
+    temas: apagada ? [] : await resumenesDe(email),
+    activa: !apagada,
     hay: true,
   });
 }
@@ -52,6 +55,9 @@ export async function POST(req: NextRequest) {
 
   const email = await quien();
   if (!email) return Response.json({ aprendido: false });
+  // Con la memoria apagada no se aprende nada, ni en silencio ni "por si
+  // acaso": es lo único que hace que apagarla signifique algo.
+  if (await memoriaApagada(email)) return Response.json({ aprendido: false, apagada: true });
 
   const cuerpo = (await req.json().catch(() => ({}))) as {
     id?: string;

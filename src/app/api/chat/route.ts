@@ -7,6 +7,7 @@ import { gastar } from "@/lib/limites";
 import { CompatError, tieneVista, type CompatProvider } from "@/lib/openai-compat";
 import { crearFiltroDeNegativa } from "@/lib/negativa";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
+import { memoriaApagada } from "@/lib/auth";
 import { hechosDe, quien as quienEsMemoria } from "@/lib/memoria/almacen";
 import { comoFicha } from "@/lib/memoria/tipos";
 import { herramientasPara } from "@/lib/tools/registro";
@@ -585,7 +586,10 @@ export async function POST(req: NextRequest) {
   if (!body.temporal) {
     try {
       const quien = await quienEsMemoria();
-      if (quien) memoria = comoFicha((await hechosDe(quien)).slice(0, 20));
+      // Apagada de verdad: ni se usa ni se aprende. Un interruptor que solo
+      // esconde lo que ya sabe no es un interruptor.
+      if (quien && !(await memoriaApagada(quien)))
+        memoria = comoFicha((await hechosDe(quien)).slice(0, 20));
     } catch {
       /* sin memoria se responde igual; simplemente no se acuerda */
     }

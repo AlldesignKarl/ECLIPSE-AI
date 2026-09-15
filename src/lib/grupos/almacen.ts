@@ -178,6 +178,34 @@ export async function salirse(id: string): Promise<boolean> {
   return true;
 }
 
+/**
+ * Sacar a alguien de todos sus grupos. Para cuando borra la cuenta.
+ *
+ * Los grupos que se queden vacíos se borran enteros, igual que al salirse de
+ * uno: un grupo sin nadie dentro es una conversación guardada que ya no puede
+ * leer nadie.
+ */
+export async function salirDeTodos(email: string): Promise<void> {
+  const ids = await leerLista<string>(claveMios(email));
+
+  for (const id of ids) {
+    const grupo = await grupoDe(id);
+    if (!grupo) continue;
+
+    grupo.miembros = grupo.miembros.filter((m) => m.email !== email);
+    if (grupo.miembros.length === 0) {
+      await del(clave(id));
+      await del(claveMensajes(id));
+      await del(claveInvitacion(grupo.invitacion));
+      continue;
+    }
+    if (!grupo.miembros.some((m) => m.dueno)) grupo.miembros[0].dueno = true;
+    await guardar(grupo);
+  }
+
+  await del(claveMios(email));
+}
+
 /** Echar a alguien. Solo el dueño, y nunca a sí mismo. */
 export async function echar(id: string, aQuien: string): Promise<boolean> {
   const email = await quien();

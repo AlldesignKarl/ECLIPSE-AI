@@ -1,3 +1,4 @@
+import { memoriaApagada } from "../auth";
 import { hechosDe, quien, resumenesDe } from "../memoria/almacen";
 import { buscar } from "../memoria/tipos";
 import type { Herramienta } from "./tipos";
@@ -41,6 +42,14 @@ NO la uses para cosas que ya están en esta conversación ni para conocimiento g
       return {
         texto:
           "Esta persona no ha entrado con su cuenta, así que no hay conversaciones anteriores a las que mirar. No te lo inventes: pregúntale lo que te falte.",
+      };
+
+    // Con la memoria apagada tampoco se puede mirar atrás: es la misma
+    // promesa, y dejar esta puerta abierta la rompería entera.
+    if (await memoriaApagada(email))
+      return {
+        texto:
+          "Esta persona tiene la memoria apagada en Ajustes, así que no hay nada anterior que mirar. No insistas: pregúntale lo que te falte.",
       };
 
     const consulta = String(args.buscar ?? "").trim();

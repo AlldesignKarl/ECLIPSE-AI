@@ -6,6 +6,10 @@ import ChatApp from "./ChatApp";
 import InstalarApp from "./InstalarApp";
 import Novedades from "./Novedades";
 import Landing from "./Landing";
+import { VERSION } from "@/lib/novedades";
+
+/** Para no recargar dos veces seguidas si la versión no cuadrara nunca. */
+const RECARGADO = "eclipse.recargado";
 
 const ENTERED = "eclipse.entered";
 
@@ -35,10 +39,16 @@ export default function Shell() {
     darse de alta, es el paso siguiente natural.
   */
   const [reciénRegistrado, setReciénRegistrado] = useState(false);
-  const [auth, setAuth] = useState<{ enabled: boolean; user: string | null; nombre: string }>({
+  const [auth, setAuth] = useState<{
+    enabled: boolean;
+    user: string | null;
+    nombre: string;
+    foto: string;
+  }>({
     enabled: false,
     user: null,
     nombre: "",
+    foto: "",
   });
 
   const remember = useCallback(() => {
@@ -72,11 +82,42 @@ export default function Shell() {
     void fetch("/api/auth")
       .then((r) => r.json())
       .catch(() => ({ enabled: false, user: null }))
-      .then((a: { enabled?: boolean; user?: string | null; nombre?: string }) => {
+      .then((a: {
+        enabled?: boolean;
+        user?: string | null;
+        nombre?: string;
+        foto?: string;
+        version?: string;
+      }) => {
+        /*
+          Si el servidor tiene otra versión, se recarga sola. Una vez.
+
+          Pasó de verdad y costó entender por qué: en el móvil de Carlos salían
+          las conexiones nuevas —que vienen del servidor— con los logos viejos,
+          que viven en el JavaScript de la página. Era la página de antes,
+          guardada en el navegador, hablando con el servidor de ahora. Desde
+          fuera eso no se ve como "tengo una versión vieja", se ve como "esto
+          está mal hecho".
+
+          La marca en `sessionStorage` es la red de seguridad: si por lo que
+          fuera la versión no coincidiera nunca, esto recargaría en bucle, y un
+          bucle de recargas es peor que cualquier versión vieja.
+        */
+        try {
+          if (a.version && a.version !== VERSION && !window.sessionStorage.getItem(RECARGADO)) {
+            window.sessionStorage.setItem(RECARGADO, a.version);
+            window.location.reload();
+            return;
+          }
+        } catch {
+          /* sin sessionStorage no se recarga: mejor viejo que en bucle */
+        }
+
         setAuth({
           enabled: Boolean(a.enabled),
           user: a.user ?? null,
           nombre: a.nombre ?? "",
+          foto: a.foto ?? "",
         });
         setReady(true);
       });
@@ -119,10 +160,11 @@ export default function Shell() {
       <ChatApp
         user={auth.user}
         nombre={auth.nombre}
+        foto={auth.foto}
         onNombre={(nombre) => setAuth((a) => ({ ...a, nombre }))}
         onInicio={() => setView("portada")}
         onSignOut={() => {
-          setAuth((a) => ({ ...a, user: null, nombre: "" }));
+          setAuth((a) => ({ ...a, user: null, nombre: "", foto: "" }));
           setView("entrar");
         }}
       />

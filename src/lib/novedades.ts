@@ -27,6 +27,22 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.39",
+    // Lo que estaba roto en producción y no aquí: contestar de verdad.
+    nombre: "Sin esperas",
+    titulo: "Ahora contesta, y contesta rápido",
+    entrada:
+      "ECLIPSE se quedaba callado en los grupos y no podía planificar. Arreglado de raíz, y de paso todo va más rápido.",
+    puntos: [
+      "En los grupos, los mensajes salen al instante: antes, mandar uno esperaba a que ECLIPSE escribiera la respuesta entera —hasta medio minuto— antes de soltar el botón. Ahora se ve al momento y la respuesta cae sola, con sus tres puntitos mientras escribe.",
+      "Y ECLIPSE viene dentro de cada grupo contestando a TODO, sin tener que nombrarle. Si prefieres que solo hable cuando le llames, se cambia en dos toques tocando la gente del grupo.",
+      "Se quedaba mudo, además, cuando el motor era Google: los grupos y Programar solo sabían hablar con Mistral, Groq y OpenRouter. Ahora hablan con el que haya, y si uno falla prueban el siguiente. Y cuando algo no puede hacerse, te dice POR QUÉ en vez de «inténtalo otra vez».",
+      "En Ajustes hay perfil con FOTO, interruptor para la memoria, y seguridad: cambiar la contraseña y borrar tu cuenta con todo lo que hay de ti dentro. También puedes elegir ahí la voz de las llamadas.",
+      "Las voces: ahora salen las de tu móvil una por una para que elijas la que suena bien escuchándolas, y se marcan las que no suenan a robot. Cambiar de voz a mitad de una llamada ya funciona: antes no se aplicaba hasta la siguiente.",
+      "La aplicación abre antes —las pantallas grandes se traen solo al abrirlas— y se actualiza sola cuando hay versión nueva, para no quedarte con una vieja cargada sin enterarte.",
+    ],
+  },
+  {
     version: "2.38",
     // ECLIPSE sentado a la mesa, veintiuna conexiones y un calendario que se
     // planifica solo.

@@ -35,6 +35,9 @@ interface Props {
   onInicio: () => void;
   /** Correo de la sesión abierta, si la app lleva cuentas. */
   user?: string | null;
+  /** Su foto y su nombre, para que la cuenta se reconozca de un vistazo. */
+  foto?: string;
+  nombre?: string;
   onSignOut?: () => void;
 }
 
@@ -59,6 +62,8 @@ export default function Sidebar({
   tareasNuevas = false,
   onInicio,
   user = null,
+  foto = "",
+  nombre = "",
   onSignOut,
 }: Props) {
   const [query, setQuery] = useState("");
@@ -401,8 +406,20 @@ export default function Sidebar({
           {user && (
             <div className="mt-1 border-t border-line-soft pt-2">
               <div className="flex items-center gap-2.5 px-3 py-1.5">
-                <Icon.User width={16} height={16} className="shrink-0 text-faint" />
-                <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">{user}</span>
+                {foto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={foto}
+                    alt=""
+                    className="h-7 w-7 shrink-0 rounded-full border border-line object-cover"
+                  />
+                ) : (
+                  <Icon.User width={16} height={16} className="shrink-0 text-faint" />
+                )}
+                <span className="min-w-0 flex-1 truncate">
+                  {nombre && <span className="block text-[13px] text-ink">{nombre}</span>}
+                  <span className="block truncate text-[11.5px] text-muted">{user}</span>
+                </span>
               </div>
               <button
                 onClick={onSignOut}

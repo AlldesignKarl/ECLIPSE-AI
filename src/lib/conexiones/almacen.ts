@@ -154,6 +154,17 @@ export async function misConexiones(): Promise<Resumen[]> {
     }));
 }
 
+/**
+ * Borrar TODAS las conexiones de alguien, con sus claves.
+ *
+ * Solo lo usa el borrado de cuenta. Si alguien se va, sus credenciales de
+ * Shopify o de Stripe no pueden quedarse aquí: son las llaves de su negocio.
+ */
+export async function olvidarTodasLasDe(email: string): Promise<void> {
+  for (const servicio of await leerIndice(email)) await del(clave(email, servicio));
+  await del(claveIndice(email));
+}
+
 /** Las credenciales de un servicio, para usarlas y no para enseñarlas. */
 export async function credencialesDe(
   servicio: string,

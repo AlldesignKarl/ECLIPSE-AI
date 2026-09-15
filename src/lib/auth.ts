@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { get, set, setIfAbsent, storeAvailable, StoreError } from "./store";
+import { del, get, set, setIfAbsent, storeAvailable, StoreError } from "./store";
 
 /**
  * Correo y contraseña.
@@ -55,6 +55,23 @@ interface User {
   createdAt: number;
   /** Cómo quiere que le llamen. Lo elige al crear la cuenta. */
   nombre?: string;
+  /**
+   * Su foto, ya recortada y pequeña, como `data:image/jpeg;base64,…`.
+   *
+   * Guardada en la cuenta y no en el móvil porque una foto de perfil que solo
+   * se ve en el móvil donde la pusiste no es una foto de perfil: es un adorno.
+   * Se recorta y se encoge en el navegador antes de mandarla, así que lo que
+   * llega aquí son unos kilobytes y no la foto de doce megapíxeles.
+   */
+  foto?: string;
+  /**
+   * Ha apagado la memoria a propósito.
+   *
+   * Va en la cuenta y no en una cookie porque la memoria la lee el servidor
+   * cuando contesta, y porque apagarla en un móvil y que siga encendida en el
+   * siguiente no es apagarla.
+   */
+  sinMemoria?: boolean;
 }
 
 function key(email: string): string {
@@ -200,6 +217,126 @@ export async function guardarNombre(rawNombre: string): Promise<string | null> {
     return null;
   }
   return nombre;
+}
+
+/* -------------------------------- Perfil -------------------------------- */
+
+export interface Perfil {
+  nombre: string;
+  foto: string;
+  memoria: boolean;
+  desde: number;
+}
+
+/** Lo que hay que enseñar en Ajustes de quien está dentro. */
+export async function perfilActual(): Promise<Perfil | null> {
+  const email = await currentUser();
+  if (!email) return null;
+  const user = await leerUsuario(email);
+  if (!user) return null;
+
+  return {
+    nombre: user.nombre ?? "",
+    foto: user.foto ?? "",
+    memoria: user.sinMemoria !== true,
+    desde: user.createdAt,
+  };
+}
+
+/** ¿Tiene la memoria apagada esta persona? */
+export async function memoriaApagada(email: string): Promise<boolean> {
+  return (await leerUsuario(email))?.sinMemoria === true;
+}
+
+/** Tope de la foto ya encogida. Más que esto no es una foto, es un descuido. */
+export const MAX_FOTO = 300_000;
+
+export async function guardarPerfil(cambios: {
+  nombre?: string;
+  foto?: string | null;
+  memoria?: boolean;
+}): Promise<Perfil | null> {
+  const email = await currentUser();
+  if (!email) return null;
+  const user = await leerUsuario(email);
+  if (!user) return null;
+
+  const actualizado: User = { ...user };
+
+  if (typeof cambios.nombre === "string") {
+    const nombre = limpiarNombre(cambios.nombre);
+    actualizado.nombre = nombre || undefined;
+  }
+
+  if (cambios.foto === null) actualizado.foto = undefined;
+  else if (typeof cambios.foto === "string" && cambios.foto) {
+    // Solo imágenes, y pequeñas. Lo que entra aquí se le sirve después a otras
+    // personas en un grupo, así que no puede ser cualquier cosa con un `data:`
+    // delante.
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(cambios.foto)) return null;
+    if (cambios.foto.length > MAX_FOTO) return null;
+    actualizado.foto = cambios.foto;
+  }
+
+  if (typeof cambios.memoria === "boolean") actualizado.sinMemoria = cambios.memoria ? undefined : true;
+
+  try {
+    await set(key(email), JSON.stringify(actualizado));
+  } catch {
+    return null;
+  }
+
+  return {
+    nombre: actualizado.nombre ?? "",
+    foto: actualizado.foto ?? "",
+    memoria: actualizado.sinMemoria !== true,
+    desde: actualizado.createdAt,
+  };
+}
+
+/**
+ * Cambiar la contraseña, pidiendo la de antes.
+ *
+ * Pedir la actual no es burocracia: sin eso, cualquiera que pille un móvil
+ * desbloqueado se queda con la cuenta cambiándola en dos toques.
+ */
+export async function cambiarContrasena(
+  actual: string,
+  nueva: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const email = await currentUser();
+  if (!email) return { ok: false, error: "Hay que haber entrado con tu cuenta." };
+
+  const user = await leerUsuario(email);
+  if (!user) return { ok: false, error: "No se ha encontrado la cuenta." };
+
+  if (!samePassword(actual, user.salt, user.hash))
+    return { ok: false, error: "La contraseña de ahora no es esa." };
+
+  const problema = passwordProblem(nueva);
+  if (problema) return { ok: false, error: problema };
+
+  // Sal nueva también: la vieja ya no tiene por qué seguir ahí.
+  const salt = randomBytes(16).toString("hex");
+  try {
+    await set(key(email), JSON.stringify({ ...user, salt, hash: hash(nueva, salt) }));
+  } catch {
+    return { ok: false, error: "No se ha podido guardar. Inténtalo otra vez." };
+  }
+  return { ok: true };
+}
+
+/** ¿Es esta su contraseña? Para lo que no tiene vuelta atrás. */
+export async function contrasenaCorrecta(password: string): Promise<boolean> {
+  const email = await currentUser();
+  if (!email) return false;
+  const user = await leerUsuario(email);
+  return Boolean(user && samePassword(password, user.salt, user.hash));
+}
+
+/** Borrar la cuenta en sí. Lo demás que es suyo se borra en `cuenta.ts`. */
+export async function borrarUsuario(email: string): Promise<void> {
+  await del(key(email));
 }
 
 /* -------------------------------- Sesión -------------------------------- */

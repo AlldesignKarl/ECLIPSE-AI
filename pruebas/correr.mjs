@@ -23,6 +23,7 @@ const filtro = process.argv[2] ?? "";
  * las pesadas una vez al final.
  */
 const PESADAS = new Set([
+  "ajustes-ui.test.mjs",
   "bienvenida-conexiones.test.mjs",
   "conexiones-api.test.mjs",
   "conexiones-ui.test.mjs",

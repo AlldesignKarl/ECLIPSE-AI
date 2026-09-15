@@ -1,9 +1,9 @@
 # Las pruebas de ECLIPSE
 
-67 archivos. Todas pasan.
+68 archivos. Todas pasan.
 
 ```bash
-npm run prueba           # todas (~5 min)
+npm run prueba           # todas (~5,7 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/correr.mjs pesadas   # solo las 13 lentas
 node pruebas/correr.mjs mapa      # las que lleven "mapa" en el nombre

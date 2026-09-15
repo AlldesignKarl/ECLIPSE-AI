@@ -28,8 +28,9 @@ No es un envoltorio de un chat. Hace, de menos a más raro:
   que monta ECLIPSE cuando le dices qué quieres conseguir.
 - **Biblioteca**: imágenes libres de museos y archivos, para inspirarse.
 - **Llamadas**: hablar con ECLIPSE por voz, con interrupciones.
-- **Grupos**: varias personas hablándole a ECLIPSE en el mismo sitio; él se ve
-  dentro y el dueño decide si contesta a todo, solo cuando le nombran, o nunca.
+- **Grupos**: varias personas hablándole a ECLIPSE en el mismo sitio. Él está
+  dentro contestando a todo de fábrica, se ve en la lista de gente, y el dueño
+  puede pasarlo a "solo si le nombran" o apagarlo.
 - **Memoria**: aprende de ti y puede mirar conversaciones anteriores.
 - **Ubicación**: excursiones, sitios cerca y cómo llegar.
 
@@ -102,7 +103,10 @@ src/
     tareas/  grupos/  memoria/  Cada uno: tipos.ts + almacen.ts (+ lógica)
     tareas/planear.ts           El plan que monta ECLIPSE (y `leerPlan`, que
                                 lee lo que conteste el modelo sin romperse)
-pruebas/                        67 pruebas. Ver pruebas/LEEME.md
+    una-respuesta.ts            Una respuesta entera del motor que haya, sea
+                                cual sea. Lo que NO es conversación pasa por aquí
+    cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
+pruebas/                        68 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -250,10 +254,21 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
   (`anotarEjecucion`). Si no, como esos encargos tocan también cuando ya pasó su
   día —para no perderse si el reloj no sonó—, se repetirían cada día para
   siempre.
+- **Que todo lo que NO es conversación pase por `una-respuesta.ts`.** Los
+  grupos y Programar hablaban solo con Mistral/Groq/OpenRouter porque están
+  escritos sobre el bucle de herramientas; con Google de motor se quedaban
+  mudos y el aviso no se pintaba en ninguna parte. Ahí no hacen falta
+  herramientas: es escribir.
+- **Que `oneShotCompat`/`unaVezCompat` resuelvan el modelo con `modeloSuelto`.**
+  Pedirlo al modelo escrito a mano en el preset es lo que hacía que el chat
+  funcionara y el plan fallara con la misma clave.
+- **Que mandar un mensaje a un grupo NO espere a la respuesta del modelo.**
+  Son dos peticiones a propósito: guardar vuelve en milisegundos y responder va
+  aparte. Juntarlas otra vez es devolver el "los grupos van lentísimos".
 - **Que `planear.ts` NO ejecute nada.** Planificar contesta en segundos porque
   solo escribe; ejecutar cuesta medio minuto por encargo, y esperar eso era
   justo lo que había que quitar de en medio.
-- **Las 67 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Las 68 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -266,13 +281,20 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 67 pruebas (~5 min)
+npm run prueba           # las 68 pruebas (~5,7 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```
 
 **Rama de trabajo**: `claude/multimodal-ai-free-pro-tbxhtn`. No subas a `main`
 sin que Carlos lo diga.
+
+**Ojo con lo que se ve en su móvil.** Lo que viene del servidor (la lista de
+conexiones, los encargos) se actualiza solo; lo que vive en el JavaScript de la
+página (los logos, las pantallas) se queda guardado en el navegador. Un móvil
+con la página vieja y el servidor nuevo enseña mezclas imposibles —conexiones
+nuevas con logos viejos— que parecen un fallo del código y no lo son. Por eso
+`Shell.tsx` compara la versión del servidor con la suya y recarga una vez.
 
 **Al terminar algo**: entrada nueva arriba en `src/lib/novedades.ts` (sube la
 versión; la aplicación se la enseña a la gente una vez), y actualizar

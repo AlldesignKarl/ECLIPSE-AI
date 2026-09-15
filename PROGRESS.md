@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-Última actualización: **15 de septiembre de 2026**
+Última actualización: **15 de septiembre de 2026** (segunda sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.38**
+usuario: **2.39**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,7 +11,7 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 67 pruebas en verde.
+La aplicación está **en producción y funcionando**, con 68 pruebas en verde.
 En esta sesión se han hecho las tres cosas que pidió Carlos: ECLIPSE se ve y se
 configura dentro de los grupos, hay 21 conexiones en vez de 9, y Programar tiene
 calendario y monta el plan él solo. Lo que queda son mejoras y dos decisiones
@@ -63,7 +63,64 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo que se hizo en la última sesión
+## 3. Lo último: arreglar lo que estaba roto en producción
+
+Carlos lo probó en su móvil y falló casi todo lo de la sesión anterior. Las
+causas, y lo que se ha hecho:
+
+1. **ECLIPSE no contestaba en los grupos y Programar no podía planificar.**
+   Mismo motivo: las dos cosas están escritas sobre el bucle de herramientas y
+   solo hablaban con Mistral, Groq y OpenRouter. Con Google de motor devolvían
+   un aviso (`sin_motor`) que no se pintaba en ninguna parte. Ahora existe
+   `lib/una-respuesta.ts`, que consigue una respuesta entera del motor que haya
+   —los cinco— y prueba el siguiente si el primero falla. Y cuando no puede,
+   **dice por qué**, con las palabras del motor que falló.
+
+2. **Un fallo que no se veía:** las respuestas de una sola pieza (el título, el
+   plan) pedían el modelo escrito a mano en el preset, mientras que el chat
+   resuelve cuál tiene la cuenta. Con una clave gratuita que no llega a ese
+   modelo, el chat iba y lo demás fallaba en silencio. Ahora todo usa
+   `modeloSuelto()`.
+
+3. **Los mensajes de grupo tardaban una eternidad.** Mandar uno esperaba a que
+   el modelo escribiera la respuesta entera. Ahora son dos peticiones: guardar
+   vuelve en **15 ms medidos**, y responder va aparte. Además el mensaje se
+   pinta al momento, el vistazo pasó de 3 s a 1,5 (0,9 mientras escribe) y hay
+   puntitos de "escribiendo".
+
+4. **ECLIPSE viene de fábrica en cada grupo contestando a todo.** Era "solo si
+   le nombras" y la realidad es que nadie daba con la palabra: escribió
+   «ECLIPSE» dos veces y no contestó nadie. El modo de antes sigue, a dos
+   toques.
+
+5. **Las voces.** Cambiar de voz a mitad de llamada no hacía nada: los ajustes
+   se leían al descolgar y no se volvían a mirar. Y en Android las voces se
+   llaman `es-es-x-eed-local`, así que "hombre" y "mujer" devolvían la MISMA
+   voz. Ahora los cambios entran al momento, se reconoce el patrón de Android,
+   y —lo que de verdad lo arregla— se pueden **escuchar y elegir una por una**
+   las voces del móvil, marcando las de red, que son las que no suenan a robot.
+
+6. **Ajustes**: perfil con foto (se recorta y encoge en el navegador: 6 KB en
+   vez de la foto entera), interruptor de memoria que apaga las dos cosas —usar
+   y aprender—, seguridad (cambiar contraseña y borrar la cuenta con todo lo que
+   hay de ti) y la voz de las llamadas.
+
+7. **Más rápido**: las ocho pantallas grandes se traen solo al abrirlas (la
+   primera carga baja de 166 kB a 151 kB) y la aplicación **se actualiza sola**
+   cuando el servidor tiene otra versión.
+
+### Lo de los logos, que no era un fallo del código
+
+Carlos vio las conexiones nuevas con pastillas de iniciales en vez de logos.
+El código estaba bien —se comprobó en un navegador de verdad—: lo que tenía
+cargado el móvil era la página vieja hablando con el servidor nuevo. Los datos
+vienen del servidor y los logos viven en el JavaScript de la página. De ahí la
+recarga automática por versión: el fallo no era el dibujo, era no enterarse de
+que había una versión nueva.
+
+---
+
+## 3 bis. Lo que se hizo en la sesión anterior
 
 Carlos pidió tres cosas. Las tres están hechas y probadas.
 

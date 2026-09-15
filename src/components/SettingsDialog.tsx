@@ -1,7 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { aplicarTema, guardarTema, temaGuardado, type Tema } from "@/lib/tema";
+import {
+  elegirVoz,
+  guardarAjustes,
+  leerAjustes,
+  nombreDeVoz,
+  RITMOS,
+  tonoDe,
+  velocidadDe,
+  VOCES,
+  vocesDelIdioma,
+  VOZ_POR_DEFECTO,
+  type AjustesVoz,
+} from "@/lib/voz-ajustes";
 import {
   guardarPermiso,
   paraElMensaje,
@@ -193,6 +206,8 @@ function MemoriaBox() {
   const [abierto, setAbierto] = useState(false);
   const [sinCuenta, setSinCuenta] = useState(false);
   const [cargado, setCargado] = useState(false);
+  /** Encendida o no. Lo decide cada uno, y viaja con la cuenta. */
+  const [activa, setActiva] = useState(true);
 
   const cargar = async () => {
     try {
@@ -201,10 +216,12 @@ function MemoriaBox() {
         hechos?: { id: string; texto: string }[];
         temas?: { id: string; titulo: string }[];
         sinCuenta?: boolean;
+        activa?: boolean;
       };
       setHechos(d.hechos ?? []);
       setTemas(d.temas ?? []);
       setSinCuenta(Boolean(d.sinCuenta));
+      if (typeof d.activa === "boolean") setActiva(d.activa);
     } catch {
       /* si no se puede leer, se queda vacío y ya */
     } finally {
@@ -229,6 +246,41 @@ function MemoriaBox() {
     <div>
       <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Memoria</div>
       <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
+        {/*
+          El interruptor, arriba del todo.
+
+          Estaba pendiente de decidir si la memoria venía encendida o había que
+          encenderla. Sigue viniendo encendida —es lo que pidió Carlos— pero
+          ahora se apaga en un toque, y apagarla apaga las dos cosas: ni usa lo
+          que sabe ni aprende nada nuevo.
+        */}
+        <label className="flex cursor-pointer items-start gap-3 border-b border-line-soft pb-3">
+          <input
+            type="checkbox"
+            checked={activa}
+            onChange={async (e) => {
+              const quiere = e.target.checked;
+              setActiva(quiere);
+              await fetch("/api/auth", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ memoria: quiere }),
+              }).catch(() => {});
+              void cargar();
+            }}
+            className="mt-0.5 h-4 w-4 accent-white"
+          />
+          <span>
+            <span className="block text-[13.5px] text-ink">Que se acuerde de mí</span>
+            <span className="block text-[11.5px] leading-relaxed text-faint">
+              {activa
+                ? "Aprende lo que le cuentas y lo usa para ayudarte mejor."
+                : "Apagada: no usa nada de lo que sabía ni aprende nada nuevo."}
+            </span>
+          </span>
+        </label>
+
+        <div className={`${activa ? "" : "pointer-events-none opacity-40"} pt-3`}>
         {hechos.length === 0 && temas.length === 0 ? (
           <p className="text-[12.5px] leading-relaxed text-muted">
             Todavía no ha aprendido nada de ti. Según vayáis hablando se irá quedando con lo que
@@ -280,6 +332,7 @@ function MemoriaBox() {
             </button>
           </>
         )}
+        </div>
         <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
           En un chat temporal no aprende nada, ni usa lo que ya sabía.
         </p>
@@ -376,90 +429,6 @@ function UbicacionBox() {
           )}
         </span>
       </label>
-    </div>
-  );
-}
-
-/**
- * Cómo quiere que le llame ECLIPSE.
- *
- * Se pregunta al crear la cuenta, pero tiene que poder cambiarse: quien se
- * registró antes de que esto existiera no llegó a elegir nada, y a cualquiera
- * le puede dejar de gustar cómo le llaman. Se guarda en el servidor, junto a
- * la cuenta, para que le siga al móvil y al ordenador como todo lo demás.
- */
-function NombreBox({
-  nombre,
-  onNombre,
-}: {
-  nombre: string;
-  onNombre?: (nombre: string) => void;
-}) {
-  const [valor, setValor] = useState(nombre);
-  const [busy, setBusy] = useState(false);
-  const [hecho, setHecho] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Si llega de fuera (al abrir Ajustes recién entrado), que se vea lo guardado.
-  useEffect(() => {
-    setValor(nombre);
-  }, [nombre]);
-
-  const guardar = async () => {
-    setBusy(true);
-    setError(null);
-    setHecho(false);
-    try {
-      const res = await fetch("/api/auth", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: valor }),
-      });
-      const data = (await res.json()) as { nombre?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "No se pudo guardar.");
-      setValor(data.nombre ?? "");
-      onNombre?.(data.nombre ?? "");
-      setHecho(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo guardar.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div>
-      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">
-        Cómo quieres que te llame
-      </div>
-      <div className="flex gap-2">
-        <input
-          value={valor}
-          onChange={(e) => {
-            setValor(e.target.value);
-            setHecho(false);
-          }}
-          onKeyDown={(e) => e.key === "Enter" && void guardar()}
-          type="text"
-          maxLength={40}
-          placeholder="Tu nombre, o como prefieras"
-          className="min-w-0 flex-1 rounded-xl border border-line bg-panel px-3 py-2.5 text-[14px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
-        />
-        <button
-          onClick={() => void guardar()}
-          disabled={busy || valor.trim() === nombre.trim()}
-          className="shrink-0 rounded-xl bg-ink px-4 text-[13px] font-medium text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"
-        >
-          {busy ? "…" : "Guardar"}
-        </button>
-      </div>
-      {error ? (
-        <p className="mt-1.5 text-[11.5px] text-danger">{error}</p>
-      ) : (
-        <p className="mt-1.5 text-[11.5px] leading-relaxed text-faint">
-          {hecho ? "Guardado." : "Así te llamará al hablarte. Puedes dejarlo en blanco."}
-        </p>
-      )}
     </div>
   );
 }
@@ -736,15 +705,21 @@ export default function SettingsDialog({
   return (
     <Modal open={open} onClose={onClose} title="Ajustes">
       <div className="space-y-5">
+        {/*
+          El perfil arriba del todo: es lo primero que se busca al entrar en
+          unos ajustes, y hasta ahora solo se podía cambiar el nombre.
+        */}
+        {puedeCambiarNombre && <PerfilBox nombre={nombre} onNombre={onNombre} />}
+
         <TemaBox />
+
+        <VozBox />
 
         <UbicacionBox />
 
         <MemoriaBox />
 
-        {puedeCambiarNombre && (
-          <NombreBox nombre={nombre} onNombre={onNombre} />
-        )}
+        {puedeCambiarNombre && <SeguridadBox />}
 
         <EngineBox sources={keySources} engine={engine} onChange={onKeysChange} />
 
@@ -822,5 +797,450 @@ export default function SettingsDialog({
         </button>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Tu perfil: cómo te llamas y tu foto.
+ *
+ * La foto se encoge y se recorta en cuadrado AQUÍ, en el navegador, antes de
+ * mandarla. Una foto de móvil son cuatro megas, y subir cuatro megas para
+ * enseñarlos en un círculo de treinta píxeles es tirar los datos de quien la
+ * sube y llenar la base de datos de nada. Lo que sale de aquí pesa unos pocos
+ * kilobytes.
+ */
+function PerfilBox({
+  nombre,
+  onNombre,
+}: {
+  nombre: string;
+  onNombre?: (n: string) => void;
+}) {
+  const [valor, setValor] = useState(nombre);
+  const [foto, setFoto] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const archivo = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const d = (await (await fetch("/api/auth")).json()) as { foto?: string; nombre?: string };
+        setFoto(d.foto ?? "");
+        if (d.nombre) setValor(d.nombre);
+      } catch {
+        /* se queda sin foto y ya */
+      }
+    })();
+  }, []);
+
+  /** La foto, cuadrada y pequeña, lista para guardar. */
+  const encoger = (fichero: File) =>
+    new Promise<string>((listo, falla) => {
+      const lector = new FileReader();
+      lector.onerror = () => falla(new Error("No se ha podido leer la foto."));
+      lector.onload = () => {
+        const img = new Image();
+        img.onerror = () => falla(new Error("Ese archivo no es una foto."));
+        img.onload = () => {
+          const lado = Math.min(img.width, img.height);
+          const lienzo = document.createElement("canvas");
+          lienzo.width = 256;
+          lienzo.height = 256;
+          const pincel = lienzo.getContext("2d");
+          if (!pincel) return falla(new Error("Este navegador no puede recortarla."));
+          // Del centro: es donde está la cara en el 99% de las fotos.
+          pincel.drawImage(
+            img,
+            (img.width - lado) / 2,
+            (img.height - lado) / 2,
+            lado,
+            lado,
+            0,
+            0,
+            256,
+            256,
+          );
+          listo(lienzo.toDataURL("image/jpeg", 0.82));
+        };
+        img.src = String(lector.result);
+      };
+      lector.readAsDataURL(fichero);
+    });
+
+  const guardar = async (cambios: { nombre?: string; foto?: string | null }) => {
+    setGuardando(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/auth", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cambios),
+      });
+      const d = (await r.json()) as { error?: string; foto?: string; nombre?: string };
+      if (!r.ok) throw new Error(d.error ?? "No se ha podido guardar.");
+      if (typeof d.foto === "string") setFoto(d.foto);
+      if (typeof d.nombre === "string") onNombre?.(d.nombre);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se ha podido guardar.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Tu perfil</div>
+      <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => archivo.current?.click()}
+            className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-line bg-panel"
+            aria-label="Cambiar la foto"
+          >
+            {foto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={foto} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-[18px] font-medium text-faint">
+                {(valor || "?").slice(0, 1).toUpperCase()}
+              </span>
+            )}
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <input
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              onBlur={() => valor.trim() !== nombre && void guardar({ nombre: valor })}
+              maxLength={40}
+              placeholder="Tu nombre, o como prefieras"
+              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
+            />
+            <div className="mt-1.5 flex gap-3">
+              <button
+                onClick={() => archivo.current?.click()}
+                disabled={guardando}
+                className="text-[12px] text-muted transition hover:text-ink"
+              >
+                {foto ? "Cambiar foto" : "Poner foto"}
+              </button>
+              {foto && (
+                <button
+                  onClick={() => void guardar({ foto: null })}
+                  disabled={guardando}
+                  className="text-[12px] text-faint transition hover:text-danger"
+                >
+                  Quitarla
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <input
+          ref={archivo}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (!f) return;
+            setError(null);
+            try {
+              await guardar({ foto: await encoger(f) });
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "No se ha podido usar esa foto.");
+            }
+          }}
+        />
+
+        {error && <p className="mt-2 text-[12px] leading-relaxed text-danger">{error}</p>}
+        <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
+          Tu nombre y tu foto te siguen de un móvil a otro. En los grupos se ve la foto y el
+          nombre; el correo no lo ve nadie, nunca.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Seguridad: la contraseña y la puerta de salida.
+ *
+ * Lo segundo importa más de lo que parece. Una aplicación que promete que tus
+ * cosas son tuyas tiene que dejarte llevarte la promesa hasta el final: si te
+ * vas, no se queda nada. Y se pide la contraseña para borrarla porque un móvil
+ * desbloqueado encima de una mesa no puede bastar para que alguien te borre la
+ * cuenta.
+ */
+function SeguridadBox({ onFuera }: { onFuera?: () => void }) {
+  const [abierto, setAbierto] = useState<"clave" | "borrar" | null>(null);
+  const [actual, setActual] = useState("");
+  const [nueva, setNueva] = useState("");
+  const [confirma, setConfirma] = useState("");
+  const [aviso, setAviso] = useState<{ malo: boolean; texto: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const cambiar = async () => {
+    setBusy(true);
+    setAviso(null);
+    try {
+      const r = await fetch("/api/auth", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contrasena: { actual, nueva } }),
+      });
+      const d = (await r.json()) as { error?: string };
+      if (!r.ok) throw new Error(d.error ?? "No se ha podido cambiar.");
+      setAviso({ malo: false, texto: "Cambiada. La próxima vez entra con la nueva." });
+      setActual("");
+      setNueva("");
+      setAbierto(null);
+    } catch (err) {
+      setAviso({ malo: true, texto: err instanceof Error ? err.message : "No se ha podido." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const borrar = async () => {
+    setBusy(true);
+    setAviso(null);
+    try {
+      const r = await fetch("/api/auth?todo=1", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contrasena: confirma }),
+      });
+      const d = (await r.json()) as { error?: string };
+      if (!r.ok) throw new Error(d.error ?? "No se ha podido borrar.");
+      onFuera?.();
+      window.location.reload();
+    } catch (err) {
+      setAviso({ malo: true, texto: err instanceof Error ? err.message : "No se ha podido." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Seguridad</div>
+      <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
+        {abierto === "clave" ? (
+          <div className="space-y-2">
+            <input
+              type="password"
+              value={actual}
+              onChange={(e) => setActual(e.target.value)}
+              placeholder="La contraseña de ahora"
+              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-halo/40"
+            />
+            <input
+              type="password"
+              value={nueva}
+              onChange={(e) => setNueva(e.target.value)}
+              placeholder="La nueva (8 o más, con letras y números)"
+              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-halo/40"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setAbierto(null)}
+                className="rounded-xl border border-line px-3 py-2 text-[13px] text-muted transition hover:text-ink"
+              >
+                Dejarlo
+              </button>
+              <button
+                onClick={() => void cambiar()}
+                disabled={busy || !actual || !nueva}
+                className="flex-1 rounded-xl bg-ink py-2 text-[13px] font-medium text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"
+              >
+                {busy ? "Un momento…" : "Cambiar la contraseña"}
+              </button>
+            </div>
+          </div>
+        ) : abierto === "borrar" ? (
+          <div className="space-y-2">
+            <p className="text-[12.5px] leading-relaxed text-ink">
+              Se borra tu cuenta y todo lo que hay de ti en el servidor: lo que sabe de ti, tus
+              encargos programados, tus conexiones y tus grupos. No se puede deshacer.
+            </p>
+            <p className="text-[11.5px] leading-relaxed text-faint">
+              Tus conversaciones no hace falta borrarlas de aquí: nunca han salido de este móvil.
+            </p>
+            <input
+              type="password"
+              value={confirma}
+              onChange={(e) => setConfirma(e.target.value)}
+              placeholder="Escribe tu contraseña para confirmar"
+              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-halo/40"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setAbierto(null);
+                  setConfirma("");
+                }}
+                className="rounded-xl border border-line px-3 py-2 text-[13px] text-muted transition hover:text-ink"
+              >
+                Mejor no
+              </button>
+              <button
+                onClick={() => void borrar()}
+                disabled={busy || !confirma}
+                className="flex-1 rounded-xl bg-danger py-2 text-[13px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {busy ? "Borrando…" : "Borrar mi cuenta y todo lo mío"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => setAbierto("clave")}
+              className="text-[12.5px] text-ink underline-offset-2 hover:underline"
+            >
+              Cambiar la contraseña
+            </button>
+            <button
+              onClick={() => setAbierto("borrar")}
+              className="text-[12.5px] text-faint transition hover:text-danger"
+            >
+              Borrar mi cuenta
+            </button>
+          </div>
+        )}
+
+        {aviso && (
+          <p className={`mt-2 text-[12px] leading-relaxed ${aviso.malo ? "text-danger" : "text-muted"}`}>
+            {aviso.texto}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Cómo suena ECLIPSE, también desde aquí.
+ *
+ * Estaba solo dentro de la llamada, que es donde se nota; pero quien busca
+ * cómo cambiar la voz la busca en Ajustes, y no encontrarla ahí es lo mismo que
+ * no poder cambiarla. Lo que se elija aquí es lo mismo que se elige allí: se
+ * guarda en el mismo sitio.
+ */
+function VozBox() {
+  const [ajustes, setAjustes] = useState<AjustesVoz>(VOZ_POR_DEFECTO);
+  const [suyas, setSuyas] = useState<{ name: string; lang: string; localService?: boolean }[]>([]);
+
+  useEffect(() => {
+    setAjustes(leerAjustes());
+  }, []);
+
+  useEffect(() => {
+    const mirar = () => {
+      try {
+        setSuyas(vocesDelIdioma(window.speechSynthesis.getVoices(), ajustes.idioma));
+      } catch {
+        /* este aparato no habla */
+      }
+    };
+    mirar();
+    window.speechSynthesis?.addEventListener?.("voiceschanged", mirar);
+    return () => window.speechSynthesis?.removeEventListener?.("voiceschanged", mirar);
+  }, [ajustes.idioma]);
+
+  const cambiar = (cambios: Partial<AjustesVoz>) => {
+    const nuevo = { ...ajustes, ...cambios };
+    setAjustes(nuevo);
+    guardarAjustes(nuevo);
+    // Y se oye al momento: elegir una voz sin escucharla es elegir a ciegas.
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(
+        nuevo.idioma.startsWith("es") ? "Así es como voy a sonar." : "This is how I will sound.",
+      );
+      u.lang = nuevo.idioma;
+      u.rate = velocidadDe(nuevo.ritmo);
+      u.pitch = tonoDe(nuevo.timbre);
+      const voces = window.speechSynthesis.getVoices();
+      const elegida = elegirVoz(voces, nuevo);
+      const real = elegida ? voces.find((v) => v.name === elegida.name) : null;
+      if (real) u.voice = real;
+      window.speechSynthesis.speak(u);
+    } catch {
+      /* sin voz en este aparato */
+    }
+  };
+
+  if (!suyas.length) return null;
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">
+        La voz de las llamadas
+      </div>
+      <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
+        <div className="flex gap-1.5 rounded-xl border border-line-soft bg-panel p-1">
+          {VOCES.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => cambiar({ voz: v.id, vozExacta: undefined })}
+              className={`flex-1 rounded-lg px-2 py-1.5 text-[12.5px] transition ${
+                ajustes.voz === v.id && !ajustes.vozExacta
+                  ? "bg-raised text-ink"
+                  : "text-muted hover:text-ink"
+              }`}
+            >
+              {v.nombre}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-2 flex gap-1.5 rounded-xl border border-line-soft bg-panel p-1">
+          {RITMOS.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => cambiar({ ritmo: r.id })}
+              className={`flex-1 rounded-lg px-2 py-1.5 text-[12.5px] transition ${
+                ajustes.ritmo === r.id ? "bg-raised text-ink" : "text-muted hover:text-ink"
+              }`}
+            >
+              {r.nombre}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-2.5 text-[11.5px] uppercase tracking-wide text-faint">
+          Voces de tu móvil
+        </div>
+        <div className="scroll-thin mt-1.5 max-h-40 space-y-1 overflow-y-auto pr-1">
+          {suyas.map((v, i) => (
+            <button
+              key={v.name}
+              onClick={() => cambiar({ vozExacta: v.name })}
+              className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left transition ${
+                ajustes.vozExacta === v.name
+                  ? "border-halo/50 bg-panel"
+                  : "border-line-soft bg-panel/40 hover:border-line"
+              }`}
+            >
+              <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">
+                {nombreDeVoz(v, i + 1)}
+              </span>
+              <span className="shrink-0 text-[11px] text-faint">escuchar</span>
+            </button>
+          ))}
+        </div>
+
+        <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
+          Tócalas para oírlas. Las que ponen «suena mejor» son las que tu móvil baja de internet:
+          son las que no suenan a robot. Si no tienes ninguna, se añaden desde los ajustes de voz
+          del propio móvil.
+        </p>
+      </div>
+    </div>
   );
 }
