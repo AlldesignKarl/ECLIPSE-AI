@@ -34,6 +34,7 @@ const PESADAS = new Set([
   "llamada-ui.test.mjs",
   "memoria.test.mjs",
   "programar-api.test.mjs",
+  "programar-ui.test.mjs",
   "tema.test.mjs",
   "ubicacion.test.mjs",
 ]);

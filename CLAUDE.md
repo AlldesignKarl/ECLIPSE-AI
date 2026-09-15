@@ -102,7 +102,7 @@ src/
     tareas/  grupos/  memoria/  Cada uno: tipos.ts + almacen.ts (+ lógica)
     tareas/planear.ts           El plan que monta ECLIPSE (y `leerPlan`, que
                                 lee lo que conteste el modelo sin romperse)
-pruebas/                        66 pruebas. Ver pruebas/LEEME.md
+pruebas/                        67 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -253,7 +253,7 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
 - **Que `planear.ts` NO ejecute nada.** Planificar contesta en segundos porque
   solo escribe; ejecutar cuesta medio minuto por encargo, y esperar eso era
   justo lo que había que quitar de en medio.
-- **Las 66 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Las 67 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -266,7 +266,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 66 pruebas (~4,7 min)
+npm run prueba           # las 67 pruebas (~5 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

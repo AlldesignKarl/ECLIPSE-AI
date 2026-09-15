@@ -12,7 +12,7 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 66 pruebas en verde.
+La aplicación está **en producción y funcionando**, con 67 pruebas en verde.
 En esta sesión se han hecho las tres cosas que pidió Carlos: ECLIPSE se ve y se
 configura dentro de los grupos, hay 21 conexiones en vez de 9, y Programar tiene
 calendario y monta el plan él solo. Lo que queda son mejoras y dos decisiones
@@ -100,8 +100,10 @@ Carlos pidió tres cosas. Las tres están hechas y probadas.
    - **"Hacerlo ahora"** en cada encargo, para ver lo que da sin esperar a
      mañana.
 
-4. **Cuatro pruebas nuevas** (62 → 66): `eclipse-grupo`, `conectores-nuevos`,
-   `catalogo` y `planear`, más ampliaciones en `tareas` y `programar-api`.
+4. **Cinco pruebas nuevas** (62 → 67): `eclipse-grupo`, `conectores-nuevos`,
+   `catalogo`, `planear` y `programar-ui` (esta última, la pantalla nueva en un
+   navegador de verdad), más ampliaciones en `tareas`, `programar-api` y
+   `grupos-ui`.
 
 ## 4. Decisiones importantes que están tomadas
 
@@ -179,10 +181,10 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**66 archivos, todas en verde.** Viven en `pruebas/`.
+**67 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
-npm run prueba           # todas (~4,7 min)
+npm run prueba           # todas (~5 min)
 npm run prueba:ligeras   # las 53 sin navegador (~10 s) ← para trabajar
 node pruebas/mapa.test.mjs   # una suelta
 ```

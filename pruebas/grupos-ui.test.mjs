@@ -153,6 +153,29 @@ try {
   ok(await karl.p.getByText(/sábado por la mañana/).first().isVisible(), "y ECLIPSE contesta cuando le nombran");
   await karl.p.screenshot({ path: `${AQUI}gr3-chat.png` });
 
+  console.log("\nECLIPSE está a la vista, y se decide cuándo habla");
+  // La ficha de la gente: ahí dentro tiene que estar él, no adivinarse.
+  await karl.p.locator("button").filter({ hasText: /^(AN|KA)+\s*\d$/ }).first().click();
+  await karl.p.waitForTimeout(700);
+  ok(await karl.p.getByText("ECLIPSE", { exact: true }).first().isVisible(),
+     "ECLIPSE sale en la lista de quién hay, como uno más");
+  ok(await karl.p.getByText(/Contesta cuando alguien dice/).isVisible(),
+     "y dice cuándo contesta, en vez de dejar que se adivine");
+  ok(await karl.p.getByRole("button", { name: "A todo" }).isVisible(),
+     "quien creó el grupo puede ponerle a contestar a todo");
+  await karl.p.screenshot({ path: `${AQUI}gr4-eclipse.png` });
+
+  await karl.p.getByRole("button", { name: "A todo" }).click();
+  await karl.p.waitForTimeout(1500);
+  ok(await karl.p.getByText("Contesta a todos los mensajes del grupo.").isVisible(),
+     "al cambiarlo se dice qué va a pasar ahora");
+
+  // Y lo ve el resto del grupo sin recargar: el vistazo de cada tres segundos
+  // trae también cómo está ECLIPSE.
+  await ana.p.waitForTimeout(4000);
+  ok(await ana.p.getByPlaceholder(/ECLIPSE contesta a todo/i).isVisible(),
+     "a la otra persona le cambia el hueco de escribir sola, sin recargar");
+
   // Las iniciales de cada uno, que es lo que hace legible un grupo.
   const iniciales = await karl.p.evaluate(() =>
     [...document.querySelectorAll("span")]

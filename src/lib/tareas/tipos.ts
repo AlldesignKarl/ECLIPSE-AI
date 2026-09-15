@@ -151,6 +151,14 @@ const MESES = [
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ] as const;
 
+/**
+ * La letra de cada día, como se escriben los calendarios en castellano.
+ *
+ * La X del miércoles no es un capricho: martes y miércoles empiezan las dos por
+ * M, y en una rejilla de siete letras eso son dos columnas iguales.
+ */
+export const INICIALES = ["D", "L", "M", "X", "J", "V", "S"] as const;
+
 /** Un día del calendario, con lo que le toca. */
 export interface DiaDelPlan {
   fecha: string;

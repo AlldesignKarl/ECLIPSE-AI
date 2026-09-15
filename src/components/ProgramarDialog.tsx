@@ -7,6 +7,7 @@ import type { Plan } from "@/lib/types";
 import {
   DIAS,
   fechaDe,
+  INICIALES,
   proximosDias,
   textoDe,
   type Cuando,
@@ -661,7 +662,7 @@ function Calendario({ tareas }: { tareas: Tarea[] }) {
                 } ${esHoy ? "ring-1 ring-pro/40" : ""}`}
               >
                 <span className="block text-[9.5px] uppercase text-faint">
-                  {DIAS[d.semana].slice(0, 1)}
+                  {INICIALES[d.semana]}
                 </span>
                 <span className={`block text-[13px] ${d.tareas.length ? "text-ink" : "text-faint"}`}>
                   {Number(d.fecha.slice(8))}
