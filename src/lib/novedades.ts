@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.40",
+    // Contestar mejor con menos: al grano, más natural y con menos tokens.
+    nombre: "Al grano",
+    titulo: "Contesta mejor, más corto y más rápido",
+    entrada:
+      "Menos parrafada, más naturalidad, y se acuerda de lo que hace falta sin cargar con todo lo demás.",
+    puntos: [
+      "Las respuestas van al grano: de uno a cuatro párrafos cortos cuando es suficiente, y largo solo cuando el asunto lo pide. Se acabaron los párrafos de entrada que repiten tu pregunta y los de cierre que resumen lo que acaba de decir.",
+      "Habla más como una persona: se le han prohibido por su nombre las muletillas de robot («Entiendo tu pregunta», «Espero que esto te ayude», «En conclusión») y ahora se fija en cómo escribes tú —corto o largo, de tú o de usted, con emojis o sin ellos— para contestarte en ese registro, sin imitarte.",
+      "Antes de contestar se repasa por dentro: si ha entendido bien, si es correcto, si se está inventando algo. Ese repaso no se ve nunca en pantalla.",
+      "Se acuerda mejor y molesta menos: en cada mensaje solo usa lo que sabe de ti que tiene que ver con lo que estás preguntando, más tus preferencias. Lo demás sigue guardado, en Ajustes, y sale cuando hace falta.",
+      "Y va más rápido: una conversación larga ya no se reenvía entera en cada mensaje. Entre eso y lo anterior, cada mensaje ocupa casi un 30% menos, que es menos espera y menos cupo gastado.",
+    ],
+  },
+  {
     version: "2.39",
     // Lo que estaba roto en producción y no aquí: contestar de verdad.
     nombre: "Sin esperas",

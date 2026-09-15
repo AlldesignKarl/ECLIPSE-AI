@@ -105,8 +105,11 @@ src/
                                 lee lo que conteste el modelo sin romperse)
     una-respuesta.ts            Una respuesta entera del motor que haya, sea
                                 cual sea. Lo que NO es conversación pasa por aquí
+    estilo.ts                   Cómo escribe esta persona, en una línea, sacado
+                                de sus propios mensajes (sin llamar al modelo)
+    memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        68 pruebas. Ver pruebas/LEEME.md
+pruebas/                        69 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -265,10 +268,24 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
 - **Que mandar un mensaje a un grupo NO espere a la respuesta del modelo.**
   Son dos peticiones a propósito: guardar vuelve en milisegundos y responder va
   aparte. Juntarlas otra vez es devolver el "los grupos van lentísimos".
+- **El presupuesto de lo que se le manda al modelo** (`pruebas/contexto.test.mjs`).
+  Las instrucciones, la memoria y el historial crecen solos, y lo que se paga se
+  paga en CADA mensaje. Hay un techo escrito en esa prueba: crecer de más falla
+  ahí en vez de notarse tres semanas después en respuestas cortadas.
+- **Que la memoria se filtre con `hechosRelevantes()`** y no se manden los
+  veinte hechos siempre. Con un relleno mínimo de cuatro para cuando la pregunta
+  no tiene nada que buscar ("¿por dónde íbamos?"), que si no se queda a ciegas
+  justo cuando le piden memoria.
+- **Que `compactarHistorial()` deje enteros el primer mensaje y los doce
+  últimos.** El primero dice de qué va todo y los últimos son lo que se está
+  hablando; lo de en medio se recorta a una línea.
+- **Que el repaso de antes de contestar NO se escriba** (`REPASO` en
+  `prompts.ts`). Es una lista de comprobación en silencio, no un "piensa paso a
+  paso": lo segundo hace que el modelo publique su propio razonamiento.
 - **Que `planear.ts` NO ejecute nada.** Planificar contesta en segundos porque
   solo escribe; ejecutar cuesta medio minuto por encargo, y esperar eso era
   justo lo que había que quitar de en medio.
-- **Las 68 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Las 69 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -281,7 +298,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 68 pruebas (~5,7 min)
+npm run prueba           # las 69 pruebas (~5,8 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

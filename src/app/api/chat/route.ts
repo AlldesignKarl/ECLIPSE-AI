@@ -8,12 +8,14 @@ import { CompatError, tieneVista, type CompatProvider } from "@/lib/openai-compa
 import { crearFiltroDeNegativa } from "@/lib/negativa";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { memoriaApagada } from "@/lib/auth";
+import { estiloDe } from "@/lib/estilo";
 import { hechosDe, quien as quienEsMemoria } from "@/lib/memoria/almacen";
+import { hechosRelevantes } from "@/lib/memoria/relevancia";
 import { comoFicha } from "@/lib/memoria/tipos";
 import { herramientasPara } from "@/lib/tools/registro";
 import { nombreActual } from "@/lib/auth";
 import { currentPlan } from "@/lib/plan-server";
-import { aligerarHistorial } from "@/lib/project";
+import { aligerarHistorial, compactarHistorial } from "@/lib/project";
 import { buildSystemPrompt, partes3D, SEGUIR } from "@/lib/prompts";
 import {
   activeProvider,
@@ -189,6 +191,8 @@ async function runAnthropic(
   opts: {
     body: Body;
     memoria?: string;
+    /** Cómo escribe esta persona, en una línea. Sale de sus propios mensajes. */
+    estilo?: string;
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
@@ -249,6 +253,7 @@ async function runAnthropic(
                 voz: opts.voz,
                 lugar: opts.body.ubicacion?.lugar,
                 memoria: opts.memoria,
+                estilo: opts.estilo,
               }),
           cache_control: { type: "ephemeral" },
         },
@@ -321,6 +326,8 @@ async function runGoogle(
   opts: {
     body: Body;
     memoria?: string;
+    /** Cómo escribe esta persona, en una línea. Sale de sus propios mensajes. */
+    estilo?: string;
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
@@ -352,6 +359,7 @@ async function runGoogle(
         voz: opts.voz,
         lugar: opts.body.ubicacion?.lugar,
         memoria: opts.memoria,
+        estilo: opts.estilo,
       });
 
   for await (const event of streamChat({
@@ -389,6 +397,8 @@ async function runCompat(
     provider: CompatProvider;
     body: Body;
     memoria?: string;
+    /** Cómo escribe esta persona, en una línea. Sale de sus propios mensajes. */
+    estilo?: string;
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
@@ -481,6 +491,7 @@ async function runCompat(
           voz: opts.voz,
           lugar: opts.body.ubicacion?.lugar,
           memoria: opts.memoria,
+          estilo: opts.estilo,
         }),
     turns: opts.body.messages,
     speed: opts.speed,
@@ -571,7 +582,7 @@ export async function POST(req: NextRequest) {
     servidor, así que la cuenta se hace también aquí. Pasarlo dos veces no hace
     nada: lo ya adelgazado se queda igual.
   */
-  body.messages = aligerarHistorial(body.messages ?? []);
+  body.messages = compactarHistorial(aligerarHistorial(body.messages ?? []));
   body.ubicacion = ubicacionLimpia(body.ubicacion);
 
   /*
@@ -582,18 +593,36 @@ export async function POST(req: NextRequest) {
     cuatro por respuesta para leer siempre lo mismo. Un chat temporal no la
     manda: ahí no se guarda nada y tampoco se recuerda nada.
   */
+  /*
+    Y solo la parte que sirve para ESTE mensaje.
+
+    Antes iban los veinte hechos más recientes, preguntara lo que preguntara.
+    Eso se paga en cada mensaje y encima despista: con veinte frases delante, lo
+    que importa se pierde entre lo que no. Ahora van las preferencias —que valen
+    para cualquier pregunta— y lo que tenga que ver con lo que acaba de
+    escribir. Si no hay nada que venga a cuento, no va nada.
+  */
   let memoria = "";
+  const ultimo = [...(body.messages ?? [])].reverse().find((m) => m.role === "user");
   if (!body.temporal) {
     try {
       const quien = await quienEsMemoria();
       // Apagada de verdad: ni se usa ni se aprende. Un interruptor que solo
       // esconde lo que ya sabe no es un interruptor.
       if (quien && !(await memoriaApagada(quien)))
-        memoria = comoFicha((await hechosDe(quien)).slice(0, 20));
+        memoria = comoFicha(hechosRelevantes(await hechosDe(quien), ultimo?.content ?? ""));
     } catch {
       /* sin memoria se responde igual; simplemente no se acuerda */
     }
   }
+
+  /*
+    Cómo escribe, sacado de sus propios mensajes.
+
+    No cuesta ni una llamada ni una lectura: se mira lo que ya viene en la
+    petición. Y si no hay patrón claro, no se manda nada.
+  */
+  const estilo = estiloDe(body.messages ?? []);
 
   const plan = await currentPlan();
   // Cómo quiere que le llamen. Se lee aquí, del servidor, y no de lo que mande
@@ -723,7 +752,7 @@ export async function POST(req: NextRequest) {
 
       try {
         send({ t: "status", v: "conectando" });
-        const shared = { body, mode, speed, plan, wantsWeb, nombre, memoria, voz: body.voz === true, signal: req.signal };
+        const shared = { body, mode, speed, plan, wantsWeb, nombre, memoria, estilo, voz: body.voz === true, signal: req.signal };
 
         const correr = async (quien: typeof provider) =>
           quien === "google"

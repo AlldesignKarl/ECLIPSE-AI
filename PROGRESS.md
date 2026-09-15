@@ -2,7 +2,7 @@
 
 Última actualización: **15 de septiembre de 2026** (segunda sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.39**
+usuario: **2.40**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,7 +11,7 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 68 pruebas en verde.
+La aplicación está **en producción y funcionando**, con 69 pruebas en verde.
 En esta sesión se han hecho las tres cosas que pidió Carlos: ECLIPSE se ve y se
 configura dentro de los grupos, hay 21 conexiones en vez de 9, y Programar tiene
 calendario y monta el plan él solo. Lo que queda son mejoras y dos decisiones
@@ -63,7 +63,52 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: arreglar lo que estaba roto en producción
+## 3. Lo último: cómo contesta, y lo que cuesta cada mensaje
+
+Objetivo de Carlos: que ECLIPSE se sienta inteligente, rápido y natural, sin
+cambiar de modelo y sin gastar más tokens. Medido antes y después, en una
+conversación con recorrido (30 turnos, 20 hechos en memoria):
+
+| | Antes | Después |
+|---|---|---|
+| Instrucciones | 4.241 tokens | 3.604 |
+| Memoria | 402 (20 hechos siempre) | dentro, y solo la que viene a cuento |
+| Historial | 4.110 (entero) | 2.522 (recortado) |
+| **Total por mensaje** | **8.753** | **6.315 (−28%)** |
+
+Qué se ha hecho:
+
+1. **El prompt, sin lo que decía dos veces.** `IDENTITY` repetía con otras
+   palabras lo que ya dicen `AL_GRANO`, `ACERTAR` y el bloque de tono. Un prompt
+   que dice dos veces lo mismo no obedece el doble: ocupa el sitio de la
+   respuesta, en cada mensaje.
+2. **Reglas nuevas de comportamiento**: de uno a cuatro párrafos cortos por
+   defecto; listas solo si se lee mejor; prohibidas por su nombre las muletillas
+   de robot; no decir que ha hecho algo que no ha hecho; no inventarse IDs,
+   precios, APIs ni funciones de la propia app; si falta un dato, pedir ese y
+   solo ese.
+3. **`REPASO`**: repasa por dentro antes de contestar (¿he entendido?, ¿es
+   correcto?, ¿me invento algo?, ¿me alargo?) y **ese repaso no se escribe
+   nunca**. Es una lista de comprobación, no un "piensa paso a paso": lo segundo
+   es lo que hace que un modelo publique su razonamiento.
+4. **`lib/memoria/relevancia.ts`**: en cada mensaje van las preferencias (cómo
+   quiere las respuestas, en qué idioma) y lo que tenga que ver con lo que acaba
+   de escribir. Con un mínimo de cuatro para las preguntas vagas.
+5. **`lib/estilo.ts`**: saca de sus últimos mensajes si escribe corto o largo, si
+   es formal o coloquial, si usa emojis y si es técnico, y se lo dice al modelo
+   en una línea (80 tokens) con la orden expresa de no imitarle. No cuesta ni una
+   llamada al modelo ni una lectura de base de datos.
+6. **`compactarHistorial()`**: el primer mensaje y los doce últimos van enteros;
+   lo de en medio, a una línea. Lo que lleva código no se toca.
+7. **El extractor de memoria, más estricto**: un hecho tiene que cumplir las
+   cuatro condiciones (es suyo, sigue siendo verdad dentro de un mes, sirve para
+   ayudarle otro día, y cabe en una frase). Y en la duda, no se guarda.
+8. **`pruebas/contexto.test.mjs`**: un presupuesto escrito de lo que puede
+   ocupar todo esto. Si alguien añade reglas de más, falla ahí.
+
+---
+
+## 3 bis. Antes: arreglar lo que estaba roto en producción
 
 Carlos lo probó en su móvil y falló casi todo lo de la sesión anterior. Las
 causas, y lo que se ha hecho:

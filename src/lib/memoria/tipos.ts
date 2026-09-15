@@ -109,10 +109,19 @@ export function buscar<T extends { titulo?: string; texto: string }>(
   consulta: string,
   cuantos = 6,
 ): T[] {
+  /*
+    Sin la puntuación.
+
+    Parece un detalle y no lo era: una pregunta de verdad acaba en "?", y
+    "tienda?" no aparece dentro de "tiene una tienda de ropa". Con la
+    interrogación pegada, la palabra que más pesaba de la pregunta no
+    encontraba nada.
+  */
   const claves = consulta
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9ñ\s]/g, " ")
     .split(/\s+/)
     .filter((p) => p.length > 2);
 

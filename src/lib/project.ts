@@ -444,6 +444,57 @@ export function aligerarHistorial<
 
 
 /**
+ * Cuántos turnos van enteros al modelo. Los demás, recortados.
+ *
+ * Doce es lo que hace falta para seguir una conversación: lo que se está
+ * hablando ahora y de dónde viene. Más atrás, lo que importa ya no es la frase
+ * exacta sino que se dijo.
+ */
+const TURNOS_ENTEROS = 12;
+
+/** Cuánto se deja de un turno viejo: lo justo para saber que se dijo. */
+const RECORTE = 140;
+
+/**
+ * Una conversación larga, puesta en su sitio antes de mandarla.
+ *
+ * Esto es el segundo gasto grande que no se veía, después de las fotos. Una
+ * conversación de sesenta mensajes se mandaba ENTERA en cada mensaje nuevo: el
+ * mensaje número sesenta y uno pagaba otra vez los sesenta anteriores. Con el
+ * cupo por minuto del plan gratuito, eso es el techo de lo que puede escribir la
+ * respuesta, y encima cada token de más es tiempo de espera.
+ *
+ * Lo que se conserva entero es lo que de verdad se usa: el PRIMER mensaje —que
+ * casi siempre dice de qué va todo— y los últimos doce turnos. Lo de en medio se
+ * deja en una línea por turno. Nadie echa de menos la redacción exacta de algo
+ * que se dijo hace media hora; lo que haría daño es no saber que se dijo.
+ *
+ * Lo que trae código se queda como está: `aligerarHistorial` ya ha dejado solo
+ * las dos últimas versiones, y esas hacen falta enteras para poder corregirlas.
+ */
+export function compactarHistorial<T extends { role: string; content: string }>(
+  mensajes: T[],
+  enteros = TURNOS_ENTEROS,
+): T[] {
+  if (mensajes.length <= enteros + 1) return mensajes;
+
+  const corte = mensajes.length - enteros;
+
+  return mensajes.map((m, i) => {
+    // El primero y la cola, intactos.
+    if (i === 0 || i >= corte) return m;
+    if (typeof m.content !== "string" || m.content.length <= RECORTE) return m;
+    // Lo que todavía lleva código va entero: es de las dos versiones vivas.
+    if (m.content.includes("```")) return m;
+
+    return {
+      ...m,
+      content: `${m.content.slice(0, RECORTE).trimEnd()}… (recortado: es de hace un rato)`,
+    };
+  });
+}
+
+/**
  * El trozo de código donde está el error, con sus vecinos alrededor.
  *
  * Mandar "error en la línea 175" y nada más es pedirle a ECLIPSE que vuelva a

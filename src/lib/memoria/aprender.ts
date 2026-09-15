@@ -27,22 +27,31 @@ HECHOS:
 TEMA:
 (dos líneas como mucho: de qué iba la conversación y en qué quedó)
 
-Qué es un HECHO que merece recordarse:
-- Algo de esta persona que va a seguir siendo verdad dentro de un mes y que
-  sirve para ayudarla mejor otro día: a qué se dedica, qué proyectos tiene,
-  qué herramientas usa, qué nivel tiene en algo, cómo prefiere que le
-  respondan, qué idioma habla, en qué está trabajando.
-- Escrito en tercera persona y en una frase corta: "Tiene una tienda de ropa
-  de montaña en Shopify", "Estudia segundo de Bachillerato", "Prefiere
-  respuestas cortas y sin listas".
+Un HECHO tiene que cumplir las CUATRO cosas: es de esta persona, sigue siendo
+verdad dentro de un mes, sirve para ayudarla mejor otro día, y cabe en una
+frase corta en tercera persona.
+
+Lo que sí merece guardarse:
+- A qué se dedica, qué proyectos lleva, qué herramientas usa, qué nivel tiene.
+- Una preferencia que ha dicho: cómo quiere las respuestas, en qué idioma, cómo
+  quiere que le traten.
+- Un proyecto al que va a volver, y en qué punto está, si hace falta para
+  seguirlo otro día.
+- Así de cortos: "Tiene una tienda de ropa de montaña en Shopify", "Prefiere
+  respuestas cortas y sin listas", "Está desarrollando ECLIPSE".
 
 Qué NO es un hecho, y no debes apuntar NUNCA:
 - Nada de salud, religión, ideas políticas, orientación sexual, dinero que
   tiene, ni situación legal. Aunque lo haya contado.
 - Nada sobre terceras personas: su familia, sus amigos, sus clientes, su jefe.
 - Contraseñas, claves, tokens, direcciones, teléfonos ni números de tarjeta.
-- Lo que solo vale para este rato ("hazlo más corto", "prueba otra vez").
+- Lo que solo vale para este rato ("hazlo más corto", "prueba otra vez"), ni lo
+  que se resolvió y se acabó ahí.
+- Trozos de la conversación copiados. Un hecho es una frase tuya que resume algo
+  suyo, nunca "el usuario dijo que…" ni el mensaje entero.
 - Lo que dijo el asistente. Solo cuenta lo que se sabe de la persona.
+- Y en la duda, no lo guardes: una ficha corta y verdadera vale más que una
+  larga llena de cosas que no sirven.
 
 Si no hay nada que cumpla eso, escribe "ninguno". Es una respuesta perfectamente
 buena y es mejor que inventarse algo.`;
