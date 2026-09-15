@@ -26,6 +26,19 @@ interface Miembro {
   yo: boolean;
 }
 
+type ModoEclipse = "siempre" | "nombrado" | "no";
+
+/** Los tres sitios donde puede estar ECLIPSE, dichos como se dicen. */
+const MODOS: { id: ModoEclipse; corto: string; explicacion: string }[] = [
+  { id: "siempre", corto: "A todo", explicacion: "Contesta a todos los mensajes del grupo." },
+  {
+    id: "nombrado",
+    corto: "Si le nombráis",
+    explicacion: "Contesta cuando alguien dice «ECLIPSE» o le pide algo directamente.",
+  },
+  { id: "no", corto: "No está", explicacion: "No lee ni contesta nada." },
+];
+
 interface Grupo {
   id: string;
   nombre: string;
@@ -33,6 +46,7 @@ interface Grupo {
   soyDueno: boolean;
   invitacion?: string;
   hueco: boolean;
+  eclipse?: ModoEclipse;
 }
 
 /** Lo que se puede saber de un grupo SIN estar dentro. */
@@ -233,6 +247,7 @@ export default function GruposDialog({ open, onClose, plan, onUpgrade }: Props) 
                     <span className="block text-[13.5px] font-medium text-ink">{g.nombre}</span>
                     <span className="mt-0.5 block text-[11.5px] text-faint">
                       {g.miembros.length} persona{g.miembros.length > 1 ? "s" : ""}
+                      {g.eclipse !== "no" && " · con ECLIPSE"}
                       {g.soyDueno && " · lo creaste tú"}
                     </span>
                   </span>
@@ -448,16 +463,25 @@ function Sala({
   const [enviando, setEnviando] = useState(false);
   const [gente, setGente] = useState(false);
   const [miembros, setMiembros] = useState<Miembro[]>(grupo.miembros);
+  /** Cómo está ECLIPSE aquí dentro. Lo cambia el dueño y lo ven todos. */
+  const [eclipse, setEclipse] = useState<ModoEclipse>(grupo.eclipse ?? "nombrado");
+  const [cambiandoEclipse, setCambiandoEclipse] = useState(false);
   const fondo = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(async () => {
     try {
       const r = await fetch(`/api/grupos/mensajes?id=${grupo.id}`);
-      const d = (await r.json()) as { mensajes?: Mensaje[]; miembros?: Miembro[] };
+      const d = (await r.json()) as {
+        mensajes?: Mensaje[];
+        miembros?: Miembro[];
+        eclipse?: ModoEclipse;
+      };
       setMensajes(d.mensajes ?? []);
       // Quién hay dentro también cambia mientras se mira: si no se refresca,
       // quien invitó sigue viendo "1 persona" después de que entre su amigo.
       if (d.miembros?.length) setMiembros(d.miembros);
+      // Y cómo está ECLIPSE: lo puede haber cambiado el dueño hace un segundo.
+      if (d.eclipse) setEclipse(d.eclipse);
     } catch {
       /* se reintenta al siguiente vistazo */
     }
@@ -527,6 +551,18 @@ function Sala({
             className="ml-auto flex min-w-0 items-center gap-1.5 text-[12.5px] text-faint transition hover:text-ink"
           >
             <span className="flex -space-x-1.5">
+              {/*
+                ECLIPSE, el primero y con su marca.
+
+                Estaba dentro desde el principio pero no se veía en ninguna
+                parte: quien montaba un grupo no tenía forma de saber que había
+                alguien más sentado a la mesa, ni de decirle cuándo hablar.
+              */}
+              {eclipse !== "no" && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-void bg-pro/20 text-pro">
+                  <Icon.Sparkle width={11} height={11} />
+                </span>
+              )}
               {miembros.slice(0, 3).map((m) => (
                 <span
                   key={m.nombre}
@@ -545,6 +581,51 @@ function Sala({
 
         {gente && (
           <div className="mt-2.5 rounded-xl border border-line-soft bg-panel/40 p-3">
+            <div className="mb-2.5 border-b border-line-soft pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pro/15 text-pro">
+                  <Icon.Sparkle width={12} height={12} />
+                </span>
+                <span className="min-w-0 flex-1 text-[12.5px] text-ink">ECLIPSE</span>
+                <span className="text-[11.5px] text-faint">
+                  {MODOS.find((m) => m.id === eclipse)?.corto}
+                </span>
+              </div>
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted">
+                {MODOS.find((m) => m.id === eclipse)?.explicacion}
+              </p>
+
+              {grupo.soyDueno && (
+                <div className="mt-2 flex gap-1.5 rounded-xl border border-line-soft bg-panel p-1">
+                  {MODOS.map((m) => (
+                    <button
+                      key={m.id}
+                      disabled={cambiandoEclipse}
+                      onClick={async () => {
+                        if (m.id === eclipse) return;
+                        // Se pinta al momento y se manda: si el servidor dijera
+                        // que no, el vistazo de dentro de tres segundos lo
+                        // devuelve a su sitio.
+                        setEclipse(m.id);
+                        setCambiandoEclipse(true);
+                        await fetch("/api/grupos", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ id: grupo.id, accion: "eclipse", modo: m.id }),
+                        }).catch(() => {});
+                        setCambiandoEclipse(false);
+                      }}
+                      className={`flex-1 rounded-lg px-2 py-1.5 text-[11.5px] transition ${
+                        eclipse === m.id ? "bg-raised text-ink" : "text-muted hover:text-ink"
+                      }`}
+                    >
+                      {m.corto}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <ul className="space-y-1.5">
               {miembros.map((m) => (
                 <li key={m.nombre} className="flex items-center gap-2 text-[12.5px] text-muted">
@@ -576,9 +657,17 @@ function Sala({
                 <Icon.Group width={22} height={22} />
               </span>
               <p className="max-w-xs text-[13px] leading-relaxed text-muted">
-                {miembros.length <= 1
-                  ? "De momento estás tú solo. Manda la invitación a quien quieras y escribid aquí: ECLIPSE contesta cuando le nombréis."
-                  : "Todavía no ha escrito nadie. Escribe algo y, si quieres que conteste ECLIPSE, nómbralo o pídele algo directamente."}
+                {eclipse === "no"
+                  ? miembros.length <= 1
+                    ? "De momento estás tú solo. Manda la invitación a quien quieras y hablad aquí. ECLIPSE está apagado en este grupo: lo enciendes tocando arriba en la gente."
+                    : "Todavía no ha escrito nadie. ECLIPSE está apagado en este grupo."
+                  : eclipse === "siempre"
+                    ? miembros.length <= 1
+                      ? "De momento estás tú solo. Manda la invitación a quien quieras: ECLIPSE está dentro y contesta a todo lo que escribáis."
+                      : "Todavía no ha escrito nadie. ECLIPSE está dentro y contesta a todo lo que escribáis."
+                    : miembros.length <= 1
+                      ? "De momento estás tú solo. Manda la invitación a quien quieras y escribid aquí: ECLIPSE contesta cuando le nombréis."
+                      : "Todavía no ha escrito nadie. Escribe algo y, si quieres que conteste ECLIPSE, nómbralo o pídele algo directamente."}
               </p>
               {miembros.length <= 1 && <BotonInvitar grupo={grupo} enlace={enlace} grande />}
             </div>
@@ -653,7 +742,13 @@ function Sala({
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void enviar()}
-            placeholder="Escribe al grupo. Di «ECLIPSE» para que conteste."
+            placeholder={
+              eclipse === "siempre"
+                ? "Escribe al grupo. ECLIPSE contesta a todo."
+                : eclipse === "no"
+                  ? "Escribe al grupo."
+                  : "Escribe al grupo. Di «ECLIPSE» para que conteste."
+            }
             className="min-w-0 flex-1 rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[14px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
           />
           <button

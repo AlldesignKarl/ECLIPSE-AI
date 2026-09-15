@@ -6,7 +6,7 @@ import { activeProvider } from "@/lib/provider";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import type { CompatProvider } from "@/lib/openai-compat";
 import { apuntarMensaje, grupoDe, mensajesDe, quien } from "@/lib/grupos/almacen";
-import { comoSeLeVe, estaDentro, leHablanAEclipse } from "@/lib/grupos/tipos";
+import { comoSeLeVe, estaDentro, leHablanAEclipse, MODO_POR_DEFECTO } from "@/lib/grupos/tipos";
 
 export const runtime = "nodejs";
 /*
@@ -59,6 +59,21 @@ const COMO_ESTAR = `Estás en un GRUPO: aquí hablan varias personas, no una.
 - Y no tomes partido en lo suyo. Si están decidiendo entre dos planes, dales lo
   que haga falta para decidir; la decisión es de ellos.`;
 
+/**
+ * Lo que se le añade cuando el grupo le ha puesto a contestar a TODO.
+ *
+ * Sin esto, "contesta a todo" se convierte en tres párrafos contestando a un
+ * "jajaja", que es la forma más rápida de que alguien lo apague. Contestar a
+ * todo es estar pendiente, no llenar la pantalla.
+ */
+const A_TODO = `En este grupo te han puesto a contestar a TODOS los mensajes, no
+solo cuando te nombran. Eso cambia el tamaño de lo que dices, no las ganas:
+
+- Si el mensaje no te pide nada (una risa, un «vale», dos que quedan a las ocho),
+  contesta en una línea o menos, o di solo lo que haga falta para que sigan.
+- Si te piden algo de verdad, entonces sí: contesta entero.
+- No resumas la conversación cada vez ni repitas lo que acaban de decir.`;
+
 async function puerta(id: string) {
   const email = await quien();
   if (!email) return { error: "Hay que entrar con tu cuenta.", status: 401 } as const;
@@ -102,6 +117,10 @@ export async function GET(req: NextRequest) {
       dueno: m.dueno,
       yo: m.email === paso.email,
     })),
+    // Cómo está ECLIPSE ahora mismo. Va aquí porque lo puede cambiar el dueño
+    // mientras los demás tienen el grupo abierto: si no se refresca, los otros
+    // siguen viendo que calla cuando ya contesta a todo.
+    eclipse: paso.grupo.eclipse ?? MODO_POR_DEFECTO,
   });
 }
 
@@ -123,7 +142,8 @@ export async function POST(req: NextRequest) {
     texto: dicho,
   });
 
-  if (!leHablanAEclipse(dicho, anteriores.length === 0))
+  const modo = paso.grupo.eclipse ?? MODO_POR_DEFECTO;
+  if (!leHablanAEclipse(dicho, anteriores.length === 0, modo))
     return Response.json({ contesta: false });
 
   const provider = await activeProvider();
@@ -155,7 +175,7 @@ export async function POST(req: NextRequest) {
         plan: "pro",
         web: true,
         engine: provider,
-      })}\n\n${COMO_ESTAR}`,
+      })}\n\n${COMO_ESTAR}${modo === "siempre" ? `\n\n${A_TODO}` : ""}`,
       turns: [
         {
           role: "user",

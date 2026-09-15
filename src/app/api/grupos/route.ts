@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { currentPlan } from "@/lib/plan-server";
 import {
   borrarGrupo,
+  cambiarEclipse,
   crearGrupo,
   echar,
   entrarConInvitacion,
@@ -14,7 +15,14 @@ import {
   renovarInvitacion,
   salirse,
 } from "@/lib/grupos/almacen";
-import { estaDentro, MAX_PERSONAS, type Grupo } from "@/lib/grupos/tipos";
+import {
+  estaDentro,
+  MAX_PERSONAS,
+  MODO_POR_DEFECTO,
+  MODOS,
+  type Grupo,
+  type ModoEclipse,
+} from "@/lib/grupos/tipos";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -46,6 +54,9 @@ function comoSeVe(grupo: Grupo, email: string) {
       yo: m.email === email,
     })),
     soyDueno: grupo.miembros.some((m) => m.email === email && m.dueno),
+    // Los grupos de antes de que esto existiera no lo tienen guardado, y se
+    // estaban comportando exactamente como el modo por defecto.
+    eclipse: grupo.eclipse ?? MODO_POR_DEFECTO,
     // La invitación solo la ve el dueño: es la llave de entrar.
     invitacion: grupo.miembros.some((m) => m.email === email && m.dueno)
       ? grupo.invitacion
@@ -120,12 +131,22 @@ export async function PATCH(req: NextRequest) {
   const email = await quien();
   if (!email) return no("Hay que entrar con tu cuenta.", 401, "sin_cuenta");
 
-  const { id, accion, aQuien } = (await req.json().catch(() => ({}))) as {
+  const cuerpo = (await req.json().catch(() => ({}))) as {
     id?: string;
     accion?: string;
     aQuien?: string;
+    modo?: ModoEclipse;
   };
+  const { id, accion, aQuien } = cuerpo;
   if (!id) return no("Falta el grupo.", 400);
+
+  if (accion === "eclipse") {
+    const modo = MODOS.find((m) => m.id === cuerpo.modo)?.id;
+    if (!modo) return no("Eso no es una forma de estar en el grupo.", 400);
+    const hecho = await cambiarEclipse(id, modo);
+    if (!hecho) return no("Solo quien creó el grupo puede decidir cómo está ECLIPSE dentro.", 403);
+    return Response.json({ eclipse: modo });
+  }
 
   if (accion === "renovar") {
     const nueva = await renovarInvitacion(id);

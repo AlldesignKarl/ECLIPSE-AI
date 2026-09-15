@@ -12,6 +12,32 @@
  * pregunta a una IA en su móvil y luego copia y pega el resultado al grupo.
  */
 
+/**
+ * Cómo está ECLIPSE en un grupo.
+ *
+ * Que estuviera siempre y sin decirlo era el problema: contestaba cuando le
+ * nombraban, pero eso no se ve en ninguna parte, así que quien montaba un grupo
+ * no sabía que había alguien más sentado a la mesa. Ahora se ve y se decide.
+ *
+ * - `siempre`: contesta a todo lo que se dice. Para un grupo montado para
+ *   preguntarle a él, donde callarse sería raro.
+ * - `nombrado`: contesta cuando le nombran o cuando le piden algo directamente.
+ *   Es lo de siempre y sigue siendo lo normal: en una conversación de cinco
+ *   personas, alguien que contesta a cada frase la hace inhabitable.
+ * - `no`: no está. Lee menos aún: ni siquiera se le manda nada.
+ */
+export type ModoEclipse = "siempre" | "nombrado" | "no";
+
+/** Con el que nace un grupo, y el que se supone en los que ya existían. */
+export const MODO_POR_DEFECTO: ModoEclipse = "nombrado";
+
+/** Cómo se lee cada modo en la pantalla, sin tecnicismos. */
+export const MODOS: { id: ModoEclipse; corto: string; explicacion: string }[] = [
+  { id: "siempre", corto: "A todo", explicacion: "Contesta a todos los mensajes." },
+  { id: "nombrado", corto: "Si le nombráis", explicacion: "Contesta cuando alguien dice «ECLIPSE» o le pide algo." },
+  { id: "no", corto: "No está", explicacion: "No lee ni contesta nada del grupo." },
+];
+
 /** Cuánta gente cabe. Más de esto deja de ser una conversación. */
 export const MAX_PERSONAS = 20;
 /** Y cuántos mensajes se guardan de cada grupo. */
@@ -46,6 +72,14 @@ export interface Grupo {
   miembros: Miembro[];
   /** La llave para entrar. Quien la tiene, entra. */
   invitacion: string;
+  /**
+   * Si ECLIPSE está en el grupo y cuándo abre la boca.
+   *
+   * Opcional porque los grupos creados antes de que esto existiera no lo
+   * tienen guardado: se les supone `nombrado`, que es exactamente como se
+   * estaban comportando.
+   */
+  eclipse?: ModoEclipse;
 }
 
 /** Lo que se le enseña a quien no está dentro: lo justo para decidir si entra. */
@@ -85,11 +119,20 @@ export function comoSeLeVe(email: string, nombre?: string): string {
  * Es la decisión que hace que un grupo con IA sea usable o insoportable. Si
  * contesta a todo, no se puede hablar; si no contesta nunca, no sirve de nada.
  *
- * Contesta cuando le nombran, cuando le preguntan algo directamente, o cuando
- * es el primer mensaje del grupo. Lo demás lo lee y se calla, que es lo que
- * haría alguien educado sentado en esa mesa.
+ * Por defecto contesta cuando le nombran, cuando le preguntan algo
+ * directamente, o cuando es el primer mensaje del grupo. Lo demás lo lee y se
+ * calla, que es lo que haría alguien educado sentado en esa mesa. El grupo
+ * puede cambiarlo: hay mesas montadas para preguntarle a él, y ahí callarse
+ * sería lo raro.
  */
-export function leHablanAEclipse(texto: string, esElPrimero = false): boolean {
+export function leHablanAEclipse(
+  texto: string,
+  esElPrimero = false,
+  modo: ModoEclipse = MODO_POR_DEFECTO,
+): boolean {
+  // Si no está en el grupo, no está: ni el primer mensaje le hace aparecer.
+  if (modo === "no") return false;
+  if (modo === "siempre") return true;
   if (esElPrimero) return true;
 
   const t = texto

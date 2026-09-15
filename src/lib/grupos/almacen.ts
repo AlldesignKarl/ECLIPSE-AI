@@ -8,8 +8,10 @@ import {
   MAX_GRUPOS,
   MAX_MENSAJES,
   MAX_PERSONAS,
+  MODO_POR_DEFECTO,
   type Grupo,
   type MensajeGrupo,
+  type ModoEclipse,
 } from "./tipos";
 
 /**
@@ -98,6 +100,7 @@ export async function crearGrupo(nombre: string): Promise<Grupo | null> {
     // 16 bytes al azar: adivinar una invitación tiene que ser imposible, no
     // difícil. Es la única llave que hay para entrar.
     invitacion: randomBytes(16).toString("base64url"),
+    eclipse: MODO_POR_DEFECTO,
     miembros: [
       {
         email,
@@ -187,6 +190,25 @@ export async function echar(id: string, aQuien: string): Promise<boolean> {
   grupo.miembros = grupo.miembros.filter((m) => m.email !== aQuien);
   await guardar(grupo);
   await desapuntar(aQuien, id);
+  return true;
+}
+
+/**
+ * Cómo está ECLIPSE en el grupo. Lo decide quien lo creó.
+ *
+ * Solo el dueño, y por lo mismo por lo que solo él invita o echa: ponerlo a
+ * contestar a todo cambia la conversación para los veinte, no para quien toca
+ * el botón.
+ */
+export async function cambiarEclipse(id: string, modo: ModoEclipse): Promise<boolean> {
+  const email = await quien();
+  if (!email) return false;
+
+  const grupo = await grupoDe(id);
+  if (!grupo || !grupo.miembros.some((m) => m.email === email && m.dueno)) return false;
+
+  grupo.eclipse = modo;
+  await guardar(grupo);
   return true;
 }
 
