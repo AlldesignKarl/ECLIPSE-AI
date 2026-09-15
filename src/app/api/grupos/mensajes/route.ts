@@ -9,7 +9,25 @@ import { apuntarMensaje, grupoDe, mensajesDe, quien } from "@/lib/grupos/almacen
 import { comoSeLeVe, estaDentro, leHablanAEclipse } from "@/lib/grupos/tipos";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+/*
+  Sesenta, que es lo que hay.
+
+  Decía 120 y eso era pedir algo que el plan gratuito de Vercel no da: corta a
+  los 60 pase lo que pase. Con 120 escrito aquí, una respuesta larga de ECLIPSE
+  en un grupo se moría a mitad sin guardarse ni dejar rastro, y en el grupo no
+  aparecía nada. Con el número de verdad, lo de dentro se puede dimensionar
+  para caber.
+*/
+export const maxDuration = 60;
+
+/**
+ * Cuánto se le deja pensar antes de dar la respuesta por perdida.
+ *
+ * Cuarenta y cinco de los sesenta: los quince que sobran son para guardar el
+ * mensaje y contestarle al navegador. Cortar nosotros y no el hosting es la
+ * diferencia entre "no ha contestado" y que no se entere nadie.
+ */
+const LIMITE_MS = 45_000;
 
 /**
  * Lo que se dice en un grupo.
@@ -147,7 +165,7 @@ export async function POST(req: NextRequest) {
       speed: "equilibrado",
       mode: "chat",
       plan: "pro",
-      signal: req.signal,
+      signal: AbortSignal.any([req.signal, AbortSignal.timeout(LIMITE_MS)]),
     })) {
       if (e.texto) respuesta += e.texto;
     }

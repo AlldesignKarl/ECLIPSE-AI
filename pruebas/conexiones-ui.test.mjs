@@ -73,7 +73,7 @@ try {
   /* ----------------------------- Sin Pro ----------------------------- */
   console.log("\nSin Pro");
   await abrirConexiones();
-  await p.screenshot({ path: "cx1-sin-pro.png" });
+  await p.screenshot({ path: AQUI + "cx1-sin-pro.png" });
   ok(await p.getByText(/Las conexiones son del plan Pro/i).count() > 0, "se ve que son del plan Pro");
   ok(await p.getByText(/Shopify/).count() > 0, "pero el catálogo se ve igual, para saber qué te pierdes");
   const campoBloqueado = p.locator('input[placeholder="mitienda.myshopify.com"]');
@@ -93,7 +93,7 @@ try {
   await p.waitForTimeout(1500);
   await abrirConexiones();
   ok(await p.getByText(/Las conexiones son del plan Pro/i).count() === 0, "ya no sale el aviso de Pro");
-  await p.screenshot({ path: "cx2-catalogo.png", fullPage: true });
+  await p.screenshot({ path: AQUI + "cx2-catalogo.png", fullPage: true });
 
   // Los logos de verdad, no unas iniciales.
   const logos = await p.evaluate(() => {
@@ -127,7 +127,7 @@ try {
   await p.getByPlaceholder("Buscar conexiones").fill("stripe");
   await p.waitForTimeout(500);
   ok(await p.getByText("Stripe").count() > 0 && await p.getByText("IONOS").count() === 0, "el buscador filtra");
-  await p.screenshot({ path: "cx7-buscando.png", fullPage: true });
+  await p.screenshot({ path: AQUI + "cx7-buscando.png", fullPage: true });
   await p.getByPlaceholder("Buscar conexiones").fill("");
   await p.waitForTimeout(400);
 
@@ -135,13 +135,13 @@ try {
   await p.getByRole("button", { name: /Shopify/ }).first().click();
   await p.waitForTimeout(500);
   ok(await p.getByText(/Configuración → Aplicaciones/).count() > 0, "explica paso a paso de dónde sale el token");
-  await p.screenshot({ path: "cx3-shopify-pasos.png" });
+  await p.screenshot({ path: AQUI + "cx3-shopify-pasos.png" });
 
   await p.locator('input[placeholder="mitienda.myshopify.com"]').fill("mitienda.myshopify.com");
   await p.locator('input[placeholder="shpat_…"]').fill(ESPERADO.TOKEN_SHOPIFY);
   await p.getByRole("button", { name: /Conectar Shopify/ }).click();
   await p.waitForTimeout(2500);
-  await p.screenshot({ path: "cx4-conectado.png", fullPage: true });
+  await p.screenshot({ path: AQUI + "cx4-conectado.png", fullPage: true });
 
   ok(await p.getByText(/Mi Tienda · EUR/).count() > 0, "conecta y enseña a qué tienda");
   ok(await p.getByText(/solo lectura/i).count() > 0, "y que está en solo lectura");
@@ -163,7 +163,7 @@ try {
   await p.waitForTimeout(1800);
   const estadoDespues = await p.evaluate(() => fetch("/api/conexiones").then((r) => r.json()));
   ok(estadoDespues.servicios.find((s) => s.id === "shopify").permiso === "escribir", "el interruptor cambia el permiso de verdad, en el servidor");
-  await p.screenshot({ path: "cx5-escritura.png", fullPage: true });
+  await p.screenshot({ path: AQUI + "cx5-escritura.png", fullPage: true });
 
   // Una clave mala, que es lo que va a pasar de verdad la primera vez.
   const cabIonos = p.getByRole("button", { name: /IONOS/ }).first();
@@ -175,7 +175,7 @@ try {
   await p.getByRole("button", { name: /Conectar IONOS/ }).click();
   await p.waitForTimeout(2500);
   ok(await p.getByText(/ha rechazado la clave/i).count() > 0, "una clave mala se explica en la pantalla, en cristiano");
-  await p.screenshot({ path: "cx6-clave-mala.png", fullPage: true });
+  await p.screenshot({ path: AQUI + "cx6-clave-mala.png", fullPage: true });
 
   ok(errores.length === 0, `sin errores de JavaScript (${errores.slice(0, 2).join(" | ")})`);
 } finally {

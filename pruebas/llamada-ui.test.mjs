@@ -76,22 +76,22 @@ try {
   await p.waitForTimeout(1200);
   ok(await p.getByText("Te escucho").count() > 0, "se abre la llamada y dice que te escucha");
   ok(await p.evaluate(() => window.__escuchando === true), "y el micrófono está abierto de verdad");
-  await p.screenshot({ path: "ll1-escuchando.png" });
+  await p.screenshot({ path: AQUI + "ll1-escuchando.png" });
 
   console.log("\nHablar");
   await p.evaluate(() => {
     window.__rec.onresult({ resultIndex: 0, results: Object.assign([[{ transcript: "¿dónde están estos rascacielos?" }]], { length: 1, 0: Object.assign([{ transcript: "¿dónde están estos rascacielos?" }], { isFinal: true, length: 1 }) }) });
   });
   await p.waitForTimeout(600);
-  await p.screenshot({ path: "ll2-oyendo.png" });
+  await p.screenshot({ path: AQUI + "ll2-oyendo.png" });
   // Pasa el silencio y se cierra el turno.
   await p.waitForTimeout(2500);
   ok(await p.evaluate(() => (window.__dicho ?? []).length > 0), `contesta en alto (${JSON.stringify(await p.evaluate(() => window.__dicho))})`);
   ok(/Cuatro Torres/.test((await p.evaluate(() => (window.__dicho ?? []).join(" "))) ?? ""), "y dice lo que contestó el motor");
-  await p.screenshot({ path: "ll3-hablando.png" });
+  await p.screenshot({ path: AQUI + "ll3-hablando.png" });
   await p.getByRole("button", { name: "Ajustes de voz" }).click();
   await p.waitForTimeout(700);
-  await p.screenshot({ path: "ll5-ajustes-voz.png" });
+  await p.screenshot({ path: AQUI + "ll5-ajustes-voz.png" });
   await p.getByRole("button", { name: "Cerrar" }).last().click().catch(() => {});
   await p.waitForTimeout(400);
 
@@ -109,7 +109,7 @@ try {
     return c.find((x) => x.title === "Llamada")?.messages?.length ?? 0;
   });
   ok(guardada >= 2, `lo hablado queda guardado como conversación (${guardada} mensajes)`);
-  await p.screenshot({ path: "ll4-colgado.png" });
+  await p.screenshot({ path: AQUI + "ll4-colgado.png" });
 
   ok(errores.length === 0, `sin errores de JavaScript (${errores.slice(0, 2).join(" | ")})`);
 } finally {
