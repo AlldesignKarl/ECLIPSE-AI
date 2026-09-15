@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { currentUser } from "../auth";
 import { del, get, set, storeAvailable } from "../store";
+import { olvidarPerfil } from "../perfil/almacen";
 import {
   fundir,
   MAX_RESUMENES,
@@ -147,4 +148,8 @@ export async function olvidarTodo(email: string): Promise<void> {
   await del(claveHechos(email));
   await del(claveResumenes(email));
   await del(claveVisto(email));
+  // Y cómo le gusta que le hablen. Va en otro archivo pero es lo mismo: algo
+  // que ECLIPSE aprendió de esta persona. Dejarlo vivo después de darle a
+  // «borrar la memoria» sería mentir en el botón.
+  await olvidarPerfil(email);
 }

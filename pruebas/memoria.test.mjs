@@ -185,11 +185,35 @@ try {
   ok(/tienda de ropa de montaña/.test(sistema), "el modelo ya sabe a qué se dedica");
   ok(/no lo recites|NO lo recites/i.test(sistema), "con la orden de no recitárselo como una ficha");
 
+  /*
+    El perfil de comunicación: cómo le gusta que le hablen.
+
+    Lo pidió Carlos: que se adapte poco a poco a cada persona. Lo que se
+    comprueba aquí es lo que no se ve en la lógica suelta: que se aprende de la
+    cuenta y no de la conversación —o sea, que sigue ahí al abrir otra—, que
+    obedece el interruptor de la memoria, y que el botón de borrar lo borra.
+  */
+  console.log("\nAprende cómo le gusta que le hablen, conversación a conversación");
+  // Cinco mensajes, cada uno en su conversación, como quien usa la aplicación
+  // varios días. Si esto se guardara en la conversación, no sumaría.
+  for (const frase of ["hazlo corto por favor", "más corto", "al grano", "resúmelo", "no te enrolles"])
+    await yo("/api/chat", { method: "POST", body: JSON.stringify({ mode: "chat", speed: "rapido", messages: [{ role: "user", content: frase }] }) });
+
+  const conEstilo = await yo("/api/memoria");
+  ok((conEstilo.json?.estilo ?? []).some((l) => /respuestas cortas/i.test(l)), "ha aprendido que las quiere cortas, y se puede ver en Ajustes");
+
+  pedidos.length = 0;
+  await yo("/api/chat", { method: "POST", body: JSON.stringify({ mode: "chat", speed: "rapido", messages: [{ role: "user", content: "y esto otro qué tal lo ves tú" }] }) });
+  const conPerfil = pedidos.map((p) => p.messages?.find((m) => m.role === "system")?.content ?? "").join("\n");
+  ok(/contéstale corto/.test(conPerfil), "y en la conversación siguiente ya se lo dice al modelo");
+  ok(/NO copies sus palabras/.test(conPerfil), "con la orden de no imitarle");
+
   console.log("\nEn un chat temporal, ni se acuerda ni aprende");
   pedidos.length = 0;
   await yo("/api/chat", { method: "POST", body: JSON.stringify({ mode: "chat", speed: "rapido", temporal: true, messages: [{ role: "user", content: "hola" }] }) });
   const sistemaTemporal = pedidos.map((p) => p.messages?.find((m) => m.role === "system")?.content ?? "").join("\n");
   ok(!/tienda de ropa de montaña/.test(sistemaTemporal), "no le pasa nada de lo que sabía");
+  ok(!/aprendido de sus mensajes/.test(sistemaTemporal), "ni cómo le gusta que le hablen: temporal es temporal");
 
   console.log("\nLo de otro no se mezcla");
   const otra = sesion();
@@ -207,11 +231,13 @@ try {
   const nada = await yo("/api/memoria");
   ok(nada.json?.hechos?.length === 0, "y del todo, todo");
   ok(nada.json?.temas?.length === 0, "incluidas las conversaciones recordadas");
+  ok((nada.json?.estilo ?? []).length === 0, "y cómo había aprendido a hablarle: el botón borra TODO lo que aprendió");
 
   pedidos.length = 0;
   await yo("/api/chat", { method: "POST", body: JSON.stringify({ mode: "chat", speed: "rapido", messages: [{ role: "user", content: "hola" }] }) });
   const traBorrar = pedidos.map((p) => p.messages?.find((m) => m.role === "system")?.content ?? "").join("\n");
   ok(!/tienda de ropa de montaña/.test(traBorrar), "y después de borrar, el modelo ya no lo recibe");
+  ok(!/aprendido de sus mensajes/.test(traBorrar), "ni el perfil de cómo le gusta que le hablen");
 
   console.log("\nSin cuenta, no hay memoria que valga");
   const anonimo = sesion();

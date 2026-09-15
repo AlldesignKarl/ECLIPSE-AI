@@ -10,6 +10,8 @@ import { conversarConHerramientas } from "@/lib/tools/bucle";
 import { memoriaApagada } from "@/lib/auth";
 import { estiloDe } from "@/lib/estilo";
 import { hechosDe, quien as quienEsMemoria } from "@/lib/memoria/almacen";
+import { aprenderDelMensaje, perfilDe } from "@/lib/perfil/almacen";
+import { comoLinea } from "@/lib/perfil/tipos";
 import { hechosRelevantes } from "@/lib/memoria/relevancia";
 import { comoFicha } from "@/lib/memoria/tipos";
 import { herramientasPara } from "@/lib/tools/registro";
@@ -603,26 +605,42 @@ export async function POST(req: NextRequest) {
     escribir. Si no hay nada que venga a cuento, no va nada.
   */
   let memoria = "";
+  let deSuPerfil = "";
   const ultimo = [...(body.messages ?? [])].reverse().find((m) => m.role === "user");
   if (!body.temporal) {
     try {
       const quien = await quienEsMemoria();
       // Apagada de verdad: ni se usa ni se aprende. Un interruptor que solo
       // esconde lo que ya sabe no es un interruptor.
-      if (quien && !(await memoriaApagada(quien)))
+      if (quien && !(await memoriaApagada(quien))) {
         memoria = comoFicha(hechosRelevantes(await hechosDe(quien), ultimo?.content ?? ""));
+
+        /*
+          Y cómo le gusta que le hablen, que va aprendiendo con cada mensaje.
+
+          Se aprende del ÚLTIMO mensaje y solo de ese: el chat manda el
+          historial entero en cada petición, y aprender de todo lo que llega
+          contaría el primer mensaje una vez por turno. Se hace antes de
+          responder y no después porque después la función ya se ha ido.
+        */
+        const perfil = await aprenderDelMensaje(quien, ultimo?.content ?? "").catch(() => null);
+        deSuPerfil = comoLinea(perfil ?? (await perfilDe(quien)));
+      }
     } catch {
       /* sin memoria se responde igual; simplemente no se acuerda */
     }
   }
 
   /*
-    Cómo escribe, sacado de sus propios mensajes.
+    Cómo escribe.
 
-    No cuesta ni una llamada ni una lectura: se mira lo que ya viene en la
-    petición. Y si no hay patrón claro, no se manda nada.
+    Manda el perfil de su cuenta, que es el que lleva meses mirándole y no se
+    borra al cerrar la conversación. Si todavía no sabe lo suficiente —o no hay
+    cuenta, o es un chat temporal— se cae a lo de siempre: mirar los mensajes
+    que ya vienen en esta petición. Así quien entra sin registrarse sigue
+    teniendo un ECLIPSE que le devuelve el registro desde el tercer mensaje.
   */
-  const estilo = estiloDe(body.messages ?? []);
+  const estilo = deSuPerfil || estiloDe(body.messages ?? []);
 
   const plan = await currentPlan();
   // Cómo quiere que le llamen. Se lee aquí, del servidor, y no de lo que mande

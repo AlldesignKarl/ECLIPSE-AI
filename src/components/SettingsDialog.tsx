@@ -205,6 +205,8 @@ function TemaBox() {
 function MemoriaBox() {
   const [hechos, setHechos] = useState<{ id: string; texto: string }[]>([]);
   const [temas, setTemas] = useState<{ id: string; titulo: string }[]>([]);
+  /** Cómo le gusta que le hablen, en frases. Lo aprende solo, así que se enseña. */
+  const [estilo, setEstilo] = useState<string[]>([]);
   const [abierto, setAbierto] = useState(false);
   const [sinCuenta, setSinCuenta] = useState(false);
   const [cargado, setCargado] = useState(false);
@@ -217,11 +219,13 @@ function MemoriaBox() {
       const d = (await r.json()) as {
         hechos?: { id: string; texto: string }[];
         temas?: { id: string; titulo: string }[];
+        estilo?: string[];
         sinCuenta?: boolean;
         activa?: boolean;
       };
       setHechos(d.hechos ?? []);
       setTemas(d.temas ?? []);
+      setEstilo(d.estilo ?? []);
       setSinCuenta(Boolean(d.sinCuenta));
       if (typeof d.activa === "boolean") setActiva(d.activa);
     } catch {
@@ -283,7 +287,32 @@ function MemoriaBox() {
         </label>
 
         <div className={`${activa ? "" : "pointer-events-none opacity-40"} pt-3`}>
-        {hechos.length === 0 && temas.length === 0 ? (
+        {/*
+          Cómo le gusta que le hablen.
+
+          Es lo que ECLIPSE va ajustando solo según habláis —si le contesta
+          corto o largo, de tú o de usted, con ejemplos o sin ellos—, y por eso
+          tiene que poder verse. Algo que decide el tono de TODAS las respuestas
+          y que no se puede mirar ni borrar no es adaptarse: es otra cosa.
+        */}
+        {estilo.length > 0 && (
+          <div className="mb-3 rounded-lg border border-line-soft bg-void/30 px-3 py-2.5">
+            <div className="text-[12.5px] text-ink">Cómo ha aprendido a hablarte</div>
+            <ul className="mt-1 space-y-0.5">
+              {estilo.map((linea) => (
+                <li key={linea} className="text-[11.5px] leading-relaxed text-muted">
+                  · {linea}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-faint">
+              Sale de cómo le escribes, va cambiando poco a poco, y se borra con el botón de abajo.
+              Si un día quieres otra cosa, pídesela y manda lo que pidas.
+            </p>
+          </div>
+        )}
+
+        {hechos.length === 0 && temas.length === 0 && estilo.length === 0 ? (
           <p className="text-[12.5px] leading-relaxed text-muted">
             Todavía no ha aprendido nada de ti. Según vayáis hablando se irá quedando con lo que
             sirva para ayudarte mejor —a qué te dedicas, en qué andas, cómo prefieres las

@@ -27,6 +27,21 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.43",
+    // Personalidad propia y adaptación gradual a cada persona.
+    nombre: "Te conoce",
+    titulo: "Aprende cómo te gusta que te hablen",
+    entrada:
+      "Y se adapta poco a poco, no de golpe. Cuanto más habléis, más se parece a lo que tú quieres.",
+    puntos: [
+      "ECLIPSE ya no contesta igual a todo el mundo. Va aprendiendo si prefieres respuestas cortas o largas, si vas al grano, si te gusta que te ponga ejemplos, si quieres trato de tú o de usted, si usas emojis y en qué idioma escribes.",
+      "Poco a poco, y a propósito: un mensaje suelto no le cambia el carácter. Hace falta que una cosa se repita para que la dé por buena, y si cambias de gusto, cambia con ir repitiendo lo nuevo. Lo que no se ha visto lo suficiente no se usa: no se inventa preferencias.",
+      "Y ahora lo aprende de tu cuenta, no de la conversación: antes empezaba de cero cada vez que abrías un chat nuevo.",
+      "Puedes verlo. En Ajustes → Memoria sale «Cómo ha aprendido a hablarte», en frases y no en números, y se borra con el mismo botón que el resto. Con la memoria apagada no aprende nada, y en un chat temporal tampoco.",
+      "ECLIPSE tiene además una personalidad propia de partida, para cuando todavía no te conoce: natural, cercano, espabilado y directo, seguro cuando sabe y capaz de decir «no lo sé» cuando no. Adaptarse a ti no es dejar de ser él.",
+    ],
+  },
+  {
     version: "2.42",
     // Que los encargos vean de verdad las cuentas conectadas, y que no inventen.
     nombre: "De verdad",

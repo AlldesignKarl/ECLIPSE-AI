@@ -11,6 +11,8 @@ import {
   tocaAprender,
 } from "@/lib/memoria/almacen";
 import { aprenderDe, type Turno } from "@/lib/memoria/aprender";
+import { perfilDe } from "@/lib/perfil/almacen";
+import { comoLista } from "@/lib/perfil/tipos";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -37,6 +39,10 @@ export async function GET() {
   return Response.json({
     hechos: apagada ? [] : await hechosDe(email),
     temas: apagada ? [] : await resumenesDe(email),
+    // Cómo le gusta que le hablen, dicho en cristiano. Va aquí porque es lo
+    // mismo que lo de arriba: algo que ECLIPSE ha aprendido de esta persona, y
+    // en esta casa lo que se aprende se puede mirar y se puede borrar.
+    estilo: apagada ? [] : comoLista(await perfilDe(email)),
     activa: !apagada,
     hay: true,
   });

@@ -1,6 +1,6 @@
 # Las pruebas de ECLIPSE
 
-72 archivos. Todas pasan.
+73 archivos. Todas pasan.
 
 ```bash
 npm run prueba           # todas (~5,8 min)

@@ -106,10 +106,15 @@ src/
     una-respuesta.ts            Una respuesta entera del motor que haya, sea
                                 cual sea. Lo que NO es conversación pasa por aquí
     estilo.ts                   Cómo escribe esta persona, en una línea, sacado
-                                de sus propios mensajes (sin llamar al modelo)
+                                de sus propios mensajes (sin llamar al modelo).
+                                Es el recambio de `perfil/` para quien no tiene
+                                cuenta o está en un chat temporal
+    perfil/                     Cómo le gusta que le hablen, aprendido mensaje a
+                                mensaje y guardado con la cuenta. `tipos.ts` es
+                                toda la lógica y no toca la red
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        72 pruebas. Ver pruebas/LEEME.md
+pruebas/                        73 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -314,7 +319,19 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
   (`es-es-x-eed-local`) y acierta a medias; y con una sola voz instalada —lo
   normal— hombre y mujer devuelven forzosamente la misma. Ahí el único cambio
   posible es el tono, y hay que hacerlo o el botón no hace nada.
-- **Las 72 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que el perfil de comunicación se aprenda del ÚLTIMO mensaje y solo de ese**
+  (`perfil/almacen.ts`). El chat manda el historial entero en cada petición: si
+  se aprende de todo lo que llega, el primer mensaje se cuenta una vez por turno
+  y el perfil se clava en lo que alguien escribió el primer día.
+- **Que un eje del perfil no se use hasta tener `SUFICIENTE` señales y estar
+  claramente de un lado** (`perfil/tipos.ts`). Es lo que pidió Carlos con
+  "no debe inventarse preferencias". Y que `observar()` NO apunte un eje cuando
+  el mensaje no dice nada de él: un "vale" no es prueba de nada, y contándolo,
+  cuatro monosílabos bastaban para decidir que alguien quiere respuestas cortas.
+- **Que el perfil obedezca el interruptor de la memoria y se borre con ella.**
+  Un perfil que decide el tono de TODAS las respuestas y que no se puede mirar
+  ni borrar no es adaptarse: por eso sale en Ajustes y lo borra `olvidarTodo()`.
+- **Las 73 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -327,7 +344,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 72 pruebas (~6 min)
+npm run prueba           # las 73 pruebas (~6 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

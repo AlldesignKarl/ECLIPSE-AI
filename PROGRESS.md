@@ -2,7 +2,7 @@
 
 Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.42**
+usuario: **2.43**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,9 +11,10 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 72 pruebas en verde.
-Lo último y lo más importante: los **encargos programados ya ven de verdad las
-cuentas conectadas** —no las veían, y por eso los partes traían cifras
+La aplicación está **en producción y funcionando**, con 73 pruebas en verde.
+Lo último: ECLIPSE **aprende cómo le gusta a cada uno que le hablen** y se
+adapta poco a poco, con personalidad propia de partida. Antes de eso: los
+**encargos programados ya ven de verdad las cuentas conectadas** —no las veían, y por eso los partes traían cifras
 inventadas—, hay **resumen entero de la tienda** en una sola pregunta, y las
 **voces** cambian de verdad aunque el móvil solo tenga una. Lo que queda son
 mejoras, no averías.
@@ -64,7 +65,60 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: que lo conectado esté conectado de verdad
+## 3. Lo último: personalidad propia y adaptación de verdad
+
+Carlos: *"que ECLIPSE tenga una personalidad natural y adaptable… que aprenda de
+forma controlada cómo prefiere comunicarse esa persona"*, con dos condiciones
+suyas: que no se invente preferencias y que la adaptación sea GRADUAL.
+
+**Lo que había.** `lib/estilo.ts` sacaba una línea de los últimos ocho mensajes
+de la conversación abierta. Funcionaba, pero se olvidaba al cerrarla: abrías un
+chat nuevo y ECLIPSE volvía a hablarte como a un desconocido.
+
+**Lo que hay ahora.** `lib/perfil/`, un perfil de comunicación que vive con la
+cuenta y crece conversación a conversación. Seis ejes de 0 a 1 —largo, formal,
+emojis, técnico, directo, ejemplos— más el idioma habitual.
+
+- **Gradual de verdad, y en la cuenta y no en una promesa del prompt.** Cada
+  mensaje mueve un eje un quinto del camino (media desplazada, `ALFA = 0,2`).
+  Un mensaje raro no cambia nada; cinco seguidos sí. Medido en la prueba: con
+  uno no dice nada, con dos tampoco, a la quinta ya contesta corto. Y se puede
+  volver atrás igual de gradualmente.
+- **No se inventa.** Un eje solo se usa con `SUFICIENTE` señales (3) Y estando
+  claramente de un lado (≤0,32 o ≥0,68). Lo tibio no se usa. Y `observar()` no
+  apunta un eje cuando el mensaje no dice nada de él: un "vale" no prueba nada.
+  Eso último salió de la propia prueba —cuatro monosílabos seguidos bastaban
+  para decidir que alguien quería respuestas cortas— y era exactamente lo que
+  Carlos pidió que no pasara.
+- **Solo de su último mensaje.** El chat manda el historial entero cada vez; si
+  se aprende de todo lo que llega, el primer mensaje se cuenta una vez por turno
+  y el perfil se clava en el primer día.
+- **Se puede ver y borrar.** En Ajustes → Memoria, "Cómo ha aprendido a
+  hablarte", en frases y no en números. Obedece el interruptor de la memoria, se
+  borra con ella, y en un chat temporal ni se usa ni se aprende. Un perfil que
+  decide el tono de todas las respuestas y no se puede mirar no es adaptarse.
+- **Recambio.** Quien no tiene cuenta o está en temporal sigue teniendo el
+  `estilo.ts` de siempre, que mira los mensajes de la petición. Nadie pierde
+  nada.
+
+**Personalidad base.** ECLIPSE ya tenía tono; ahora lo tiene dicho: natural,
+cercano, espabilado y directo, seguro cuando sabe y capaz de decir "no lo sé"
+sin adornarlo, y con la línea que faltaba: adaptarse a alguien no es dejar de
+ser él.
+
+**Lo que cuesta.** El perfil entero, en el caso peor —alguien de quien se sabe
+todo—, son 102 tokens por mensaje, y las instrucciones pasan de 3.696 a 3.798
+sobre un techo de 3.900. Está escrito en `pruebas/contexto.test.mjs`, así que
+crecer de más falla ahí.
+
+Pruebas nuevas: `perfil.test.mjs` (la lógica entera, sin red) y el recorrido de
+punta a punta dentro de `memoria.test.mjs`: cinco conversaciones distintas, el
+perfil aparece en la sexta, el chat temporal no lo recibe y el botón de borrar
+lo borra.
+
+---
+
+## 3 bis. Antes: que lo conectado estuviera conectado de verdad
 
 Carlos lo probó y dijo tres cosas. Las tres tenían causa, y las tres eran de
 verdad:
@@ -383,7 +437,7 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**72 archivos, todas en verde.** Viven en `pruebas/`.
+**73 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
 npm run prueba           # todas (~6 min)

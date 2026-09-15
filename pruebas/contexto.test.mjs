@@ -35,10 +35,45 @@ ok(/no digas que has buscado/.test(chat), "y no puede decir que ha hecho algo qu
 ok(/pide ESE dato y solo ese/.test(chat), "si le falta un dato, pide ese y solo ese");
 ok(/no te inventes NUNCA/i.test(chat), "nada de inventarse fuentes, precios, IDs ni funciones");
 
+console.log("\nLa personalidad de ECLIPSE cuando todavía no te conoce");
+ok(/natural, cercano/.test(chat), "tiene una personalidad de partida propia, no es una hoja en blanco");
+ok(/seguridad cuando sabes/.test(chat) && /no estoy seguro/.test(chat), "segura al contestar, pero sin fingir certeza cuando no la hay");
+ok(/no se sustituye por la de nadie/.test(chat), "y adaptarse a alguien no es dejar de ser él");
+
 console.log("\nEl repaso de antes de contestar, que NO se ve");
 ok(/repásala por dentro y en silencio/.test(chat), "se repasa por dentro");
 ok(/Ese repaso NO se escribe/.test(chat), "y no se escribe: nada de razonamiento a la vista");
 ok(/Entiendo tu pregunta|Espero que esto te ayude/.test(chat), "se le prohíben las fórmulas de robot por su nombre");
+
+/*
+  El perfil de comunicación dentro del presupuesto.
+
+  Es lo último que se ha añadido a lo que viaja en cada mensaje, y lo que más
+  fácil se desmadra: seis ejes, cada uno con su frase. Aquí se mide el caso
+  peor —alguien de quien se sabe TODO— contra el techo de las instrucciones.
+*/
+console.log("\nCon el perfil puesto, las instrucciones siguen cabiendo");
+const { observar, acumular, perfilVacio, comoLinea } = await jiti.import(enSrc("lib/perfil/tipos.ts"));
+let sabido = perfilVacio();
+for (const m of [
+  "hazlo corto", "al grano", "resúmelo", "más corto", "no te enrolles",
+  "el endpoint del json devuelve el token del servidor correcto",
+  "el deploy del build falla en el commit del repositorio nuevo",
+  "la función del componente usa una variable del framework antiguo",
+  "ponme un ejemplo", "dame ejemplos", "enséñame un caso práctico",
+  "buah tío qué crack jajaja, esto está guay 😄", "menudo crack eres tío jajaja 😄",
+  "qué guay tío, gracias crack jajaja 😄",
+])
+  sabido = acumular(sabido, observar(m));
+
+const conPerfil = buildSystemPrompt({
+  mode: "chat", plan: "pro", web: true, nombre: "Karl",
+  conHerramientas: ["buscar_web", "crear_imagen", "crear_archivo", "mapa", "mis_conversaciones"],
+  estilo: comoLinea(sabido),
+});
+ok(comoLinea(sabido).length > 0, "de alguien muy conocido sí sale perfil");
+ok(tokens(conPerfil) < 3900, `y con él puesto las instrucciones siguen cabiendo (${tokens(conPerfil)})`);
+ok(tokens(conPerfil) - tokens(chat) < 130, `el perfil entero cuesta menos de 130 tokens (${tokens(conPerfil) - tokens(chat)})`);
 
 console.log("\nLa memoria: solo la que viene a cuento");
 const hechos = [
