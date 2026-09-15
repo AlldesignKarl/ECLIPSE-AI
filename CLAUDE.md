@@ -97,6 +97,9 @@ src/
   lib/
     prompts.ts                  Las instrucciones del modelo (~1300 líneas)
     openai-compat.ts            Mistral/Groq/OpenRouter + elección de modelo
+    router.ts                   Qué motor pide ESTE mensaje. Reglas locales, sin
+                                llamar a nadie: Mistral de cerebro general y
+                                Gemini de especialista donde gana
     gemini.ts, anthropic.ts     Los otros dos motores
     tools/                      Herramientas que el modelo puede usar
     conexiones/                 Un archivo por servicio + registro + almacén
@@ -114,7 +117,7 @@ src/
                                 toda la lógica y no toca la red
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        73 pruebas. Ver pruebas/LEEME.md
+pruebas/                        75 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -331,7 +334,23 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
 - **Que el perfil obedezca el interruptor de la memoria y se borre con ella.**
   Un perfil que decide el tono de TODAS las respuestas y que no se puede mirar
   ni borrar no es adaptarse: por eso sale en Ajustes y lo borra `olvidarTodo()`.
-- **Las 73 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que el router (`lib/router.ts`) solo SUBA de motor, nunca baje.** Sin clave
+  de Google devuelve el de siempre y no ha pasado nada. Y que exija DOS señales
+  de palabras: con una, "quiero una web bonita para mi tienda" se iba al
+  especialista por la palabra "web", y un router que en la duda cambia de motor
+  cambia de motor siempre.
+- **Que el router NO toque el modo `code`.** Ahí el motor lo elige el usuario en
+  Ajustes justo porque es lo que decide si un archivo largo sale entero o
+  cortado. El router es del chat.
+- **Que cuando el motor lo pone el ROUTER, `motorQueDice` siga siendo el de
+  Ajustes.** Si no, ECLIPSE contesta que es Google en las preguntas de código y
+  Mistral en las demás: cambia de identidad según lo que se le pregunte y
+  contradice lo que pone en Ajustes.
+- **Que un fallo del motor que puso el router vuelva SIEMPRE al de siempre**
+  (`hayQueVolver`), y no solo si es cupo. Cuando el motor lo eligió el usuario,
+  su error hay que contarlo; cuando lo elegimos nosotros, el error es nuestro y
+  quien escribe se quedaría sin una respuesta que iba a tener.
+- **Las 75 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -344,7 +363,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 73 pruebas (~6 min)
+npm run prueba           # las 75 pruebas (~7 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

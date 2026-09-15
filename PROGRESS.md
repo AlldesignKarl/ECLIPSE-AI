@@ -2,7 +2,7 @@
 
 Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.43**
+usuario: **2.44**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,8 +11,10 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 73 pruebas en verde.
-Lo último: ECLIPSE **aprende cómo le gusta a cada uno que le hablen** y se
+La aplicación está **en producción y funcionando**, con 75 pruebas en verde.
+Lo último: un **router de motores** que manda cada pregunta a donde mejor se
+resuelve sin que se note por fuera. Antes: ECLIPSE **aprende cómo le gusta a
+cada uno que le hablen** y se
 adapta poco a poco, con personalidad propia de partida. Antes de eso: los
 **encargos programados ya ven de verdad las cuentas conectadas** —no las veían, y por eso los partes traían cifras
 inventadas—, hay **resumen entero de la tienda** en una sola pregunta, y las
@@ -65,7 +67,71 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: personalidad propia y adaptación de verdad
+## 3. Lo último: el router de motores
+
+Carlos: *"Mistral = cerebro general, Gemini = especialista cuando aporte una
+ventaja clara, router que decide automáticamente"*, y con una condición que
+manda sobre el diseño entero: **nada de preguntarle a una IA qué IA usar**.
+
+**Lo que ya había** (y por eso esto es más pequeño de lo que parece): Gemini ya
+estaba soportado, con su `runGoogle` en la ruta del chat, su clave en
+`GEMINI_API_KEY`/`GOOGLE_API_KEY` y el MISMO `buildSystemPrompt` que los demás
+—o sea, la personalidad ya era compartida—. También había recambio de motor por
+cupo. Lo que faltaba era la pieza del medio: decidir por el CONTENIDO del
+mensaje.
+
+**`lib/router.ts`.** Reglas locales, sin red y sin modelo: ni un token ni un
+milisegundo de más. Sube al especialista por tres motivos, y devuelve cuál:
+
+- `codigo`: un bloque ``` pegado o una traza de error valen solos —nadie escribe
+  "Traceback (most recent call last)" charlando—; por palabras hacen falta DOS
+  señales de cuatro (verbo de programar, cosa que se programa, tecnología, "no
+  funciona").
+- `razonar`: dos señales de tres (verbo de analizar/resolver, petición explícita
+  de razonamiento, vocabulario de complejidad).
+- `contexto`: más de 4.000 caracteres pegados de golpe, o una conversación que
+  ya pesa más de 20.000.
+
+Y frenos, que es lo que decide si un router sirve: mensajes de menos de 28
+caracteres ("arréglalo", "¿y el código?"), saludos, y preguntas de dato suelto
+("¿en qué año salió Python?"). Sin ellos, el especialista acaba contestándolo
+todo.
+
+**Dos cosas que este cambio podía romper, y no rompe:**
+
+1. **ECLIPSE cambiando de identidad.** Si al Gemini que coge una pregunta de
+   código se le dice "eres el motor Google", contesta que es Google cuando le
+   preguntan —contradiciendo Ajustes— y da una respuesta distinta según lo que
+   se le pregunte. Ahora, cuando el motor lo pone el router, se le cuenta el
+   motor CONFIGURADO (`motorQueDice`). Por dentro cambia; por fuera es la misma.
+2. **Un fallo del especialista dejando a alguien sin respuesta.** El recambio de
+   antes solo saltaba con errores de cupo. Cuando el motor lo eligió el usuario
+   eso está bien —es su cuenta—; cuando lo elegimos nosotros, el error es
+   nuestro. Con el router, CUALQUIER fallo vuelve al motor de siempre.
+
+**ECLIPSE CODE se queda como estaba**, a propósito: ahí el motor lo elige el
+usuario en Ajustes porque es lo que decide si un archivo largo sale entero o
+cortado, y eso costó encontrarlo. El router es del chat.
+
+**La interfaz.** Fuera el nombre del modelo debajo de cada respuesta: ECLIPSE es
+una sola IA y así se tiene que ver. Quien lo quiera —para saber por qué una
+respuesta salió floja— lo enciende con «Mostrar el razonamiento» en Ajustes.
+
+**El modelo de Gemini no está escrito a mano en ninguna parte**, y es lo
+correcto: `gemini.ts` le pregunta a Google por los modelos de ESA cuenta
+(`ListModels`) y elige un `flash`, que es la familia de la capa gratuita. Si el
+que hay deja de existir, se vuelve a resolver solo.
+
+Pruebas nuevas: `router.test.mjs` (las reglas, con los ejemplos de Carlos uno
+por uno y los frenos) y `router-motores.test.mjs`, que levanta la aplicación con
+DOS motores de mentira —uno que habla como Mistral y otro como Google— y
+comprueba quién recibe cada mensaje, que las instrucciones son idénticas, que el
+historial llega entero al cambiar de motor, que el recambio funciona y que
+ninguna clave asoma.
+
+---
+
+## 3 bis. Antes: personalidad propia y adaptación de verdad
 
 Carlos: *"que ECLIPSE tenga una personalidad natural y adaptable… que aprenda de
 forma controlada cómo prefiere comunicarse esa persona"*, con dos condiciones
@@ -437,7 +503,7 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**73 archivos, todas en verde.** Viven en `pruebas/`.
+**75 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
 npm run prueba           # todas (~6 min)

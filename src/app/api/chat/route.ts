@@ -18,10 +18,12 @@ import { herramientasPara } from "@/lib/tools/registro";
 import { nombreActual } from "@/lib/auth";
 import { currentPlan } from "@/lib/plan-server";
 import { aligerarHistorial, compactarHistorial } from "@/lib/project";
-import { buildSystemPrompt, partes3D, SEGUIR } from "@/lib/prompts";
+import { buildSystemPrompt, partes3D, SEGUIR, type Engine } from "@/lib/prompts";
+import { decidirMotor } from "@/lib/router";
 import {
   activeProvider,
   motoresConOjos,
+  motorEspecialista,
   providerForTurn,
   providerSearches,
   siguienteMotor,
@@ -195,6 +197,18 @@ async function runAnthropic(
     memoria?: string;
     /** Cómo escribe esta persona, en una línea. Sale de sus propios mensajes. */
     estilo?: string;
+    /**
+     * De qué motor se cree ECLIPSE, que no siempre es el que está contestando.
+     *
+     * El router puede mandar una pregunta de código a Gemini aunque en Ajustes
+     * ponga Mistral. Si a ese Gemini se le dice "eres el motor Google", ECLIPSE
+     * contesta que es Google cuando le preguntan, contradice lo que pone en
+     * Ajustes y cambia de respuesta según lo que se le pregunte. Y lo que se
+     * pidió es justo lo contrario: que se sienta siempre la misma. Así que se
+     * le cuenta el motor CONFIGURADO, que es el que el usuario eligió y el que
+     * sigue mandando en sus límites.
+     */
+    motorQueDice?: Engine;
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
@@ -248,7 +262,7 @@ async function runAnthropic(
                 mode: opts.mode,
                 plan: opts.plan,
                 web: opts.wantsWeb,
-                engine: "anthropic",
+                engine: opts.motorQueDice ?? "anthropic",
                 conImagen: ultimaConImagen(opts.body.messages),
                 tres3D: partes3D(opts.body.messages),
                 nombre: opts.nombre,
@@ -330,6 +344,18 @@ async function runGoogle(
     memoria?: string;
     /** Cómo escribe esta persona, en una línea. Sale de sus propios mensajes. */
     estilo?: string;
+    /**
+     * De qué motor se cree ECLIPSE, que no siempre es el que está contestando.
+     *
+     * El router puede mandar una pregunta de código a Gemini aunque en Ajustes
+     * ponga Mistral. Si a ese Gemini se le dice "eres el motor Google", ECLIPSE
+     * contesta que es Google cuando le preguntan, contradice lo que pone en
+     * Ajustes y cambia de respuesta según lo que se le pregunte. Y lo que se
+     * pidió es justo lo contrario: que se sienta siempre la misma. Así que se
+     * le cuenta el motor CONFIGURADO, que es el que el usuario eligió y el que
+     * sigue mandando en sus límites.
+     */
+    motorQueDice?: Engine;
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
@@ -354,7 +380,7 @@ async function runGoogle(
         mode: opts.mode,
         plan: opts.plan,
         web: opts.wantsWeb,
-        engine: "google",
+        engine: opts.motorQueDice ?? "google",
         conImagen: ultimaConImagen(opts.body.messages),
         tres3D: partes3D(opts.body.messages),
         nombre: opts.nombre,
@@ -401,6 +427,18 @@ async function runCompat(
     memoria?: string;
     /** Cómo escribe esta persona, en una línea. Sale de sus propios mensajes. */
     estilo?: string;
+    /**
+     * De qué motor se cree ECLIPSE, que no siempre es el que está contestando.
+     *
+     * El router puede mandar una pregunta de código a Gemini aunque en Ajustes
+     * ponga Mistral. Si a ese Gemini se le dice "eres el motor Google", ECLIPSE
+     * contesta que es Google cuando le preguntan, contradice lo que pone en
+     * Ajustes y cambia de respuesta según lo que se le pregunte. Y lo que se
+     * pidió es justo lo contrario: que se sienta siempre la misma. Así que se
+     * le cuenta el motor CONFIGURADO, que es el que el usuario eligió y el que
+     * sigue mandando en sus límites.
+     */
+    motorQueDice?: Engine;
     mode: Mode;
     speed: Speed;
     plan: "free" | "pro";
@@ -485,7 +523,7 @@ async function runCompat(
           mode: opts.mode,
           plan: opts.plan,
           web: puedeBuscar,
-          engine: opts.provider,
+          engine: opts.motorQueDice ?? opts.provider,
           conImagen: ultimaConImagen(opts.body.messages),
           tres3D: partes3D(opts.body.messages),
           conHerramientas: herramientas.map((h) => h.nombre),
@@ -684,6 +722,31 @@ export async function POST(req: NextRequest) {
   let provider = await providerForTurn(deVuelta, hayImagenes, body.mode === "code");
 
   /*
+    El router: qué motor le conviene a ESTE mensaje.
+
+    Mistral sigue siendo el cerebro general de ECLIPSE. Lo que hace esto es
+    subir al especialista —Gemini— cuando el mensaje es de los que gana con
+    claridad: programar, depurar una traza, razonar de verdad, o tragarse un
+    texto larguísimo. Se decide con reglas locales (`lib/router.ts`): ni una
+    llamada más, ni un token más, ni un milisegundo de espera.
+
+    Va DESPUÉS de `providerForTurn` para no pisar lo que ya estaba decidido por
+    otras razones —ECLIPSE CODE tiene su propio motor— y ANTES de la
+    comprobación de fotos, que es la que tiene la última palabra: ver la imagen
+    manda sobre cualquier preferencia, y Google también la ve.
+  */
+  /** ¿Al motor de turno lo ha puesto el router, o estaba ya puesto? */
+  let subidoPorRouter = false;
+  if (mode === "chat" && !body.continuar) {
+    const pide = decidirMotor({ ultimo: ultimo?.content ?? "", historial: body.messages, modo: mode });
+    if (pide.especialista) {
+      const especialista = await motorEspecialista(provider);
+      subidoPorRouter = especialista !== provider;
+      provider = especialista;
+    }
+  }
+
+  /*
     Con una foto delante, se COMPRUEBA quién puede verla antes de mandar nada.
 
     Intentarlo y que te rechacen la imagen sale caro: un viaje perdido, y si
@@ -770,7 +833,14 @@ export async function POST(req: NextRequest) {
 
       try {
         send({ t: "status", v: "conectando" });
-        const shared = { body, mode, speed, plan, wantsWeb, nombre, memoria, estilo, voz: body.voz === true, signal: req.signal };
+        const shared = {
+          body, mode, speed, plan, wantsWeb, nombre, memoria, estilo,
+          // Si al motor lo puso el router, ECLIPSE sigue diciendo que es el de
+          // Ajustes: por dentro cambia, por fuera es la misma.
+          motorQueDice: subidoPorRouter ? deVuelta : undefined,
+          voz: body.voz === true,
+          signal: req.signal,
+        };
 
         const correr = async (quien: typeof provider) =>
           quien === "google"
@@ -815,11 +885,24 @@ export async function POST(req: NextRequest) {
             err.status === 404 ||
             /cuota|quota|l[íi]mite|rate|ning[úu]n modelo/i.test(err.message));
 
+        /*
+          Y si al motor lo puso el ROUTER, cualquier fallo vale para volver.
+
+          La diferencia importa. Cuando el motor lo eligió el usuario, un error
+          suyo hay que contarlo: es su cuenta y su clave. Cuando lo hemos
+          elegido nosotros para que la respuesta salga mejor, el error es
+          nuestro: quien escribe iba a tener su respuesta del motor de siempre y
+          se ha quedado sin ella por una decisión que no pidió. Así que ahí se
+          vuelve al de siempre pase lo que pase —cupo, caída, tiempo agotado— y
+          no se entera nadie, que es justo como tiene que ser un router.
+        */
+        const hayQueVolver = (err: unknown) => subidoPorRouter || esDeEsteMotor(err);
+
         let result;
         try {
           result = await correr(provider);
         } catch (err) {
-          if (!provider || !esDeEsteMotor(err)) throw err;
+          if (!provider || !hayQueVolver(err)) throw err;
 
           const recambios = [deVuelta, await siguienteMotor(provider)].filter(
             (p, i, todos): p is NonNullable<typeof p> =>

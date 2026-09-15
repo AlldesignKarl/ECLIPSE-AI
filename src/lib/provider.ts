@@ -133,6 +133,27 @@ export async function motoresConOjos(excepto: Provider | null): Promise<Provider
   return salida;
 }
 
+/**
+ * El especialista para este mensaje, si es que hace falta y si es que lo hay.
+ *
+ * El router (`lib/router.ts`) dice si conviene; esto dice si se puede. Y se
+ * puede cuando hay clave de Google y el hosting no ha fijado un motor a la
+ * fuerza. Lo demás se queda exactamente como estaba, que es la condición de
+ * Carlos: Mistral sigue siendo el cerebro general y Gemini entra solo donde
+ * gana.
+ *
+ * Que solo SUBA importa: si no hay clave de Google, esto devuelve el motor de
+ * siempre y no ha pasado nada. Una integración nueva no puede ser un sitio
+ * nuevo por donde se caiga la aplicación de quien no la usa.
+ */
+export async function motorEspecialista(base: Provider | null): Promise<Provider | null> {
+  if (!base || base === "google") return base;
+  // Si el hosting ha dicho qué motor usar, se usa ese. Es la misma regla que
+  // sigue el desvío por fotos, y por lo mismo: ahí manda quien paga la cuota.
+  if ((process.env.AI_PROVIDER || "").toLowerCase()) return base;
+  return (await keyAvailable("google")) ? "google" : base;
+}
+
 export async function siguienteMotor(agotado: Provider | null): Promise<Provider | null> {
   for (const p of FREE_ORDER) {
     if (p === agotado) continue;

@@ -27,6 +27,20 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.44",
+    // El router: Mistral de cerebro general, Gemini de especialista.
+    nombre: "El mejor para cada cosa",
+    titulo: "Ahora elige por dentro quién contesta mejor",
+    entrada:
+      "Sigue siendo ECLIPSE y una sola. Por dentro, cada pregunta va a donde mejor se resuelve.",
+    puntos: [
+      "Las conversaciones normales van como siempre. Pero cuando le pides código, le pegas un error para que lo arregle, le pides que razone de verdad o le sueltas un texto larguísimo, por dentro cambia a un motor que va mejor en eso. Tú no notas nada: es la misma ECLIPSE, con el mismo tono y la misma memoria.",
+      "Lo decide con reglas, no preguntándole a otra IA: ni un token de más ni medio segundo de espera. Y solo cambia cuando la ventaja está clara; en la duda, se queda donde estaba.",
+      "Si el especialista falla o se queda sin cupo, contesta el de siempre y no te enteras. La aplicación no se queda parada porque un proveedor tenga un mal día.",
+      "Y ya no aparece el nombre del modelo debajo de cada respuesta. Si lo quieres ver, se enciende en Ajustes con «Mostrar el razonamiento».",
+    ],
+  },
+  {
     version: "2.43",
     // Personalidad propia y adaptación gradual a cada persona.
     nombre: "Te conoce",

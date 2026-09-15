@@ -11,7 +11,17 @@ import type { Attachment, Mode, Speed } from "./types";
  * Todo por REST: Google no publica SDK oficial para el runtime de Next.
  */
 
-const BASE = "https://generativelanguage.googleapis.com/v1beta";
+/**
+ * A dónde se le habla a Google.
+ *
+ * En producción, a Google. `MOTOR_BASE_GOOGLE` existe para las pruebas: en este
+ * contenedor no hay internet, así que el camino entero —incluido el router
+ * eligiendo a Gemini y volviéndose a Mistral cuando falla— se comprueba contra
+ * un servidor local que habla como Google. Es la misma puerta que ya tienen
+ * Groq, Mistral y las conexiones, y por el mismo motivo: poder comprobar de
+ * verdad en vez de suponer.
+ */
+const BASE = process.env.MOTOR_BASE_GOOGLE || "https://generativelanguage.googleapis.com/v1beta";
 
 export function googleKey(): string {
   return googleKeyFromEnv();

@@ -282,9 +282,18 @@ export default function MessageItem({
                   {(message.elapsedMs / 1000).toFixed(1)}s
                 </span>
               )}
-              {/* Qué modelo contestó. Cuando una respuesta sale floja, esto es
-                  la diferencia entre saberlo y adivinarlo. */}
-              {message.modelo && (
+              {/*
+                Qué modelo contestó, y SOLO con «Mostrar el razonamiento» puesto.
+
+                ECLIPSE es una sola IA y así se tiene que ver: por dentro puede
+                contestar uno u otro según lo que se pregunte, y eso es asunto
+                de la aplicación, no del que escribe. Leer "mistral-large" o
+                "gemini-flash" debajo de una respuesta no le dice nada a nadie y
+                rompe la idea de estar hablando con ECLIPSE y no con una lista
+                de proveedores. Quien lo quiera ver —para saber por qué una
+                respuesta salió floja— lo enciende en Ajustes.
+              */}
+              {showThinking && message.modelo && (
                 <span
                   className="ml-1 max-w-[40%] truncate text-[11px] text-faint/70"
                   title={`Respondido por ${message.modelo}`}
