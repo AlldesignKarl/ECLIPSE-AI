@@ -77,8 +77,23 @@ export interface Servicio {
    */
   color: string;
   marca: string;
-  /** Para agrupar en la pantalla de Conexiones. */
-  familia: "tienda" | "web" | "dominio" | "mercado" | "trabajo" | "dinero" | "mensajes";
+  /**
+   * Para agrupar en la pantalla de Conexiones.
+   *
+   * Por lo que la cosa HACE para quien la usa, no por lo que es por dentro:
+   * "correo" es la lista de suscriptores y "agenda" lo que tiene fecha, aunque
+   * técnicamente unos y otros sean la misma API REST de siempre.
+   */
+  familia:
+    | "tienda"
+    | "web"
+    | "dominio"
+    | "mercado"
+    | "trabajo"
+    | "dinero"
+    | "mensajes"
+    | "correo"
+    | "agenda";
   /** Una línea de qué se puede hacer conectándolo. */
   resumen: string;
   /** Cómo conseguir la clave, paso a paso y sin dar nada por sabido. */

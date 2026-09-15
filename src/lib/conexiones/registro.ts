@@ -1,13 +1,25 @@
+import { airtable } from "./airtable";
 import { credencialesDe } from "./almacen";
+import { brevo } from "./brevo";
+import { calendly } from "./calendly";
+import { cloudflare } from "./cloudflare";
+import { discord } from "./discord";
 import { ErrorConexion } from "./http";
 import { github } from "./github";
+import { hubspot } from "./hubspot";
+import { mailchimp } from "./mailchimp";
 import { ionos } from "./ionos";
 import { mercados } from "./mercados";
 import { notion } from "./notion";
+import { prestashop } from "./prestashop";
 import { shopify } from "./shopify";
+import { slackServicio } from "./slack";
 import { stripe } from "./stripe";
 import { telegram } from "./telegram";
 import type { EstadoConexion, Permiso, Servicio } from "./tipos";
+import { todoist } from "./todoist";
+import { trello } from "./trello";
+import { vercel } from "./vercel";
 import { wix } from "./wix";
 import { woocommerce } from "./woocommerce";
 
@@ -19,14 +31,28 @@ import { woocommerce } from "./woocommerce";
  * ni cuáles son: todo sale de aquí.
  */
 export const SERVICIOS: Servicio[] = [
+  // Por dónde la gente los va a buscar: primero donde tiene el negocio, luego
+  // el dinero, luego donde trabaja, y al final lo de debajo del capó.
   shopify,
   woocommerce,
+  prestashop,
   wix,
-  ionos,
-  notion,
-  github,
   stripe,
+  hubspot,
+  notion,
+  airtable,
+  trello,
+  todoist,
+  calendly,
+  mailchimp,
+  brevo,
+  slackServicio,
   telegram,
+  discord,
+  github,
+  vercel,
+  ionos,
+  cloudflare,
   mercados,
 ];
 

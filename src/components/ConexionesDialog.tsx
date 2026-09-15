@@ -35,7 +35,16 @@ interface Servicio {
   nombre: string;
   color: string;
   marca: string;
-  familia: "tienda" | "web" | "dominio" | "mercado" | "trabajo" | "dinero" | "mensajes";
+  familia:
+    | "tienda"
+    | "web"
+    | "dominio"
+    | "mercado"
+    | "trabajo"
+    | "dinero"
+    | "mensajes"
+    | "correo"
+    | "agenda";
   resumen: string;
   pasos: string[];
   enlace: string;
@@ -67,6 +76,8 @@ const FAMILIAS: { id: Servicio["familia"] | "todo"; titulo: string }[] = [
   { id: "tienda", titulo: "Comercio" },
   { id: "dinero", titulo: "Dinero" },
   { id: "trabajo", titulo: "Trabajo" },
+  { id: "agenda", titulo: "Agenda" },
+  { id: "correo", titulo: "Correo" },
   { id: "web", titulo: "Webs" },
   { id: "dominio", titulo: "Dominios" },
   { id: "mensajes", titulo: "Mensajes" },
