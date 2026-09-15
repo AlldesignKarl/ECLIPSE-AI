@@ -11,7 +11,7 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 70 pruebas en verde.
+La aplicación está **en producción y funcionando**, con 71 pruebas en verde.
 Lo último: Programar abre en un **calendario de quedadas** que te mete en su
 chat, en los grupos ya se mandan **fotos** y se puede **borrar** lo que sobre
 —mensajes y el grupo entero—, la **ubicación se pide una sola vez** y el eclipse
@@ -135,9 +135,22 @@ Lo que pidió Carlos, entero:
    llamadas a la vez y ninguna sabía de la otra. Ahora comparte una sola promesa
    en curso, mira el permiso antes de pedirlo (si está denegado no enseña nada)
    y si falla se apunta 12 horas sin volver a molestar.
-6. **El fondo.** El eclipse que mandó Carlos, en `public/fondo.webp` (10 KB: del
-   PNG de 1,08 MB, que en un móvil con datos era medio segundo en blanco). Solo
-   en tema oscuro, con una capa por encima para que el texto siga legible.
+6. **El fondo, en los grupos.** El eclipse que mandó Carlos, de fondo **dentro
+   del chat de grupo y de quedada, y en ningún otro sitio**: lo pidió así
+   —*"lo quiero solo en los chats de grupo no en lo demas"*— y además encaja,
+   porque la portada y el chat de uno ya tienen su propio eclipse delante y dos
+   anillos cruzándose no dejan leer ninguno. Va en `public/fondo.webp`: 10 KB,
+   del PNG de 1,08 MB que era medio segundo en blanco en un móvil con datos.
+   Solo en tema oscuro (la foto es casi negra) y con un velo del 58% para que
+   lo escrito mande.
+
+   La primera versión lo puso en todas las pantallas y **no se veía en
+   ninguna**, y Carlos lo dijo. Dos causas a la vez: encima del `body` va la
+   aplicación entera en un `div` con su propio negro, y la capa iba con
+   `z-index: -1`, que se pinta ANTES que el fondo de quien la contiene. Ahora
+   es una clase en el panel del grupo y no hay nada que la tape. Y hay prueba:
+   `fondo.test.mjs` no mira el CSS —hace una foto de la pantalla y compara
+   brillos— porque esto se veía perfecto en el código.
 
 Y un fallo que salió al probarlo en un navegador de verdad: el chat de la
 quedada se pintaba **dentro** del modal de Programar, y un modal dentro de otro
@@ -321,7 +334,7 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**70 archivos, todas en verde.** Viven en `pruebas/`.
+**71 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
 npm run prueba           # todas (~6 min)

@@ -10,9 +10,16 @@ interface Props {
   subtitle?: string;
   children: ReactNode;
   wide?: boolean;
+  /**
+   * Pintar el eclipse de fondo dentro del panel.
+   *
+   * Lo usan los chats de grupo y de quedada, y solo ellos: Carlos lo quiso ahí
+   * y en ningún otro sitio. Un grupo es una sala, y una sala puede tener pared.
+   */
+  fondo?: boolean;
 }
 
-export default function Modal({ open, onClose, title, subtitle, children, wide }: Props) {
+export default function Modal({ open, onClose, title, subtitle, children, wide, fondo }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -35,7 +42,7 @@ export default function Modal({ open, onClose, title, subtitle, children, wide }
         aria-label={title}
         className={`animate-fade-up relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-line bg-surface shadow-2xl sm:rounded-2xl ${
           wide ? "sm:max-w-2xl" : "sm:max-w-md"
-        }`}
+        } ${fondo ? "fondo-grupo" : ""}`}
       >
         <div className="flex items-start gap-3 border-b border-line-soft px-5 py-4">
           <div className="flex-1">

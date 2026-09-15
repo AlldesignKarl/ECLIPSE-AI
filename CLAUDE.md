@@ -109,7 +109,7 @@ src/
                                 de sus propios mensajes (sin llamar al modelo)
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        70 pruebas. Ver pruebas/LEEME.md
+pruebas/                        71 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -295,7 +295,11 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
 - **Que `pedirUbicacion()` comparta una sola promesa en curso** y se acuerde de
   que acaba de fallar. Sin eso el navegador enseña el cartel del permiso dos
   veces por pregunta, que es justo lo que hace que se diga que no.
-- **Las 70 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que el eclipse de fondo (`.fondo-grupo`) vaya SOLO en los chats de grupo y
+  de quedada.** Carlos lo pidió así con estas palabras: *"lo quiero solo en los
+  chats de grupo no en lo demas"*. En la portada y en el chat de uno hay ya un
+  eclipse de protagonista, y dos anillos cruzándose no dejan leer ninguno.
+- **Las 71 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -308,7 +312,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 70 pruebas (~6 min)
+npm run prueba           # las 71 pruebas (~6 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

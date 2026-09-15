@@ -101,29 +101,31 @@ body {
 }
 
 /*
-  El fondo de ECLIPSE.
+  El fondo de ECLIPSE: el eclipse que eligió Carlos, SOLO en los chats de grupo
+  y de quedada.
   ---------------------------------------------------------------------------
-  La imagen que eligió Carlos: el eclipse en el centro sobre negro. Va fija
-  (no se mueve al desplazar) y cubriendo, así que en cualquier móvil se ve
-  centrada y sin deformarse.
+  Lo pidió así de claro: "lo quiero solo en los chats de grupo, no en lo demás".
+  Y tiene sentido: la portada y el chat de uno ya tienen su propio eclipse de
+  protagonista, y dos anillos cruzándose no dejan leer ninguno de los dos. Un
+  grupo, en cambio, es una sala, y una sala puede tener pared.
 
-  Tres decisiones que importan:
+  Tres decisiones:
 
-  - Solo en el tema oscuro. La foto es casi negra: en tema claro dejaría el
-    texto oscuro sobre un fondo oscuro, que es ilegible.
-  - Con un velo encima (`--color-void` al 82%). Sin él, el eclipse compite con
-    la conversación y los bocadillos dejan de leerse. Con él se intuye, que es
-    lo que tiene que hacer un fondo.
+  - Solo en tema oscuro. La foto es casi negra: en claro dejaría texto oscuro
+    sobre fondo oscuro, que no se lee.
+  - Con un velo encima (el gris del panel al 58%). Sin él, el eclipse compite
+    con la conversación; con él se intuye, que es lo que hace un fondo. Los
+    bocadillos llevan además su propio fondo opaco, así que lo escrito no
+    depende de esto.
   - En WebP y a 900 píxeles de ancho: 10 KB. El original eran 1,08 MB, y un
-    megabyte de fondo es un segundo de espera en cada arranque con datos.
+    megabyte de fondo es un segundo en blanco cada vez que se abre un grupo.
 */
-:root:not([data-tema="claro"]) body {
+:root:not([data-tema="claro"]) .fondo-grupo {
   background-image:
-    linear-gradient(rgba(6, 7, 10, 0.82), rgba(6, 7, 10, 0.82)),
+    linear-gradient(rgba(12, 14, 19, 0.58), rgba(12, 14, 19, 0.58)),
     url("/fondo.webp");
   background-size: cover;
   background-position: center;
-  background-attachment: fixed;
   background-repeat: no-repeat;
 }
 

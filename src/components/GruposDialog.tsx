@@ -732,7 +732,7 @@ export function Sala({
       : "";
 
   return (
-    <Modal open={open} onClose={onClose} title={grupo.nombre} wide>
+    <Modal open={open} onClose={onClose} title={grupo.nombre} wide fondo>
       <div className="flex h-[70vh] flex-col">
         {/*
           La cabecera del grupo: volver, quién está, e invitar.

@@ -39,7 +39,7 @@ export const NOVEDADES: Novedad[] = [
       "Ya se pueden mandar FOTOS en los grupos y en las quedadas. Van aparte de los mensajes, así que abrir el chat sigue siendo instantáneo aunque haya cuarenta.",
       "Y se puede borrar: tocas un mensaje tuyo y sale «Borrar»; quien montó el grupo puede borrar cualquiera, y el grupo entero con sus mensajes y sus fotos.",
       "El permiso de ubicación se pide UNA vez, no dos por pregunta. Si dices que no, no se vuelve a preguntar.",
-      "Y el fondo: el eclipse, detrás de todo, en el tema oscuro.",
+      "Y los grupos tienen fondo: el eclipse detrás de la conversación, en el tema oscuro.",
     ],
   },
   {

@@ -30,6 +30,7 @@ const PESADAS = new Set([
   "convertir.test.mjs",
   "escritura.test.mjs",
   "foto.test.mjs",
+  "fondo.test.mjs",
   "grupos-ui.test.mjs",
   "grupos.test.mjs",
   "llamada-ui.test.mjs",
