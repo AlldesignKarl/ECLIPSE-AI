@@ -20,12 +20,16 @@ No es un envoltorio de un chat. Hace, de menos a más raro:
 - Conversación con búsqueda web y fuentes ordenadas por fiabilidad.
 - Lee imágenes, PDF y archivos; crea imágenes; convierte formatos.
 - **ECLIPSE CODE**: construye proyectos enteros con vista previa y ZIP.
-- **Conexiones**: enchufa tu tienda o tu web (Shopify, WooCommerce, Wix, IONOS,
-  Notion, GitHub, Stripe, Telegram, Binance) y el modelo las consulta.
-- **Programar**: encargos que se hacen solos cada día o cada semana.
+- **Conexiones**: 21 servicios. Enchufa tu tienda, tu web, tu correo o tu
+  agenda (Shopify, WooCommerce, PrestaShop, Wix, Stripe, HubSpot, Notion,
+  Airtable, Trello, Todoist, Calendly, Mailchimp, Brevo, Slack, Telegram,
+  Discord, GitHub, Vercel, IONOS, Cloudflare, Binance) y el modelo las consulta.
+- **Programar**: encargos que se hacen solos, con calendario, y un plan entero
+  que monta ECLIPSE cuando le dices qué quieres conseguir.
 - **Biblioteca**: imágenes libres de museos y archivos, para inspirarse.
 - **Llamadas**: hablar con ECLIPSE por voz, con interrupciones.
-- **Grupos**: varias personas hablándole a ECLIPSE en el mismo sitio.
+- **Grupos**: varias personas hablándole a ECLIPSE en el mismo sitio; él se ve
+  dentro y el dueño decide si contesta a todo, solo cuando le nombran, o nunca.
 - **Memoria**: aprende de ti y puede mirar conversaciones anteriores.
 - **Ubicación**: excursiones, sitios cerca y cómo llegar.
 
@@ -96,7 +100,9 @@ src/
     tools/                      Herramientas que el modelo puede usar
     conexiones/                 Un archivo por servicio + registro + almacén
     tareas/  grupos/  memoria/  Cada uno: tipos.ts + almacen.ts (+ lógica)
-pruebas/                        62 pruebas. Ver pruebas/LEEME.md
+    tareas/planear.ts           El plan que monta ECLIPSE (y `leerPlan`, que
+                                lee lo que conteste el modelo sin romperse)
+pruebas/                        66 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -237,7 +243,17 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
   fogonazo blanco al cargar en tema claro.
 - **El `line-clamp-2` del catálogo de conexiones sin un `block` detrás** — el
   `block` le pisa el `display` y cada fila se estira a cinco líneas.
-- **Las 62 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que `leHablanAEclipse()` siga teniendo un modo por defecto** (`nombrado`).
+  Los grupos creados antes de que existiera el interruptor no llevan el dato
+  guardado; sin ese defecto, ECLIPSE se callaría para siempre en todos ellos.
+- **Que un encargo de un día concreto (`unavez`) se apague al hacerse**
+  (`anotarEjecucion`). Si no, como esos encargos tocan también cuando ya pasó su
+  día —para no perderse si el reloj no sonó—, se repetirían cada día para
+  siempre.
+- **Que `planear.ts` NO ejecute nada.** Planificar contesta en segundos porque
+  solo escribe; ejecutar cuesta medio minuto por encargo, y esperar eso era
+  justo lo que había que quitar de en medio.
+- **Las 66 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -250,8 +266,8 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 62 pruebas (~4,6 min)
-npm run prueba:ligeras   # las 49 que no abren navegador (~6 s)
+npm run prueba           # las 66 pruebas (~4,7 min)
+npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```
 

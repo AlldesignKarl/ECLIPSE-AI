@@ -1,10 +1,10 @@
 # Las pruebas de ECLIPSE
 
-62 archivos. Todas pasan.
+66 archivos. Todas pasan.
 
 ```bash
-npm run prueba           # todas (~4,6 min)
-npm run prueba:ligeras   # las 49 que no abren navegador (~6 s)
+npm run prueba           # todas (~4,7 min)
+npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/correr.mjs pesadas   # solo las 13 lentas
 node pruebas/correr.mjs mapa      # las que lleven "mapa" en el nombre
 node pruebas/mapa.test.mjs        # una suelta, con toda su salida
@@ -31,6 +31,16 @@ tal cual está, sin compilarlo a mano ni mantener una copia) y `abrirNavegador()
 **`apis-falsas.mjs`** — un servidor que habla como Shopify, WooCommerce, Wix,
 IONOS, Notion, GitHub y Binance a la vez. Guarda lo que le escriben, así que se
 puede comprobar que un cambio llegó de verdad y con qué datos.
+
+**`apis-nuevas.mjs`** — lo mismo para los doce conectores de después
+(PrestaShop, Mailchimp, Brevo, Airtable, Trello, Todoist, Slack, Discord,
+HubSpot, Calendly, Cloudflare y Vercel). Va aparte y no dentro del anterior
+porque aquel sirve a siete pruebas que ya funcionan y meterle doce servicios más
+lo convierte en un archivo donde tocar una llave rompe algo que no tiene nada
+que ver. Cada uno contesta en su propio prefijo, así que un conector que se
+equivoque de ruta se ve en el acto en vez de caer en la respuesta de otro. Imita
+también las dos rarezas que importan: Slack y Cloudflare contestan 200 con el
+fallo metido dentro del cuerpo.
 
 **`redis-falso.mjs`** — un Redis con API REST que entiende lo que usa la app
 (GET, SET, INCR, EXPIRE, DEL, KEYS y `/pipeline`). Tiene `KEYS` a propósito:

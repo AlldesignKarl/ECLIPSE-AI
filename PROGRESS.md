@@ -1,7 +1,9 @@
 # Estado del proyecto
 
 Última actualización: **15 de septiembre de 2026**
-Rama: `claude/multimodal-ai-free-pro-tbxhtn` · Versión que ve el usuario: **2.37**
+Rama: `claude/eclipse-context-review-a9rx0q` (sale de
+`claude/multimodal-ai-free-pro-tbxhtn`, que está en el mismo sitio) · Versión que
+ve el usuario: **2.38**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -10,10 +12,11 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 62 pruebas en verde.
-Las tres cosas que Carlos reportó rotas (Biblioteca, Programar, invitar a
-grupos) están arregladas y comprobadas. Lo que queda son mejoras y dos
-decisiones suyas pendientes, no averías.
+La aplicación está **en producción y funcionando**, con 66 pruebas en verde.
+En esta sesión se han hecho las tres cosas que pidió Carlos: ECLIPSE se ve y se
+configura dentro de los grupos, hay 21 conexiones en vez de 9, y Programar tiene
+calendario y monta el plan él solo. Lo que queda son mejoras y dos decisiones
+suyas pendientes, no averías.
 
 ---
 
@@ -34,20 +37,26 @@ Todo esto está hecho, probado y desplegado.
 ### Las nueve cosas grandes
 | Zona | Estado |
 |---|---|
-| **Conexiones** (9 servicios) | Funciona. Catálogo con logos reales, buscador y categorías |
-| **Programar** | Funciona. Arreglado en esta sesión: era inservible |
+| **Conexiones** (21 servicios) | Funciona. Catálogo con logos reales, buscador y categorías |
+| **Programar** | Funciona. Calendario de 14 días y plan automático, nuevos en esta sesión |
 | **Biblioteca** | Funciona. Arreglada en esta sesión: daba 401 |
 | **Llamadas** | Funciona. Arranca con la primera frase; voz de hombre o mujer |
-| **Grupos** | Funciona. Invitar visible, chat rediseñado |
+| **Grupos** | Funciona. ECLIPSE visible dentro, con interruptor de cuándo habla |
 | **Memoria** | Funciona. Nuevo en esta sesión |
 | **Ubicación** | Funciona sin claves (OpenStreetMap); mejor con Google Maps |
 | **Tema claro** | Funciona. Contraste medido: 17,2 texto / 14,7 burbuja / 16,3 código |
 | **Chat temporal** | Funciona. No se guarda, no sale en la lista, no usa memoria |
 
-### Los 9 conectores
-`shopify`, `woocommerce`, `wix`, `ionos`, `notion`, `github`, `stripe`,
-`telegram`, `mercados` (Binance). Todos nacen en solo lectura, ninguno puede
-borrar nada y Binance no puede operar ni aunque se le pida.
+### Los 21 conectores
+Comercio: `shopify`, `woocommerce`, `prestashop`, `wix`. Dinero: `stripe`.
+Trabajo: `hubspot`, `notion`, `airtable`, `trello`, `slack`. Agenda: `todoist`,
+`calendly`. Correo: `mailchimp`, `brevo`. Mensajes: `telegram`, `discord`.
+Webs y dominios: `github`, `vercel`, `ionos`, `cloudflare`. Mercados:
+`mercados` (Binance).
+
+Todos nacen en solo lectura, ninguno puede borrar nada y Binance no puede
+operar ni aunque se le pida. De los doce nuevos, nueve no tienen ni una acción
+que escriba.
 
 ### Cuentas y cobro
 Registro con correo y contraseña (el correo se guarda como hash con sal, porque
@@ -57,70 +66,42 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ## 3. Lo que se hizo en la última sesión
 
-Por orden, con el porqué.
+Carlos pidió tres cosas. Las tres están hechas y probadas.
 
-1. **Catálogo de conexiones con logos reales.** Carlos: *"lo otro queda raro"*.
-   Se pasó de pastillas con iniciales a los logos de verdad, dibujados dentro de
-   la app (trazos SVG de Simple Icons, CC0) — no enlazados desde la web de cada
-   marca. Se añadieron Stripe y Telegram. Se arregló un `line-clamp-2` que un
-   `block` pisaba y estiraba cada fila a cinco líneas.
+1. **ECLIPSE dentro de los grupos, a la vista.** Estaba desde el principio,
+   pero no se veía en ninguna parte: no salía en la lista de gente y la única
+   forma de descubrir que contestaba era nombrarle por casualidad. Ahora aparece
+   junto a la gente, con su marca, y quien creó el grupo elige cómo está: **a
+   todo**, **si le nombráis** (lo de antes, y sigue siendo lo normal) o **no
+   está**. En modo "a todo" se le añade un bloque de instrucciones aparte, porque
+   contestar a todo sin más se convierte en tres párrafos contestando a un
+   "jajaja". Los grupos que ya existían no llevan el dato guardado y se les
+   supone "si le nombráis", que es como se estaban comportando.
 
-2. **Ubicación.** Herramienta `mapa` con tres acciones. Con
-   `GOOGLE_MAPS_API_KEY` usa Google; sin ella, OpenStreetMap y dice que la
-   distancia es en línea recta en vez de inventarse el tiempo del trayecto.
-   Apagada de fábrica, coordenadas redondeadas a ~1 km en el navegador y otra
-   vez en el servidor, y no se guarda en ninguna parte.
+2. **Doce conexiones nuevas, de 9 a 21.** PrestaShop, HubSpot, Airtable, Trello,
+   Todoist, Calendly, Mailchimp, Brevo, Slack, Discord, Vercel y Cloudflare. Dos
+   categorías nuevas en el catálogo (Agenda y Correo) y los logos de verdad,
+   trazo a trazo, sacados de Simple Icons (CC0) como los otros nueve.
 
-3. **Aviso al empezar un chat** contando que se puede conectar la tienda. No
-   sale a quien ya tiene algo conectado y se aparta para siempre con un toque.
+   Slack y Cloudflare contestan 200 **con el fallo metido dentro del cuerpo**:
+   si se mirara solo el código de estado, una clave mala se guardaría como
+   buena. Los dos conectores miran el cuerpo, y hay una prueba de eso.
 
-4. **Biblioteca arreglada.** Openverse pasó a exigir cuenta → 401 en pantalla.
-   Ahora hay tres archivos por orden (Wikimedia Commons, Art Institute of
-   Chicago, Openverse si hay claves) y si uno falla entra el siguiente.
+3. **Programar: calendario y plan automático.** Dos cosas:
+   - **Calendario** de los próximos 14 días con lo que cae en cada uno, y
+     encargos para **un día concreto** ("el 3, prepárame lo del viaje") y para
+     un **día del mes**. La cuenta la hace `proximosDias()`, la misma función
+     que usa el servidor para decidir qué ejecuta: lo que se ve es lo que va a
+     pasar.
+   - **Que lo planifique él**: dices qué quieres conseguir y devuelve un plan
+     repartido por días, en segundos y **sin guardar nada**. Se mira, se le quita
+     lo que no y se acepta entero de un toque; y si no cuadra, se le pide el
+     cambio con palabras ("mejor los martes", "uno menos", "¿tú qué harías?").
+   - **"Hacerlo ahora"** en cada encargo, para ver lo que da sin esperar a
+     mañana.
 
-5. **Programar arreglado.** Eran cuatro fallos a la vez:
-   - `GET /api/tareas` ejecutaba **todos** los encargos dentro de la misma
-     petición → el servidor cortaba a los 60 s → no se veía ninguno.
-   - El reloj nocturno exigía `CRON_SECRET`; sin esa variable, Vercel recibía
-     401 cada noche. Ahora se acepta también la cabecera `x-vercel-cron`, que no
-     se puede falsificar desde fuera.
-   - `maxDuration: 300` en dos rutas cuando el límite real son 60.
-   - Un fallo pasajero daba el día por perdido; ahora se reintenta una vez.
-
-6. **Grupos.** "Invitar" arriba y visible (antes estaba detrás de tocar el "1
-   persona" de la esquina), con el compartir nativo del móvil. A quien recibe el
-   enlace se le enseña a qué le invitan antes de meterlo dentro. Chat
-   rediseñado. Y arreglado que el creador siguiera viendo "1 persona" después de
-   que entrara alguien.
-
-7. **Llamada más rápida.** Ya no espera la respuesta entera: dice cada frase en
-   cuanto está terminada. Silencio de fin de turno de 1100 → 800 ms.
-
-8. **Voces.** Elegir mujer u hombre, reconociendo los nombres de voz de Apple,
-   Microsoft y Google, y puntuando la calidad para coger la más natural. Si el
-   móvil no tiene la pedida, lo dice.
-
-9. **Tono.** Tres bloques nuevos en `prompts.ts`: `AL_GRANO` (solo en chat; en
-   `code` pedir brevedad sería pedir archivos a medias), `ACERTAR` y `AMISTAD`
-   (si te ríes se ríe, si le llamas bro te llama bro, sin fingir).
-
-10. **Imágenes realistas** por defecto: cámara, óptica y luz concretas, y
-    prohibidas "hyperrealistic", "8k" y "octane render", que son justo las que
-    dan el acabado de plástico. Un logo sigue siendo un logo.
-
-11. **Memoria.** Hechos (ficha corta que se le pasa siempre) + resúmenes de
-    conversación (que busca con la herramienta `mis_conversaciones`). Visible y
-    borrable entera en Ajustes.
-
-12. **Las pruebas, al repositorio.** Estaban en una carpeta temporal fuera del
-    control de versiones. Ver sección 6.
-
-13. **`maxDuration: 120` en la ruta de mensajes de grupo.** Apareció al escribir
-    esta documentación: es el mismo fallo que tenía Programar. Una respuesta
-    larga de ECLIPSE en un grupo se moría a los 60 s sin guardarse y en el grupo
-    no aparecía nada. Ahora son 60, con 45 de tope para el modelo.
-
----
+4. **Cuatro pruebas nuevas** (62 → 66): `eclipse-grupo`, `conectores-nuevos`,
+   `catalogo` y `planear`, más ampliaciones en `tareas` y `programar-api`.
 
 ## 4. Decisiones importantes que están tomadas
 
@@ -140,6 +121,14 @@ Para no volver a discutirlas, y para poder cambiarlas sabiendo lo que se cambia.
   mejore con el uso sin convertirse en un archivo de todo lo que dices.
 - **La memoria está ENCENDIDA por defecto** porque Carlos lo pidió así. Está
   pendiente de que él decida si prefiere que haya que activarla (ver sección 7).
+- **Un grupo nace con ECLIPSE callado hasta que le nombran**, no contestando a
+  todo. Es lo que hace que una conversación de cinco personas siga siendo una
+  conversación; quien quiera lo otro, lo enciende en dos toques.
+- **Planificar no ejecuta.** Es lo que hace que conteste en segundos, y lo que
+  permite enseñar el plan antes de que exista nada.
+- **Un encargo de un día concreto se apaga solo al hacerse.** Como esos encargos
+  siguen tocando aunque su día ya pasara —para no perderse si el reloj no
+  sonó—, sin apagarlos se repetirían cada día para siempre.
 - **`AL_GRANO` no entra en modo `code`.** Pedir brevedad donde la respuesta es un
   archivo entero es pedir un archivo cortado.
 - **Fundir hechos parecidos usa umbral 0,8 y mínimo 3 palabras.** Con 0,7,
@@ -158,7 +147,10 @@ Ninguno bloquea nada, pero conviene saberlos.
    han visto funcionar contra la API de verdad**:
    - Wikimedia Commons y Art Institute (Biblioteca)
    - OpenStreetMap / Nominatim y Google Maps (ubicación)
-   - Los 9 conectores (Shopify, Stripe, Telegram…)
+   - Los 21 conectores (Shopify, Stripe, Telegram…). Los doce nuevos, más aún:
+     están escritos contra la documentación de cada API y probados contra un
+     servidor que habla como ella, pero nadie ha visto todavía una respuesta de
+     verdad de PrestaShop, Slack o HubSpot.
    - Los modelos de imagen (Pollinations, Cloudflare)
    Si algo de esto falla en producción, el fallo estará en la forma de la
    respuesta real, no en la lógica.
@@ -187,12 +179,11 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**62 archivos, todas en verde.** Viven en `pruebas/` desde esta sesión; antes
-estaban fuera del repositorio y se habrían perdido.
+**66 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
-npm run prueba           # todas (~4,6 min)
-npm run prueba:ligeras   # las 49 sin navegador (~6 s) ← para trabajar
+npm run prueba           # todas (~4,7 min)
+npm run prueba:ligeras   # las 53 sin navegador (~10 s) ← para trabajar
 node pruebas/mapa.test.mjs   # una suelta
 ```
 
@@ -216,10 +207,13 @@ hace falta, la aplicación entera con Playwright. Detalles en `pruebas/LEEME.md`
 
 1. **Actualizar el `README.md`** con lo que hace la app hoy. Es lo que ve quien
    llega al repositorio, y miente.
-2. **Más conectores.** El armazón está probado: añadir uno es un archivo en
-   `src/lib/conexiones/` copiando `shopify.ts`, más una línea en `registro.ts` y
-   su logo en `logos.ts`. Candidatos naturales: PrestaShop, Etsy, Amazon
-   Seller, Google Analytics, Mailchimp, Calendar.
+2. **Los conectores que faltan piden OAuth.** Los que quedan por interés
+   —Google Calendar, Gmail, Google Analytics, Etsy, Amazon Seller— no se
+   conectan pegando una clave: hay que montar el baile de OAuth (pantalla de
+   permisos, vuelta con el código, refresco del testigo y dónde guardarlo). Eso
+   es un trabajo aparte del de escribir un conector, y hasta que exista no se
+   pueden añadir. Los que sí se pueden hacer como los 21 de ahora: Etsy no,
+   Mailerlite sí, Sendgrid sí, BigCommerce sí, Webflow sí.
 3. **Partir `ChatApp.tsx`.** 1478 líneas. Los diálogos ya están fuera; lo que
    queda por separar es el envío y el estado de la conversación.
 4. **Que la memoria avise cuando no puede aprender** (problema 4 de arriba), o

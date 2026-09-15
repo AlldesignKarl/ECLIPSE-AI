@@ -1076,11 +1076,18 @@ export async function oneShotCompat(
   prompt: string,
   /** Los títulos caben en cuatro palabras; un prompt de imagen, no. */
   tope = 48,
+  /**
+   * Para poder cortar desde fuera. Sin esto, una respuesta que no llega deja la
+   * petición colgada hasta que el hosting la mata a los sesenta segundos, y una
+   * función muerta no contesta nada, ni siquiera que falló.
+   */
+  signal?: AbortSignal,
 ): Promise<string> {
   const preset = presetDe(provider);
   const res = await fetch(`${preset.base}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    signal,
     body: JSON.stringify({
       model: envModel(provider) || resolved[provider] || preset.model,
       messages: [{ role: "user", content: prompt }],

@@ -1,9 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "./Modal";
 import * as Icon from "./Icons";
 import type { Plan } from "@/lib/types";
+import {
+  DIAS,
+  fechaDe,
+  proximosDias,
+  textoDe,
+  type Cuando,
+  type Resultado,
+  type Tarea,
+} from "@/lib/tareas/tipos";
 
 /**
  * Programar: encargarle algo a ECLIPSE para que lo haga solo.
@@ -17,41 +26,29 @@ import type { Plan } from "@/lib/types";
  * Y una cosa que se dice a la cara y no en letra pequeña: esto se prepara de
  * madrugada. Prometer una hora exacta que no se puede cumplir es peor que
  * prometer el día, que sí se cumple.
+ *
+ * Lo primero que hay arriba del todo es que te lo planifique él. Empezar por un
+ * formulario en blanco era pedirle a alguien que se invente para qué sirve algo
+ * que todavía no ha visto funcionar; y aceptar un plan entero de un toque es lo
+ * único que hace que esta pantalla se use el primer día en vez del tercero.
+ *
+ * Los tipos y las cuentas del calendario se traen de `lib/tareas/tipos`, que es
+ * el mismo archivo que usa el servidor para decidir qué día toca cada cosa. Con
+ * una copia aquí, el día que cambie una regla la pantalla enseñaría una cosa y
+ * el servidor haría otra.
  */
 
-interface Cuando {
-  tipo: "diario" | "laborables" | "semanal";
-  dia?: number;
-}
-
-interface Tarea {
-  id: string;
+/** Un encargo propuesto por ECLIPSE, todavía sin guardar. */
+interface Propuesta {
   titulo: string;
   instruccion: string;
   cuando: Cuando;
-  activa: boolean;
-  creada: number;
-  ultima?: number;
-  ultimoFallo?: string;
 }
 
-interface Resultado {
-  id: string;
-  tareaId: string;
-  titulo: string;
-  texto: string;
-  hecha: number;
-  nueva: boolean;
+interface PlanPropuesto {
+  nota: string;
+  encargos: Propuesta[];
 }
-
-const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-
-const textoDe = (c: Cuando) =>
-  c.tipo === "diario"
-    ? "Cada día"
-    : c.tipo === "laborables"
-      ? "De lunes a viernes"
-      : `Cada ${DIAS[c.dia ?? 1]}`;
 
 /** Encargos de ejemplo, sacados de lo que la gente pide de verdad. */
 const EJEMPLOS: { icono: string; titulo: string; instruccion: string; cuando: Cuando }[] = [
@@ -244,10 +241,19 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
                 <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-line border-t-pro" />
                 <span className="text-[12.5px] text-muted">
                   Haciendo {porHacer === 1 ? "el encargo que queda" : `los ${porHacer} encargos de hoy`}
-                  … tarda un momento; puedes cerrar esto y volver luego.
+                  . Van cayendo aquí solos; mientras tanto puedes seguir a lo tuyo o cerrar esto.
                 </span>
               </div>
             )}
+
+            {/*
+              Cuando todavía no hay nada, lo primero es que te lo planifique él.
+              Es la diferencia entre entrar y salir sin tocar nada, y salir con
+              cuatro encargos puestos.
+            */}
+            {tareas.length === 0 && <Planificador tareas={tareas} onCreado={() => void recargar()} />}
+
+            {tareas.length > 0 && <Calendario tareas={tareas} />}
 
             {resultados.length > 0 && (
               <div>
@@ -293,9 +299,11 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
               </div>
             </div>
 
+            {tareas.length > 0 && <Planificador tareas={tareas} onCreado={() => void recargar()} />}
+
             <div>
               <div className="mb-2 text-[11.5px] uppercase tracking-wide text-faint">
-                Para empezar
+                O empieza por uno hecho
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {EJEMPLOS.map((e) => (
@@ -406,6 +414,8 @@ function ResultadoTarjeta({
 
 function TareaTarjeta({ tarea, onCambio }: { tarea: Tarea; onCambio: () => void }) {
   const [busy, setBusy] = useState(false);
+  /** Mientras se hace ahora mismo, a mano. */
+  const [haciendo, setHaciendo] = useState(false);
 
   const cambiar = async (cambios: Record<string, unknown>) => {
     setBusy(true);
@@ -437,6 +447,25 @@ function TareaTarjeta({ tarea, onCambio }: { tarea: Tarea; onCambio: () => void 
       </div>
 
       <div className="mt-3 flex items-center gap-4 border-t border-line-soft pt-3">
+        {/*
+          Hacerlo ahora.
+
+          Porque la otra forma de saber si un encargo recién escrito sirve de
+          algo era esperar a mañana, y nadie prueba una cosa que tarda un día en
+          contestar. Se salta el calendario a propósito: lo has pedido tú.
+        */}
+        <button
+          onClick={async () => {
+            setHaciendo(true);
+            await fetch(`/api/tareas?hacer=1&id=${tarea.id}`, { method: "POST" }).catch(() => {});
+            setHaciendo(false);
+            onCambio();
+          }}
+          disabled={busy || haciendo}
+          className="text-[12.5px] text-pro transition hover:opacity-80 disabled:text-faint"
+        >
+          {haciendo ? "Haciéndolo…" : "Hacerlo ahora"}
+        </button>
         <button
           onClick={() => void cambiar({ activa: !tarea.activa })}
           disabled={busy}
@@ -468,6 +497,8 @@ function NuevoEncargo({ onCreado }: { onCreado: () => void }) {
   const [instruccion, setInstruccion] = useState("");
   const [tipo, setTipo] = useState<Cuando["tipo"]>("semanal");
   const [dia, setDia] = useState(1);
+  /** Para los de un día concreto. Hoy, hasta que se cambie. */
+  const [fecha, setFecha] = useState(fechaDe(new Date()));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -499,7 +530,7 @@ function NuevoEncargo({ onCreado }: { onCreado: () => void }) {
       <div className="mt-2.5">
         <span className="mb-1.5 block text-[12px] text-faint">¿Cada cuánto?</span>
         <div className="flex gap-1.5 rounded-xl border border-line-soft bg-panel p-1">
-          {(["diario", "laborables", "semanal"] as const).map((t) => (
+          {(["diario", "laborables", "semanal", "unavez"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTipo(t)}
@@ -507,10 +538,25 @@ function NuevoEncargo({ onCreado }: { onCreado: () => void }) {
                 tipo === t ? "bg-raised text-ink" : "text-muted hover:text-ink"
               }`}
             >
-              {t === "diario" ? "Cada día" : t === "laborables" ? "L a V" : "Un día"}
+              {t === "diario"
+                ? "Cada día"
+                : t === "laborables"
+                  ? "L a V"
+                  : t === "semanal"
+                    ? "Un día"
+                    : "Una fecha"}
             </button>
           ))}
         </div>
+        {tipo === "unavez" && (
+          <input
+            type="date"
+            value={fecha}
+            min={fechaDe(new Date())}
+            onChange={(e) => setFecha(e.target.value)}
+            className="mt-2 w-full rounded-xl border border-line bg-surface px-3 py-2 text-[13px] text-ink outline-none transition focus:border-halo/40"
+          />
+        )}
         {tipo === "semanal" && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {DIAS.map((d, i) => (
@@ -551,7 +597,12 @@ function NuevoEncargo({ onCreado }: { onCreado: () => void }) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   instruccion,
-                  cuando: tipo === "semanal" ? { tipo, dia } : { tipo },
+                  cuando:
+                    tipo === "semanal"
+                      ? { tipo, dia }
+                      : tipo === "unavez"
+                        ? { tipo, fecha }
+                        : { tipo },
                 }),
               });
               const d = (await r.json()) as { error?: string };
@@ -571,6 +622,285 @@ function NuevoEncargo({ onCreado }: { onCreado: () => void }) {
           {busy ? "Un momento…" : "Programarlo"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * El calendario: los próximos catorce días y qué cae en cada uno.
+ *
+ * Catorce y no un mes entero porque en un mes entero no se ve nada en un móvil,
+ * y porque lo que la gente quiere saber es qué le viene esta semana y la que
+ * viene. El día se toca y debajo sale lo que hay: en una rejilla pequeña, tres
+ * puntos dicen "hay algo" pero no dicen qué.
+ *
+ * La cuenta la hace `proximosDias`, la misma que usa el servidor para decidir
+ * qué ejecuta. Así lo que se ve aquí es lo que va a pasar, no una aproximación.
+ */
+function Calendario({ tareas }: { tareas: Tarea[] }) {
+  const dias = useMemo(() => proximosDias(tareas, new Date(), 14), [tareas]);
+  const hoy = fechaDe(new Date());
+  const [elegido, setElegido] = useState<string | null>(null);
+
+  const delDia = dias.find((d) => d.fecha === elegido);
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Lo que viene</div>
+      <div className="rounded-xl border border-line-soft bg-panel/40 p-3">
+        <div className="grid grid-cols-7 gap-1">
+          {dias.map((d) => {
+            const esHoy = d.fecha === hoy;
+            const activo = d.fecha === elegido;
+            return (
+              <button
+                key={d.fecha}
+                onClick={() => setElegido(activo ? null : d.fecha)}
+                className={`rounded-lg py-1.5 transition ${
+                  activo ? "bg-raised" : "hover:bg-panel"
+                } ${esHoy ? "ring-1 ring-pro/40" : ""}`}
+              >
+                <span className="block text-[9.5px] uppercase text-faint">
+                  {DIAS[d.semana].slice(0, 1)}
+                </span>
+                <span className={`block text-[13px] ${d.tareas.length ? "text-ink" : "text-faint"}`}>
+                  {Number(d.fecha.slice(8))}
+                </span>
+                <span className="mt-0.5 flex h-1.5 items-center justify-center gap-0.5">
+                  {d.tareas.slice(0, 3).map((t) => (
+                    <span key={t.id} className="h-1 w-1 rounded-full bg-pro" aria-hidden />
+                  ))}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-2.5 border-t border-line-soft pt-2.5">
+          {delDia ? (
+            delDia.tareas.length ? (
+              <ul className="space-y-1">
+                {delDia.tareas.map((t) => (
+                  <li key={t.id} className="text-[12.5px] text-muted">
+                    · {t.titulo}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[12px] text-faint">Ese día no le toca nada.</p>
+            )
+          ) : (
+            <p className="text-[12px] text-faint">
+              Toca un día para ver qué le toca. Lo de cada día se prepara de madrugada.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Que te lo planifique él.
+ *
+ * Dices qué quieres conseguir y devuelve un plan repartido por días, al momento
+ * y sin ejecutar nada: por eso tarda segundos y no minutos. Lo que sale se mira,
+ * se le quita lo que no y se acepta entero de un toque.
+ *
+ * Y si no cuadra, se le pide el cambio con palabras en vez de rehacerlo a mano.
+ * Pedir "mejor los martes" es una frase; moverlo tú son cuatro formularios.
+ */
+function Planificador({ tareas, onCreado }: { tareas: Tarea[]; onCreado: () => void }) {
+  const [deseo, setDeseo] = useState("");
+  const [plan, setPlan] = useState<PlanPropuesto | null>(null);
+  const [fuera, setFuera] = useState<number[]>([]);
+  const [ajuste, setAjuste] = useState("");
+  const [busy, setBusy] = useState<"planeando" | "guardando" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const IDEAS = tareas.length
+    ? ["Añádeme algo para el negocio", "Algo para desconectar los findes", "Quiero aprender algo cada semana"]
+    : [
+        "Llevar mi tienda al día sin mirarla cada mañana",
+        "Estar al tanto de lo que pasa en mi sector",
+        "Organizarme la semana y no olvidarme de nada",
+      ];
+
+  const pedir = async (cambio?: string) => {
+    const quiero = deseo.trim();
+    if (!quiero || busy) return;
+    setBusy("planeando");
+    setError(null);
+    try {
+      const r = await fetch("/api/tareas?planear=1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deseo: quiero, ajuste: cambio, anterior: plan }),
+      });
+      const d = (await r.json()) as { plan?: PlanPropuesto; error?: string };
+      if (!r.ok || !d.plan) throw new Error(d.error ?? "No se ha podido planificar.");
+      setPlan(d.plan);
+      // Al replanificar se vuelven a marcar todos: lo que se quitó del plan
+      // anterior no tiene por qué existir en este.
+      setFuera([]);
+      setAjuste("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se ha podido planificar.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const elegidos = (plan?.encargos ?? []).filter((_, i) => !fuera.includes(i));
+
+  const aceptar = async () => {
+    if (!elegidos.length || busy) return;
+    setBusy("guardando");
+    setError(null);
+    try {
+      const r = await fetch("/api/tareas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ encargos: elegidos }),
+      });
+      const d = (await r.json()) as { error?: string };
+      if (!r.ok) throw new Error(d.error ?? "No se han podido guardar.");
+      setPlan(null);
+      setDeseo("");
+      setFuera([]);
+      onCreado();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se han podido guardar.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-pro/25 bg-gradient-to-br from-pro/[0.07] to-transparent p-4">
+      <div className="flex items-center gap-2 text-[13.5px] font-medium text-ink">
+        <Icon.Sparkle width={15} height={15} className="text-pro" />
+        Que te lo planifique ECLIPSE
+      </div>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+        Dile qué quieres conseguir y te reparte los encargos por días. Lo ves antes de que se
+        guarde nada, y si no te cuadra se lo dices con palabras.
+      </p>
+
+      <textarea
+        value={deseo}
+        onChange={(e) => setDeseo(e.target.value)}
+        rows={2}
+        maxLength={500}
+        placeholder="Quiero llevar mi tienda al día sin tener que mirarla cada mañana."
+        className="mt-3 w-full resize-none rounded-xl border border-line bg-surface px-3 py-2.5 text-[14px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
+      />
+
+      {!plan && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {IDEAS.map((i) => (
+            <button
+              key={i}
+              onClick={() => setDeseo(i)}
+              className="rounded-lg border border-line-soft px-2.5 py-1 text-[11.5px] text-muted transition hover:border-line hover:text-ink"
+            >
+              {i}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {error && <p className="mt-2 text-[12.5px] leading-relaxed text-danger">{error}</p>}
+
+      {!plan ? (
+        <button
+          onClick={() => void pedir()}
+          disabled={!deseo.trim() || busy !== null}
+          className="mt-3 w-full rounded-xl bg-ink py-2.5 text-[13px] font-medium text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"
+        >
+          {busy === "planeando" ? "Planificándolo…" : "Planifícamelo"}
+        </button>
+      ) : (
+        <div className="mt-3 space-y-2.5">
+          {plan.nota && (
+            <p className="text-[12.5px] leading-relaxed text-ink">{plan.nota}</p>
+          )}
+
+          <div className="space-y-2">
+            {plan.encargos.map((e, i) => {
+              const dentro = !fuera.includes(i);
+              return (
+                <button
+                  key={`${e.titulo}-${i}`}
+                  onClick={() => setFuera(dentro ? [...fuera, i] : fuera.filter((x) => x !== i))}
+                  className={`flex w-full items-start gap-2.5 rounded-xl border p-3 text-left transition ${
+                    dentro ? "border-line bg-panel/60" : "border-line-soft bg-transparent opacity-50"
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-md border ${
+                      dentro ? "border-pro bg-pro/20 text-pro" : "border-line text-transparent"
+                    }`}
+                    aria-hidden
+                  >
+                    <Icon.Check width={11} height={11} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-medium text-ink">{e.titulo}</span>
+                    <span className="mt-0.5 block text-[10.5px] uppercase tracking-wide text-faint">
+                      {textoDe(e.cuando)}
+                    </span>
+                    <span className="mt-1 block text-[12px] leading-snug text-muted">
+                      {e.instruccion}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              value={ajuste}
+              onChange={(e) => setAjuste(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && ajuste.trim() && void pedir(ajuste.trim())}
+              placeholder="Cámbiame algo: «mejor los martes», «uno menos»…"
+              className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-[13px] text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
+            />
+            <button
+              onClick={() => void pedir(ajuste.trim() || "Dame otra vuelta, cámbialo como veas mejor.")}
+              disabled={busy !== null}
+              className="shrink-0 rounded-xl border border-line px-3 text-[12.5px] text-muted transition hover:text-ink disabled:opacity-50"
+            >
+              {busy === "planeando" ? "…" : "Pídeselo"}
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setPlan(null);
+                setFuera([]);
+              }}
+              disabled={busy !== null}
+              className="rounded-xl border border-line px-3 py-2 text-[13px] text-muted transition hover:text-ink"
+            >
+              Descartar
+            </button>
+            <button
+              onClick={() => void aceptar()}
+              disabled={!elegidos.length || busy !== null}
+              className="flex-1 rounded-xl bg-ink py-2 text-[13px] font-medium text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"
+            >
+              {busy === "guardando"
+                ? "Guardando…"
+                : elegidos.length === 1
+                  ? "Poner este encargo"
+                  : `Poner los ${elegidos.length}`}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

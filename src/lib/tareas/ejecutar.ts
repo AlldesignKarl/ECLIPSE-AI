@@ -138,6 +138,19 @@ export async function ejecutarUna(email: string, tarea: Tarea): Promise<Ejecucio
   return { tarea: tarea.titulo, ok: true, detalle: `${limpio.length} caracteres` };
 }
 
+/**
+ * Este, y ahora.
+ *
+ * Existe para no tener que esperar a mañana para saber si un encargo recién
+ * escrito sirve de algo. Se salta el "¿le toca hoy?" a propósito: lo has pedido
+ * tú, delante, y eso manda sobre el calendario.
+ */
+export async function ejecutarAhora(email: string, id: string): Promise<Ejecucion | null> {
+  const tarea = (await tareasDe(email)).find((t) => t.id === id);
+  if (!tarea) return null;
+  return ejecutarUna(email, tarea);
+}
+
 /** Cuántas le quedan hoy a esta persona. */
 export async function cuantasPendientes(email: string, ahora = new Date()): Promise<number> {
   return pendientes(await tareasDe(email), ahora).length;

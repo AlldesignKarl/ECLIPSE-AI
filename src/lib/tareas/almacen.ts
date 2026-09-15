@@ -155,6 +155,15 @@ export async function anotarEjecucion(
     tarea.ultima = Date.now();
     tarea.ultimoFallo = undefined;
     tarea.fallos = 0;
+    /*
+      Lo de un día concreto, hecho está.
+
+      Si siguiera activo, mañana volvería a tocarle: "el día 3" ya pasó y la
+      regla de los encargos de un día es que se hacen aunque el reloj no sonara,
+      así que sin apagarlo se repetiría cada día para siempre. Se queda en la
+      lista, en pausa, para poder leer lo que salió.
+    */
+    if (tarea.cuando.tipo === "unavez") tarea.activa = false;
   } else {
     tarea.fallos = (tarea.fallos ?? 0) + 1;
     tarea.ultimoFallo = fallo;

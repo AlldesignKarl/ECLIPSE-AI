@@ -27,6 +27,22 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.38",
+    // ECLIPSE sentado a la mesa, veintiuna conexiones y un calendario que se
+    // planifica solo.
+    nombre: "A la mesa",
+    titulo: "Ahora contesta a todos, se conecta a todo y se organiza solo",
+    entrada:
+      "ECLIPSE se ve dentro de tus grupos y decides cuándo habla. Doce conexiones nuevas. Y en Programar ya no escribes tú los encargos: se los pides y te los reparte por días.",
+    puntos: [
+      "En un grupo, ECLIPSE aparece junto a la gente, con su cara. Quien creó el grupo elige cómo está: contestando a TODO lo que escribís, solo cuando le nombráis (como hasta ahora), o apagado. Estaba dentro desde el principio, pero no se veía y había que adivinarlo.",
+      "Doce conexiones nuevas, hasta veintiuna: PrestaShop, HubSpot, Airtable, Trello, Todoist, Calendly, Mailchimp, Brevo, Slack, Discord, Vercel y Cloudflare. Las mismas reglas de siempre: ninguna borra nada, todas empiezan pudiendo solo mirar, y nueve de las doce ni siquiera pueden escribir.",
+      "Programar tiene calendario. Ves los próximos catorce días y qué cae en cada uno, y puedes dejar un encargo para un día concreto: «el 3, prepárame lo del viaje».",
+      "Y ya no hace falta que te inventes los encargos: le dices qué quieres conseguir —«llevar la tienda al día sin mirarla cada mañana»— y te reparte un plan por días en segundos, sin guardar nada. Lo miras, quitas lo que no quieras y lo pones de un toque. Si no te cuadra, se lo dices con palabras: «mejor los martes», «uno menos», «¿tú qué harías?».",
+      "Cada encargo tiene ahora «Hacerlo ahora», para ver lo que da sin esperar a mañana.",
+    ],
+  },
+  {
     version: "2.37",
     // Que se acuerde de ti, y que lo que estaba roto funcione.
     nombre: "Se acuerda",

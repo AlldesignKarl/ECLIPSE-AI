@@ -22,6 +22,24 @@ const motor = createServer((req, res) => {
     }
     const b = JSON.parse(c || "{}");
     pedidos.push(b);
+
+    /*
+      Planificar no va en flujo: es una sola respuesta con un JSON dentro. Se
+      distingue por eso, que es justo como lo distingue el proveedor de verdad.
+    */
+    if (!b.stream) {
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify({
+        choices: [{ message: { content: "```json\n" + JSON.stringify({
+          nota: "Te lo reparto para que no te caiga todo el lunes.",
+          encargos: [
+            { titulo: "Pedidos de ayer", instruccion: "Mira los pedidos de ayer y dime cuánto suman.", cuando: { tipo: "diario" } },
+            { titulo: "Repaso del SEO", instruccion: "Audita la web y dime solo lo que haya que arreglar.", cuando: { tipo: "semanal", dia: 2 } },
+          ],
+        }) + "\n```" } }],
+      }));
+    }
+
     res.writeHead(200, { "content-type": "text/event-stream" });
     res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: "Hoy 3 pedidos, 74,20 € en total. Sin roturas de stock." } }] })}\n\n`);
     res.write("data: [DONE]\n\n");
@@ -196,6 +214,33 @@ try {
   const borrada = await yo("/api/tareas");
   ok(!borrada.json?.tareas?.some((t) => t.id === id), "el encargo desaparece");
   ok(!borrada.json?.resultados?.some((r) => r.tareaId === id), "y sus resultados con él, sin dejar huérfanos");
+
+  console.log("\nQue lo planifique él");
+  const plan = await yo("/api/tareas?planear=1", { method: "POST", body: JSON.stringify({ deseo: "Llevar mi tienda al día sin mirarla cada mañana" }) });
+  ok(plan.estado === 200 && plan.json?.plan?.encargos?.length === 2, `devuelve un plan con lo que ha repartido (${plan.json?.error ?? "ok"})`);
+  ok(/reparto/.test(plan.json?.plan?.nota ?? ""), "y la nota que dice por qué lo ha repartido así");
+  const antesDelPlan = (await yo("/api/tareas")).json?.tareas?.length ?? 0;
+  ok(!(await yo("/api/tareas")).json?.tareas?.some((t) => t.titulo === "Pedidos de ayer"),
+     "planificar NO guarda nada todavía: se mira antes de que exista");
+  ok(!(await yo("/api/tareas?planear=1", { method: "POST", body: JSON.stringify({}) })).json?.plan,
+     "y sin decir qué quieres no hay plan");
+
+  console.log("\nAceptar el plan entero de un toque");
+  const puestos = await yo("/api/tareas", { method: "POST", body: JSON.stringify({ encargos: plan.json.plan.encargos }) });
+  ok(puestos.estado === 200 && puestos.json?.tareas?.length === 2, "los dos encargos se guardan en una sola petición");
+  const conPlan = await yo("/api/tareas");
+  ok((conPlan.json?.tareas?.length ?? 0) === antesDelPlan + 2, "y aparecen en la lista");
+  ok(conPlan.json?.tareas?.some((t) => t.cuando?.tipo === "semanal" && t.cuando?.dia === 2), "cada uno con el día que le puso");
+
+  console.log("\nUn encargo de un día concreto");
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  const unDia = await yo("/api/tareas", { method: "POST", body: JSON.stringify({ titulo: "Lo del viaje", instruccion: "Prepárame lo del viaje.", cuando: { tipo: "unavez", fecha: hoyISO } }) });
+  ok(unDia.json?.tarea?.cuando?.tipo === "unavez", "se puede programar para un día suelto");
+  await yo(`/api/tareas?hacer=1&id=${unDia.json.tarea.id}`, { method: "POST" });
+  const despues = await yo("/api/tareas");
+  const yaFue = despues.json?.tareas?.find((t) => t.id === unDia.json.tarea.id);
+  ok(despues.json?.resultados?.some((r) => r.tareaId === unDia.json.tarea.id), "«hacerlo ahora» entrega el parte sin esperar a mañana");
+  ok(yaFue?.activa === false, "y un encargo de un día concreto se apaga solo al hacerse: si no, se repetiría cada día para siempre");
 
   console.log("\nCada uno los suyos");
   const otro = sesion();

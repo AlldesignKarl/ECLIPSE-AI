@@ -12,7 +12,8 @@ import {
   misTareas,
   tareasListas,
 } from "@/lib/tareas/almacen";
-import { cuantasPendientes, ejecutarSiguiente } from "@/lib/tareas/ejecutar";
+import { cuantasPendientes, ejecutarAhora, ejecutarSiguiente } from "@/lib/tareas/ejecutar";
+import { planificar, type Plan } from "@/lib/tareas/planear";
 import { DIAS, MAX_TAREAS, type Cuando } from "@/lib/tareas/tipos";
 
 export const runtime = "nodejs";
@@ -57,12 +58,22 @@ async function puerta(): Promise<{ error: string; code: string; status: number }
 
 /** Lo que llega del navegador, puesto en su sitio y sin sorpresas. */
 function leerCuando(v: unknown): Cuando | null {
-  const c = v as { tipo?: string; dia?: unknown };
+  const c = v as { tipo?: string; dia?: unknown; fecha?: unknown };
   if (c?.tipo === "diario") return { tipo: "diario" };
   if (c?.tipo === "laborables") return { tipo: "laborables" };
   if (c?.tipo === "semanal") {
     const dia = Number(c.dia);
     if (Number.isInteger(dia) && dia >= 0 && dia <= 6) return { tipo: "semanal", dia };
+  }
+  if (c?.tipo === "mensual") {
+    const dia = Number(c.dia);
+    // Hasta 28: cuatro meses del año no tienen un día 30 o 31, y un encargo que
+    // se salta febrero sin avisar es un encargo que no está.
+    if (Number.isInteger(dia) && dia >= 1 && dia <= 28) return { tipo: "mensual", dia };
+  }
+  if (c?.tipo === "unavez") {
+    const fecha = typeof c.fecha === "string" ? c.fecha.trim() : "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { tipo: "unavez", fecha };
   }
   return null;
 }
@@ -101,10 +112,12 @@ export async function GET() {
   });
 }
 
-/** Crear un encargo, o hacer el siguiente que toque. */
+/** Crear encargos (uno o un plan entero), pedirle un plan, o hacer uno ahora. */
 export async function POST(req: NextRequest) {
   const paso = await puerta();
   if ("error" in paso) return Response.json({ error: paso.error, code: paso.code }, { status: paso.status });
+
+  const url = new URL(req.url);
 
   /*
     Ponerse al día, de uno en uno.
@@ -113,17 +126,85 @@ export async function POST(req: NextRequest) {
     el encargo se creó después— se hace aquí. Uno por petición, para que ninguna
     se acerque al límite del hosting.
   */
-  if (new URL(req.url).searchParams.get("hacer") === "1") {
-    const { hecha, quedan } = await ejecutarSiguiente(paso.email);
+  if (url.searchParams.get("hacer") === "1") {
+    // Con id, ese y ahora: es el "no esperes a mañana para ver si esto sirve".
+    // Sin id, el siguiente que toque hoy.
+    const cual = url.searchParams.get("id");
+    const hecha = cual
+      ? await ejecutarAhora(paso.email, cual)
+      : (await ejecutarSiguiente(paso.email)).hecha;
+
     return Response.json({
-      hecha: hecha ? { tarea: hecha.tarea, ok: hecha.ok } : null,
-      quedan,
+      hecha: hecha ? { tarea: hecha.tarea, ok: hecha.ok, detalle: hecha.detalle } : null,
+      quedan: await cuantasPendientes(paso.email),
       resultados: await misResultados(),
       tareas: await misTareas(),
     });
   }
 
   const cuerpo = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+
+  /*
+    Que lo planifique él.
+
+    Esto NO ejecuta nada y por eso contesta en segundos: devuelve un plan para
+    mirar, que se acepta de un toque o se cambia con palabras. Ejecutar cuesta
+    medio minuto por encargo, y esperar eso era justo lo que sobraba aquí.
+  */
+  if (url.searchParams.get("planear") === "1") {
+    const deseo = limpio(cuerpo.deseo, 500);
+    const ajuste = limpio(cuerpo.ajuste, 300);
+    if (!deseo) return Response.json({ error: "Dime qué quieres conseguir." }, { status: 400 });
+
+    const tareas = await misTareas();
+    const r = await planificar({
+      deseo,
+      ajuste: ajuste || undefined,
+      anterior: (cuerpo.anterior as Plan | undefined) ?? undefined,
+      yaTiene: tareas.map((t) => t.titulo),
+      cuantosCaben: Math.max(MAX_TAREAS - tareas.length, 1),
+      signal: req.signal,
+    });
+
+    if (!r.ok) return Response.json({ error: r.error }, { status: 503 });
+    return Response.json({ plan: r.plan });
+  }
+
+  /*
+    Varios de golpe, que es como salen de un plan.
+
+    Uno por petición haría que aceptar un plan de cuatro fueran cuatro viajes y
+    cuatro oportunidades de que uno se pierda por el camino.
+  */
+  if (Array.isArray(cuerpo.encargos)) {
+    const puestos = [];
+    for (const uno of (cuerpo.encargos as Record<string, unknown>[]).slice(0, MAX_TAREAS)) {
+      const instruccion = limpio(uno.instruccion, 1000);
+      const cuando = leerCuando(uno.cuando);
+      if (!instruccion || !cuando) continue;
+
+      const tarea = await crearTarea({
+        titulo:
+          limpio(uno.titulo, 60) ||
+          `${instruccion.slice(0, 48)}${instruccion.length > 48 ? "…" : ""}`,
+        instruccion,
+        cuando,
+      });
+      // Si ya no caben más, se para y se dice cuántos entraron: mejor que
+      // guardar tres y callarse el cuarto.
+      if (!tarea) break;
+      puestos.push(tarea);
+    }
+
+    if (!puestos.length)
+      return Response.json(
+        { error: `Ya tienes ${MAX_TAREAS} encargos. Borra alguno para añadir más.` },
+        { status: 400 },
+      );
+
+    return Response.json({ tareas: puestos, deQuedaron: (cuerpo.encargos as unknown[]).length });
+  }
+
   const titulo = limpio(cuerpo.titulo, 60);
   const instruccion = limpio(cuerpo.instruccion, 1000);
   const cuando = leerCuando(cuerpo.cuando);
