@@ -152,6 +152,17 @@ export async function setIfAbsent(key: string, value: string): Promise<boolean> 
   return (await command<string | null>("SET", key, value, "NX")) !== null;
 }
 
+/**
+ * Lo mismo, pero caducando solo a los N segundos.
+ *
+ * Para turnos: "me pongo yo a hacer esto, que nadie más lo haga". Sin la
+ * caducidad, un servidor que se cae a mitad dejaría el turno cogido para
+ * siempre y nadie volvería a hacerlo nunca.
+ */
+export async function tomarTurno(key: string, segundos: number): Promise<boolean> {
+  return (await command<string | null>("SET", key, "1", "NX", "EX", String(segundos))) !== null;
+}
+
 export async function set(key: string, value: string): Promise<void> {
   await command("SET", key, value);
 }

@@ -5,6 +5,7 @@ import { buildSystemPrompt } from "@/lib/prompts";
 import { activeProvider } from "@/lib/provider";
 import { conversarConHerramientas } from "@/lib/tools/bucle";
 import type { CompatProvider } from "@/lib/openai-compat";
+import { del as olvidar, tomarTurno } from "@/lib/store";
 import { unaRespuesta } from "@/lib/una-respuesta";
 import { apuntarMensaje, grupoDe, mensajesDe, quien } from "@/lib/grupos/almacen";
 import { comoSeLeVe, estaDentro, leHablanAEclipse, MODO_POR_DEFECTO } from "@/lib/grupos/tipos";
@@ -195,6 +196,21 @@ async function responder(req: NextRequest) {
   if (!leHablanAEclipse(ultimo.texto, mensajes.length === 1, modo))
     return Response.json({ contesta: false });
 
+  /*
+    Un turno, para que conteste UNA vez aunque lo pidan cinco móviles.
+
+    Lo pide quien escribe, pero también los demás si ven que lo último lleva un
+    rato sin respuesta —si no, cerrar la aplicación justo después de escribir
+    dejaría la pregunta sin contestar para siempre—. Con cinco teléfonos
+    mirando, eso son cinco peticiones a la vez: la comprobación de "lo último ya
+    es suyo" no basta, porque las cinco miran antes de que conteste ninguna.
+
+    El turno caduca solo: si el servidor se cae a mitad, a los sesenta segundos
+    vuelve a poder contestar.
+  */
+  const turno = `eclipse:grupo:pensando:${paso.grupo.id}:${ultimo.id}`;
+  if (!(await tomarTurno(turno, 60))) return Response.json({ contesta: false, yaVa: true });
+
   const historia = mensajes
     .slice(-40)
     .map((m) => (m.de === null ? `ECLIPSE: ${m.texto}` : `${m.nombre}: ${m.texto}`))
@@ -257,6 +273,7 @@ async function responder(req: NextRequest) {
         nombre: "ECLIPSE",
         texto: `No he podido contestar a eso. ${r.error}`,
       });
+      await olvidar(turno);
       return Response.json({ contesta: false, error: r.error });
     }
   }

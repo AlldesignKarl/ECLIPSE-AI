@@ -469,6 +469,8 @@ function Sala({
   /** Cómo está ECLIPSE aquí dentro. Lo cambia el dueño y lo ven todos. */
   const [eclipse, setEclipse] = useState<ModoEclipse>(grupo.eclipse ?? "nombrado");
   const [cambiandoEclipse, setCambiandoEclipse] = useState(false);
+  /** El último mensaje para el que ya se ha pedido respuesta. */
+  const pedido = useRef("");
   const fondo = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(async () => {
@@ -499,6 +501,35 @@ function Sala({
       if (d.miembros?.length) setMiembros(d.miembros);
       // Y cómo está ECLIPSE: lo puede haber cambiado el dueño hace un segundo.
       if (d.eclipse) setEclipse(d.eclipse);
+
+      /*
+        Si lo último es de otro y lleva un rato sin respuesta, se la pedimos.
+
+        La respuesta la pide normalmente quien escribe, pero si cierra la
+        aplicación justo después, su pregunta se quedaría ahí colgada para
+        siempre. Cualquiera del grupo que lo vea la pide; el servidor reparte un
+        turno, así que por muchos móviles que la pidan a la vez contesta una
+        sola vez.
+      */
+      const ultimo = llegados.at(-1);
+      if (
+        ultimo &&
+        !ultimo.deEclipse &&
+        !ultimo.mio &&
+        d.eclipse !== "no" &&
+        pedido.current !== ultimo.id &&
+        Date.now() - ultimo.cuando > 2500
+      ) {
+        pedido.current = ultimo.id;
+        setPensando(true);
+        fetch("/api/grupos/mensajes?responder=1", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: grupo.id }),
+        })
+          .catch(() => {})
+          .finally(() => setPensando(false));
+      }
     } catch {
       /* se reintenta al siguiente vistazo */
     }
@@ -557,7 +588,10 @@ function Sala({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: grupo.id, texto: dicho }),
         });
-        const d = (await r.json()) as { contesta?: boolean };
+        const d = (await r.json()) as { contesta?: boolean; id?: string };
+        // Apuntado como pedido: si no, el vistazo de dentro de un segundo lo
+        // pediría otra vez por su cuenta.
+        if (d?.id) pedido.current = d.id;
         void cargar();
 
         if (d?.contesta) {
