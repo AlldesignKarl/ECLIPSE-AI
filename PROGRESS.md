@@ -1,9 +1,8 @@
 # Estado del proyecto
 
 Última actualización: **15 de septiembre de 2026**
-Rama: `claude/eclipse-context-review-a9rx0q` (sale de
-`claude/multimodal-ai-free-pro-tbxhtn`, que está en el mismo sitio) · Versión que
-ve el usuario: **2.38**
+Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
+usuario: **2.38**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
