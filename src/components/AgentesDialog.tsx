@@ -1,0 +1,734 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+import Modal from "./Modal";
+import * as Icon from "./Icons";
+
+/**
+ * El Catálogo de Agentes y el panel de cada uno.
+ *
+ * La regla de esta pantalla es la misma que la del servidor, y por eso se
+ * parecen tanto: **nada se pinta como hecho si no se ha hecho**. Un agente al
+ * que le falta una conexión no sale "listo" con una nota pequeña debajo; sale
+ * en su color de aviso y con lo que falta escrito. Una acción esperando
+ * aprobación no aparece en el registro como una acción realizada. Y "Contratar"
+ * no dice "contratado y funcionando" cuando no hay cobro configurado: dice lo
+ * que ha pasado de verdad.
+ *
+ * Todo lo que se ve aquí sale del servidor. Esta pantalla no decide nada: ni si
+ * un agente puede trabajar, ni si puede escribir, ni si algo se ejecutó. Lo
+ * pregunta y lo enseña.
+ */
+
+interface Integracion {
+  servicio: string;
+  nombre: string;
+  necesaria: boolean;
+  pendiente?: boolean;
+}
+
+interface Diagnostico {
+  estado: "listo" | "requiere_conexion" | "sin_conector";
+  faltan: Integracion[];
+  sinConector: Integracion[];
+  listas: Integracion[];
+  dice: string;
+}
+
+interface Contrato {
+  agenteId: string;
+  estado: "activo" | "pausado" | "pendiente_de_pago";
+  desde: number;
+  config: { apagadas: string[]; puedeEscribir: boolean; apruebaAntes: boolean };
+}
+
+interface EnLista {
+  id: string;
+  nombre: string;
+  precio: number;
+  periodo: string;
+  resumen: string;
+  tono: string;
+  integraciones: Integracion[];
+  diagnostico: Diagnostico;
+  contrato: Contrato | null;
+}
+
+interface Ficha {
+  id: string;
+  nombre: string;
+  precio: number;
+  resumen: string;
+  descripcion: string;
+  funciones: string[];
+  ejemplos: string[];
+  integraciones: Integracion[];
+  herramientas: string[];
+}
+
+interface Apunte {
+  id: string;
+  cuando: number;
+  tipo: "encargo" | "accion" | "error" | "aprobacion" | "estado";
+  texto: string;
+  detalle?: string;
+  ok: boolean;
+}
+
+interface Pendiente {
+  id: string;
+  agenteId: string;
+  cuando: number;
+  servicio: string;
+  accion: string;
+  porque: string;
+}
+
+const TONOS: Record<string, string> = {
+  pro: "text-pro",
+  ok: "text-ok",
+  halo: "text-halo",
+  tuyo: "text-ink",
+};
+
+/** El color de un estado. Verde solo cuando de verdad puede trabajar. */
+function colorDe(d: Diagnostico): string {
+  if (d.estado === "listo") return "text-ok";
+  if (d.estado === "requiere_conexion") return "text-pro";
+  return "text-faint";
+}
+
+function cuandoDe(t: number): string {
+  const d = new Date(t);
+  return `${d.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+export default function AgentesDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [lista, setLista] = useState<EnLista[]>([]);
+  const [mensual, setMensual] = useState(0);
+  const [abierto, setAbierto] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [sinCuenta, setSinCuenta] = useState(false);
+  const [cobroListo, setCobroListo] = useState(false);
+  const [problema, setProblema] = useState<string | null>(null);
+
+  const cargar = useCallback(async () => {
+    try {
+      const r = await fetch("/api/agentes");
+      const d = (await r.json()) as {
+        agentes?: EnLista[];
+        mensual?: number;
+        sinCuenta?: boolean;
+        cobroListo?: boolean;
+        almacen?: boolean;
+        error?: string;
+      };
+      if (d.error) return setProblema(d.error);
+      setLista(d.agentes ?? []);
+      setMensual(d.mensual ?? 0);
+      setSinCuenta(Boolean(d.sinCuenta));
+      setCobroListo(Boolean(d.cobroListo));
+      setProblema(d.almacen === false ? "Los agentes necesitan la base de datos, y este servidor no la tiene." : null);
+    } catch {
+      setProblema("No se ha podido cargar. Mira la conexión.");
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    setCargando(true);
+    void cargar();
+  }, [open, cargar]);
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={abierto ? (lista.find((a) => a.id === abierto)?.nombre ?? "Agente") : "Catálogo de Agentes"}
+      subtitle={
+        abierto
+          ? undefined
+          : mensual
+            ? `${mensual} €/mes contratados`
+            : "Agentes de IA que trabajan dentro de tus cuentas."
+      }
+      wide
+    >
+      {abierto && (
+        <button
+          onClick={() => {
+            setAbierto(null);
+            void cargar();
+          }}
+          className="mb-3 flex items-center gap-1 text-[12.5px] text-faint transition hover:text-ink"
+        >
+          <Icon.ChevronLeft width={14} height={14} />
+          Catálogo
+        </button>
+      )}
+
+      {problema && (
+        <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5 text-[12.5px] leading-relaxed text-muted">
+          {problema}
+        </div>
+      )}
+
+      {!problema && !abierto && (
+        <Catalogo
+          lista={lista}
+          cargando={cargando}
+          sinCuenta={sinCuenta}
+          cobroListo={cobroListo}
+          onAbrir={setAbierto}
+        />
+      )}
+
+      {!problema && abierto && <Panel id={abierto} onCambio={cargar} />}
+    </Modal>
+  );
+}
+
+/* ------------------------------- Catálogo -------------------------------- */
+
+function Catalogo({
+  lista,
+  cargando,
+  sinCuenta,
+  cobroListo,
+  onAbrir,
+}: {
+  lista: EnLista[];
+  cargando: boolean;
+  sinCuenta: boolean;
+  cobroListo: boolean;
+  onAbrir: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-[12.5px] leading-relaxed text-muted">
+        Cada agente trabaja dentro de las cuentas que le conectes: lee, escribe si le das permiso, y
+        deja constancia de lo que ha hecho. No son chats con otro nombre.
+      </p>
+
+      {/*
+        Lo del cobro, dicho arriba y sin rodeos.
+
+        Un catálogo con precios en el que el pago no funciona tiene que decirlo
+        antes de que alguien pulse Contratar, no después.
+      */}
+      {!cobroListo && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-pro/25 bg-pro/[0.06] px-3.5 py-3">
+          <Icon.Bolt width={15} height={15} className="mt-0.5 shrink-0 text-pro" />
+          <p className="text-[12px] leading-relaxed text-muted">
+            El cobro todavía no está configurado en este servidor. Puedes contratar para reservar la
+            configuración de un agente, pero el contrato quedará <span className="text-ink">pendiente de pago</span> y
+            no ejecutará encargos. Nadie te cobra nada.
+          </p>
+        </div>
+      )}
+
+      {sinCuenta && (
+        <div className="rounded-xl border border-line-soft bg-panel/40 p-3 text-[12px] leading-relaxed text-muted">
+          Puedes mirar el catálogo sin cuenta. Para contratar y conectar servicios hay que entrar con
+          la cuenta de la empresa.
+        </div>
+      )}
+
+      {cargando && <p className="text-[12.5px] text-faint">Un momento…</p>}
+
+      {lista.map((a) => (
+        <button
+          key={a.id}
+          onClick={() => onAbrir(a.id)}
+          className="block w-full rounded-xl border border-line-soft bg-panel/40 p-3.5 text-left transition hover:border-line hover:bg-panel"
+        >
+          <div className="flex items-baseline gap-2">
+            <span className={`min-w-0 flex-1 truncate text-[13.5px] font-semibold ${TONOS[a.tono] ?? "text-ink"}`}>
+              {a.nombre}
+            </span>
+            <span className="shrink-0 text-[13px] font-medium text-ink">
+              {a.precio} €<span className="text-[11px] text-faint">/mes</span>
+            </span>
+          </div>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-muted">{a.resumen}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className={`text-[11px] ${colorDe(a.diagnostico)}`}>
+              {a.diagnostico.estado === "listo"
+                ? "● Listo"
+                : a.diagnostico.estado === "requiere_conexion"
+                  ? "● Requiere conexión"
+                  : "● Falta construir la integración"}
+            </span>
+            {a.contrato && (
+              <span className="rounded-md bg-raised px-1.5 py-0.5 text-[10px] text-muted">
+                {a.contrato.estado === "activo"
+                  ? "Contratado"
+                  : a.contrato.estado === "pausado"
+                    ? "En pausa"
+                    : "Pendiente de pago"}
+              </span>
+            )}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* --------------------------- Ficha y panel ------------------------------- */
+
+function Panel({ id, onCambio }: { id: string; onCambio: () => void }) {
+  const [ficha, setFicha] = useState<Ficha | null>(null);
+  const [contrato, setContrato] = useState<Contrato | null>(null);
+  const [diagnostico, setDiagnostico] = useState<Diagnostico | null>(null);
+  const [registro, setRegistro] = useState<Apunte[]>([]);
+  const [pendientes, setPendientes] = useState<Pendiente[]>([]);
+  const [cobroListo, setCobroListo] = useState(false);
+  const [vista, setVista] = useState<"ficha" | "ajustes" | "registro">("ficha");
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [encargo, setEncargo] = useState("");
+  const [respuesta, setRespuesta] = useState<{ texto: string; acciones: { nombre: string; detalle: string; ok: boolean }[]; enEspera: number } | null>(null);
+
+  const cargar = useCallback(async () => {
+    const r = await fetch(`/api/agentes?id=${id}`);
+    const d = (await r.json()) as {
+      agente?: Ficha;
+      contrato?: Contrato | null;
+      diagnostico?: Diagnostico;
+      registro?: Apunte[];
+      pendientes?: Pendiente[];
+      cobroListo?: boolean;
+    };
+    if (d.agente) setFicha(d.agente);
+    setContrato(d.contrato ?? null);
+    setDiagnostico(d.diagnostico ?? null);
+    setRegistro(d.registro ?? []);
+    setPendientes(d.pendientes ?? []);
+    setCobroListo(Boolean(d.cobroListo));
+  }, [id]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  const mandar = async (cuerpo: Record<string, unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/agentes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...cuerpo, id }),
+      });
+      const d = (await r.json()) as Record<string, unknown>;
+      if (!r.ok) setError(String(d.error ?? "No se ha podido."));
+      if (typeof d.aviso === "string") setAviso(d.aviso);
+      await cargar();
+      onCambio();
+      return { ok: r.ok, d };
+    } catch {
+      setError("No se ha podido. Mira la conexión.");
+      return { ok: false, d: {} as Record<string, unknown> };
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!ficha || !diagnostico) return <p className="text-[12.5px] text-faint">Un momento…</p>;
+
+  const activo = contrato?.estado === "activo";
+  const puedeTrabajar = activo && diagnostico.estado === "listo";
+
+  const pestaña = (v: typeof vista, texto: string) => (
+    <button
+      key={v}
+      onClick={() => setVista(v)}
+      className={`flex-1 rounded-lg px-2 py-1.5 text-[12.5px] transition ${
+        vista === v ? "bg-raised text-ink" : "text-muted hover:text-ink"
+      }`}
+    >
+      {texto}
+    </button>
+  );
+
+  return (
+    <div className="space-y-3.5">
+      {/* Estado, arriba del todo y sin adornos. */}
+      <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[16px] font-semibold text-ink">{ficha.precio} €</span>
+          <span className="text-[11.5px] text-faint">al mes</span>
+          {contrato && (
+            <span className="ml-auto rounded-md bg-raised px-2 py-0.5 text-[11px] text-muted">
+              {contrato.estado === "activo" ? "Activo" : contrato.estado === "pausado" ? "En pausa" : "Pendiente de pago"}
+            </span>
+          )}
+        </div>
+        <p className={`mt-1.5 text-[12px] leading-relaxed ${colorDe(diagnostico)}`}>{diagnostico.dice}</p>
+      </div>
+
+      {aviso && (
+        <div className="rounded-xl border border-pro/25 bg-pro/[0.06] p-3 text-[12px] leading-relaxed text-ink">
+          {aviso}
+        </div>
+      )}
+      {error && <p className="text-[12.5px] leading-relaxed text-danger">{error}</p>}
+
+      {/* Lo que espera aprobación va SIEMPRE arriba: es lo único que está parado
+          por alguien y que nadie más va a mirar. */}
+      {pendientes.length > 0 && (
+        <div className="rounded-xl border border-pro/30 bg-pro/[0.06] p-3.5">
+          <div className="text-[12.5px] font-medium text-ink">
+            {pendientes.length === 1 ? "Una acción espera tu aprobación" : `${pendientes.length} acciones esperan tu aprobación`}
+          </div>
+          <div className="mt-2 space-y-2">
+            {pendientes.map((p) => (
+              <div key={p.id} className="rounded-lg border border-line-soft bg-void/30 p-2.5">
+                <p className="text-[12px] leading-relaxed text-ink">{p.porque}</p>
+                <p className="mt-0.5 text-[11px] text-faint">
+                  {p.servicio} · {p.accion.replace(/_/g, " ")} · {cuandoDe(p.cuando)}
+                </p>
+                <div className="mt-1.5 flex gap-2">
+                  <button
+                    disabled={busy}
+                    onClick={() => void mandar({ accion: "aprobar", pendiente: p.id })}
+                    className="rounded-lg bg-ink px-3 py-1 text-[11.5px] font-medium text-void transition hover:opacity-90 disabled:opacity-50"
+                  >
+                    Aprobar y ejecutar
+                  </button>
+                  <button
+                    disabled={busy}
+                    onClick={() => void mandar({ accion: "descartar", pendiente: p.id })}
+                    className="text-[11.5px] text-faint transition hover:text-danger"
+                  >
+                    Descartar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {contrato && (
+        <div className="flex gap-1.5 rounded-xl border border-line-soft bg-panel p-1">
+          {pestaña("ficha", "Qué hace")}
+          {pestaña("ajustes", "Ajustes")}
+          {pestaña("registro", "Registro")}
+        </div>
+      )}
+
+      {(!contrato || vista === "ficha") && (
+        <div className="space-y-3">
+          <p className="text-[13px] leading-relaxed text-ink">{ficha.descripcion}</p>
+
+          <div>
+            <div className="mb-1 text-[11.5px] uppercase tracking-wide text-faint">Lo que hace</div>
+            <ul className="space-y-0.5">
+              {ficha.funciones.map((f) => (
+                <li key={f} className="text-[12.5px] leading-relaxed text-muted">· {f}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <div className="mb-1 text-[11.5px] uppercase tracking-wide text-faint">Integraciones</div>
+            <div className="space-y-1">
+              {ficha.integraciones.map((i) => {
+                const conectada = diagnostico.listas.some((l) => l.servicio === i.servicio);
+                return (
+                  <div key={i.servicio} className="flex items-center gap-2 text-[12px]">
+                    <span
+                      className={
+                        i.pendiente ? "text-faint" : conectada ? "text-ok" : "text-pro"
+                      }
+                    >
+                      {i.pendiente ? "○" : conectada ? "●" : "○"}
+                    </span>
+                    <span className="text-ink">{i.nombre}</span>
+                    <span className="text-faint">
+                      {i.pendiente
+                        ? "· todavía no se puede conectar"
+                        : conectada
+                          ? "· conectada"
+                          : `· requiere conexión${i.necesaria ? " (necesaria)" : ""}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-1 text-[11.5px] uppercase tracking-wide text-faint">
+              Encargos de ejemplo
+            </div>
+            <ul className="space-y-0.5">
+              {ficha.ejemplos.map((e) => (
+                <li key={e} className="text-[12.5px] leading-relaxed text-muted">«{e}»</li>
+              ))}
+            </ul>
+          </div>
+
+          {!contrato ? (
+            <button
+              disabled={busy}
+              onClick={() => void mandar({ accion: "contratar" })}
+              className="w-full rounded-xl bg-ink px-4 py-2.5 text-[13.5px] font-medium text-void transition hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "Un momento…" : `Contratar · ${ficha.precio} €/mes`}
+            </button>
+          ) : (
+            <Probar
+              puede={puedeTrabajar}
+              porque={
+                !activo
+                  ? contrato.estado === "pausado"
+                    ? "Está en pausa. Reactívalo en Ajustes."
+                    : "El contrato está pendiente de pago, así que no ejecuta encargos."
+                  : diagnostico.dice
+              }
+              encargo={encargo}
+              setEncargo={setEncargo}
+              respuesta={respuesta}
+              busy={busy}
+              onProbar={async () => {
+                setRespuesta(null);
+                const { d } = await mandar({ accion: "encargar", encargo });
+                if (typeof d.texto === "string")
+                  setRespuesta({
+                    texto: d.texto,
+                    acciones: (d.acciones as { nombre: string; detalle: string; ok: boolean }[]) ?? [],
+                    enEspera: Number(d.enEspera) || 0,
+                  });
+              }}
+            />
+          )}
+
+          {!cobroListo && !contrato && (
+            <p className="text-[11px] leading-relaxed text-faint">
+              El cobro no está configurado: contratar dejará el agente pendiente de pago y no te
+              cobrará nada.
+            </p>
+          )}
+        </div>
+      )}
+
+      {contrato && vista === "ajustes" && (
+        <div className="space-y-3">
+          <Interruptor
+            puesto={contrato.config.puedeEscribir}
+            titulo="Dejar que cambie cosas"
+            explica="Sin esto solo mira. Aun activándolo, cada conexión tiene su propio permiso: si la cuenta está en solo lectura, no la toca."
+            onCambio={(v) => void mandar({ accion: "config", puedeEscribir: v })}
+          />
+          <Interruptor
+            puesto={contrato.config.apruebaAntes}
+            titulo="Pedir aprobación antes de escribir"
+            explica="Lo que cambie algo fuera se queda esperando a que alguien lo apruebe aquí. No se ejecuta y luego se avisa: no se ejecuta."
+            onCambio={(v) => void mandar({ accion: "config", apruebaAntes: v })}
+          />
+
+          <div>
+            <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">Herramientas</div>
+            <div className="space-y-1.5">
+              {ficha.herramientas.map((h) => {
+                const apagada = contrato.config.apagadas.includes(h);
+                return (
+                  <label key={h} className="flex cursor-pointer items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={!apagada}
+                      onChange={() =>
+                        void mandar({
+                          accion: "config",
+                          apagadas: apagada
+                            ? contrato.config.apagadas.filter((x) => x !== h)
+                            : [...contrato.config.apagadas, h],
+                        })
+                      }
+                      className="h-4 w-4 accent-white"
+                    />
+                    <span className="text-[12.5px] text-ink">{h.replace(/_/g, " ")}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 border-t border-line-soft pt-3">
+            {contrato.estado === "activo" && (
+              <button
+                disabled={busy}
+                onClick={() => void mandar({ accion: "pausar" })}
+                className="rounded-xl border border-line px-4 py-2 text-[12.5px] text-muted transition hover:text-ink"
+              >
+                Pausar
+              </button>
+            )}
+            {contrato.estado === "pausado" && (
+              <button
+                disabled={busy}
+                onClick={() => void mandar({ accion: "reactivar" })}
+                className="rounded-xl border border-line px-4 py-2 text-[12.5px] text-muted transition hover:text-ink"
+              >
+                Reactivar
+              </button>
+            )}
+            <button
+              disabled={busy}
+              onClick={async () => {
+                if (!confirm("¿Rescindir el contrato? Se va con su registro y lo que tuviera pendiente.")) return;
+                await fetch(`/api/agentes?id=${id}`, { method: "DELETE" });
+                await cargar();
+                onCambio();
+              }}
+              className="text-[12px] text-faint transition hover:text-danger"
+            >
+              Rescindir
+            </button>
+          </div>
+        </div>
+      )}
+
+      {contrato && vista === "registro" && (
+        <div className="space-y-2">
+          {registro.length === 0 ? (
+            <p className="text-[12.5px] leading-relaxed text-muted">
+              Todavía no ha hecho nada. Aquí queda todo: lo que sale bien, lo que falla y lo que se
+              queda esperando aprobación.
+            </p>
+          ) : (
+            registro.map((a) => (
+              <div key={a.id} className="rounded-lg border border-line-soft bg-panel/40 p-2.5">
+                <div className="flex items-baseline gap-2">
+                  <span className={a.ok ? "text-ok" : a.tipo === "error" ? "text-danger" : "text-pro"}>
+                    {a.ok ? "✓" : a.tipo === "error" ? "✗" : "⏸"}
+                  </span>
+                  <span className="min-w-0 flex-1 text-[12.5px] text-ink">{a.texto}</span>
+                  <span className="shrink-0 text-[10.5px] text-faint">{cuandoDe(a.cuando)}</span>
+                </div>
+                {a.detalle && (
+                  <p className="mt-0.5 pl-5 text-[11.5px] leading-relaxed text-muted">{a.detalle}</p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------- Piezas ---------------------------------- */
+
+function Interruptor({
+  puesto,
+  titulo,
+  explica,
+  onCambio,
+}: {
+  puesto: boolean;
+  titulo: string;
+  explica: string;
+  onCambio: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line-soft bg-panel/40 p-3">
+      <input
+        type="checkbox"
+        checked={puesto}
+        onChange={(e) => onCambio(e.target.checked)}
+        className="mt-0.5 h-4 w-4 accent-white"
+      />
+      <span>
+        <span className="block text-[13px] text-ink">{titulo}</span>
+        <span className="block text-[11.5px] leading-relaxed text-faint">{explica}</span>
+      </span>
+    </label>
+  );
+}
+
+/**
+ * Probar el agente. De verdad o nada.
+ *
+ * Si puede trabajar, se le da el encargo y se enseña lo que ha hecho, con sus
+ * acciones y sus fallos. Si NO puede, no se finge una ejecución bonita: se dice
+ * qué falta. Un botón de probar que siempre devuelve algo es un anuncio, no una
+ * prueba.
+ */
+function Probar({
+  puede,
+  porque,
+  encargo,
+  setEncargo,
+  respuesta,
+  busy,
+  onProbar,
+}: {
+  puede: boolean;
+  porque: string;
+  encargo: string;
+  setEncargo: (v: string) => void;
+  respuesta: { texto: string; acciones: { nombre: string; detalle: string; ok: boolean }[]; enEspera: number } | null;
+  busy: boolean;
+  onProbar: () => void;
+}) {
+  if (!puede)
+    return (
+      <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
+        <div className="text-[12.5px] font-medium text-ink">No se puede probar todavía</div>
+        <p className="mt-1 text-[12px] leading-relaxed text-muted">{porque}</p>
+      </div>
+    );
+
+  return (
+    <div className="space-y-2">
+      <textarea
+        value={encargo}
+        onChange={(e) => setEncargo(e.target.value)}
+        placeholder="Dile lo que quieres que haga…"
+        rows={3}
+        maxLength={2000}
+        className="w-full resize-none rounded-xl border border-line bg-panel px-3.5 py-2.5 text-[14px] leading-relaxed text-ink outline-none transition placeholder:text-faint focus:border-halo/40"
+      />
+      <button
+        disabled={busy || !encargo.trim()}
+        onClick={onProbar}
+        className="w-full rounded-xl bg-ink px-4 py-2.5 text-[13.5px] font-medium text-void transition hover:opacity-90 disabled:bg-line disabled:text-faint"
+      >
+        {busy ? "Trabajando…" : "Ponérselo"}
+      </button>
+
+      {respuesta && (
+        <div className="space-y-2 rounded-xl border border-line-soft bg-panel/40 p-3.5">
+          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink">{respuesta.texto}</p>
+          {respuesta.acciones.length > 0 && (
+            <div className="border-t border-line-soft pt-2">
+              <div className="mb-1 text-[11px] uppercase tracking-wide text-faint">Lo que ha tocado</div>
+              {respuesta.acciones.map((a, i) => (
+                <div key={i} className="text-[11.5px] text-muted">
+                  <span className={a.ok ? "text-ok" : "text-danger"}>{a.ok ? "✓" : "✗"}</span>{" "}
+                  {a.nombre} {a.detalle && `· ${a.detalle}`}
+                </div>
+              ))}
+            </div>
+          )}
+          {respuesta.enEspera > 0 && (
+            <p className="text-[11.5px] leading-relaxed text-pro">
+              {respuesta.enEspera === 1
+                ? "Una acción ha quedado esperando tu aprobación. NO se ha ejecutado."
+                : `${respuesta.enEspera} acciones han quedado esperando tu aprobación. NO se han ejecutado.`}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

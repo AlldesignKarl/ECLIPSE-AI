@@ -27,6 +27,22 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.47",
+    // El catálogo de agentes empresariales.
+    nombre: "Agentes",
+    titulo: "Agentes de IA que trabajan dentro de tus cuentas",
+    entrada:
+      "Cinco agentes especializados. Eliges uno, le conectas tus servicios y trabaja de verdad.",
+    puntos: [
+      "Nuevo en el menú: Agentes. OMNI para todo, COMMS para comunicaciones, SALES para lo comercial, SUPPORT para atención al cliente y AUTOMATION para que las cosas pasen solas.",
+      "No son cinco chats con otro nombre. Cada uno tiene sus instrucciones, SUS herramientas y solo las cuentas que le toquen: al de comunicaciones no se le ponen delante las acciones de tu tienda, así que no puede tocarlas.",
+      "Nacen en solo lectura, y lo que escriba fuera puede esperar a que tú lo apruebes. Cuando una acción espera aprobación, NO se ejecuta: se queda parada hasta que le das al botón.",
+      "Registro de todo lo que hacen: lo que sale bien, lo que falla con su error de verdad, y lo que se quedó esperando. Puedes pausarlos, reactivarlos, cambiar sus permisos y rescindir.",
+      "Y decimos la verdad de lo que falta: Gmail, Outlook, Google Calendar, Drive y WhatsApp Business necesitan OAuth y todavía no se pueden conectar. Sale escrito en la ficha, no escondido.",
+      "El cobro todavía no está configurado, así que contratar deja el agente pendiente de pago y no te cobra nada. Tampoco ejecuta encargos hasta que se active.",
+    ],
+  },
+  {
     version: "2.46",
     // Grupos y Programar dejan de ser de pago.
     nombre: "Para todos",

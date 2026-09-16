@@ -1,5 +1,6 @@
 import { borrarUsuario, contrasenaCorrecta, currentUser } from "./auth";
 import { olvidarTodasLasDe } from "./conexiones/almacen";
+import { olvidarAgentesDe } from "./agentes/almacen";
 import { olvidarExamenesDe } from "./examen/almacen";
 import { salirDeTodos } from "./grupos/almacen";
 import { olvidarTodo as olvidarMemoriaDe } from "./memoria/almacen";
@@ -36,6 +37,9 @@ export async function borrarTodoLoMio(
   // Los apuntes del Modo Examen son lo más suyo que hay aquí dentro: son los
   // apuntes de alguien. Si se va, se van con él.
   await olvidarExamenesDe(email).catch(() => {});
+  // Los agentes de una empresa: sus contratos, su registro de lo que hicieron y
+  // lo que tenían esperando aprobación.
+  await olvidarAgentesDe(email).catch(() => {});
   await olvidarTodasLasDe(email).catch(() => {});
   await salirDeTodos(email).catch(() => {});
   await borrarUsuario(email).catch(() => {});

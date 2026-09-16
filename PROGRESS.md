@@ -2,7 +2,7 @@
 
 Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.46**
+usuario: **2.47**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,8 +11,10 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 77 pruebas en verde.
-Lo último: **Grupos y Programar ya son gratis**. Antes: **Modo Examen**, para
+La aplicación está **en producción y funcionando**, con 79 pruebas en verde.
+Lo último: el **Catálogo de Agentes**, agentes de empresa que trabajan dentro
+de las cuentas conectadas. Antes: **Grupos y Programar ya son gratis**, y
+**Modo Examen**, para
 estudiar con tus propios apuntes sin que se invente ni una pregunta; y un
 **router de motores** que manda cada pregunta a donde mejor se
 resuelve sin que se note por fuera. Antes: ECLIPSE **aprende cómo le gusta a
@@ -69,7 +71,59 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: Grupos y Programar, gratis
+## 3. Lo último: Catálogo de Agentes
+
+Convertir ECLIPSE en una plataforma de agentes para empresas. La condición de
+Carlos era la de siempre y aquí pesa más que nunca: *"no quiero demos,
+simulaciones, datos falsos ni botones que aparenten hacer cosas"*.
+
+**Lo que ya había, y por eso esto es una capa y no un proyecto nuevo.** ECLIPSE
+ya tenía 21 conectores reales con credenciales cifradas y permiso de
+lectura/escritura, un bucle de herramientas que ejecuta de verdad, encargos que
+corren sin nadie delante, y persistencia por cuenta. Un agente no necesitaba un
+motor nuevo: necesitaba **límites**.
+
+**Qué es un agente aquí.** `lib/agentes/catalogo.ts` es la configuración
+central: añadir uno es añadir una entrada, con su precio, sus instrucciones, sus
+herramientas y qué integraciones usa. De ahí leen la pantalla, la API y la
+ejecución.
+
+Lo que lo convierte en un agente de verdad y no en cinco prompts:
+
+- **Herramientas recortadas.** `ejecutar.ts` le monta un juego con SUS
+  herramientas, y la de conexiones se fabrica solo con SUS servicios
+  conectados. A COMMS no se le ponen delante las acciones de la tienda. Medido
+  en la prueba: el enum que recibe el modelo trae `["notion"]` y nada más.
+- **Dos frenos para escribir, independientes.** El permiso de la conexión (de
+  toda la vida) y el del agente. Con uno solo, dar permiso a un agente sería
+  dárselo a todos.
+- **Aprobación humana que PARA.** La acción no se ejecuta y luego se avisa: se
+  queda en cola con sus datos, y al aprobarla se ejecuta ESA acción con ESOS
+  datos, sin volver a preguntarle al modelo —que podría devolver otra cosa
+  distinta de la que la persona aprobó—.
+- **Registro de todo**: lo que salió bien, lo que falló con su error, y lo que
+  se quedó esperando. Lo pendiente NO figura como hecho.
+
+**Lo que no se hace, y se dice.** Gmail, Outlook, Google Calendar, Drive y
+WhatsApp Business van marcados `pendiente: true`: piden OAuth y eso no está
+construido. `estadoDe()` los cuenta siempre en lo que dice, aunque sean
+opcionales, porque si no, quien contrata COMMS se cree que va a mandar correos.
+
+**El pago.** Sin Stripe configurado no hay forma de cobrar 500 € al mes, así que
+un contrato nace `pendiente_de_pago`, no ejecuta nada, y la API devuelve 409 si
+se intenta activar. Esa puerta trasera es la que convertiría todo lo anterior en
+decoración.
+
+Pruebas nuevas: `agentes.test.mjs` (la lógica, incluida una que comprueba que
+ningún agente declara una integración inventada) y `agentes-api.test.mjs`, que
+levanta la aplicación y recorre el caso entero contra un Notion de mentira que
+apunta lo que se le escribe: contratar sin cobro, no trabajar sin conexión,
+trabajar con ella, el freno de solo lectura, la acción parada por aprobación,
+la ejecución real al aprobarla, y que lo de una empresa no lo ve otra.
+
+---
+
+## 3 bis. Antes: Grupos y Programar, gratis
 
 Carlos: *"lo de grupos para chatear y programar quiero que esté en gratis"*.
 Hecho, y quitado de todas partes: la puerta del servidor en las dos rutas, las
@@ -592,7 +646,7 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**77 archivos, todas en verde.** Viven en `pruebas/`.
+**79 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
 npm run prueba           # todas (~6 min)

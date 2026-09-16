@@ -33,6 +33,9 @@ No es un envoltorio de un chat. Hace, de menos a más raro:
   puede pasarlo a "solo si le nombran" o apagarlo.
 - **Modo Examen**: subes fotos de tus apuntes y te resume, te pregunta y te
   corrige exámenes de desarrollo, SOLO con lo que pone en tus materiales.
+- **Agentes**: catálogo de agentes de empresa (OMNI, COMMS, SALES, SUPPORT,
+  AUTOMATION) por suscripción mensual. Cada uno con SUS herramientas, SUS
+  cuentas conectadas, permisos, aprobación humana y registro de lo que hace.
 - **Memoria**: aprende de ti y puede mirar conversaciones anteriores.
 - **Ubicación**: excursiones, sitios cerca y cómo llegar.
 
@@ -106,6 +109,12 @@ src/
     tools/                      Herramientas que el modelo puede usar
     conexiones/                 Un archivo por servicio + registro + almacén
     tareas/  grupos/  memoria/  Cada uno: tipos.ts + almacen.ts (+ lógica)
+    agentes/                    Los agentes de empresa. `catalogo.ts` es la
+                                configuración central —añadir un agente es
+                                añadir una entrada—, `tipos.ts` la lógica pura,
+                                `almacen.ts` lo de cada cliente y `ejecutar.ts`
+                                el trabajo de verdad con las herramientas
+                                recortadas y la aprobación humana
     examen/                     Modo Examen. `tipos.ts` es toda la lógica pura
                                 —incluida la que tira las preguntas que no se
                                 pueden respaldar con los apuntes—, `almacen.ts`
@@ -123,7 +132,7 @@ src/
                                 toda la lógica y no toca la red
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        77 pruebas. Ver pruebas/LEEME.md
+pruebas/                        79 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -382,7 +391,32 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
 - **Que la foto de perfil de un grupo se sirva por el NOMBRE que se ve**
   (`avatarDe`), nunca por el correo, y solo a quien está dentro. En los grupos
   el correo de nadie sale, ni siquiera dentro de la dirección de una imagen.
-- **Las 77 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que un agente NO reciba las herramientas de su modo, sino las SUYAS**
+  (`herramientasDelAgente` en `agentes/ejecutar.ts`, y el `herramientas` de
+  `conversarConHerramientas`). Es lo único que hace que un agente sea un agente
+  y no un prompt distinto: pedirle por instrucciones que no use la tienda es
+  confiar en que haga caso; no ponérsela delante es que no exista. La de
+  conexiones se fabrica solo con SUS servicios conectados, y además se vuelve a
+  comprobar dentro por si el modelo se inventa uno.
+- **Que la aprobación humana PARE la acción, no la avise después.** Si se
+  ejecutara y luego se pidiera permiso, el permiso no sería permiso: sería una
+  notificación de algo sin vuelta atrás. Y al aprobar se ejecuta ESA acción con
+  ESOS datos guardados, sin volver a preguntarle al modelo, que podría devolver
+  otra cosa distinta de la que la persona aprobó.
+- **Que haya DOS frenos independientes para escribir**: el permiso de la
+  conexión (de toda la vida) y el del agente. Con uno solo, darle permiso a un
+  agente sería dárselo a todos.
+- **Que un contrato nazca `pendiente_de_pago` y no se pueda activar desde la
+  API.** Sin cobro configurado no hay forma de cobrar 500 € al mes; marcarlo
+  activo sería el pago falso que no puede existir aquí. `reactivar` devuelve 409
+  a propósito cuando el contrato está pendiente de pago: esa es la puerta
+  trasera que convertiría todo lo demás en decoración.
+- **Que las integraciones que aún no existen vayan marcadas `pendiente: true`**
+  en `agentes/catalogo.ts` (Gmail, Outlook, Google Calendar, Drive, WhatsApp:
+  todas piden OAuth). `estadoDe()` las cuenta SIEMPRE en lo que dice, aunque
+  sean opcionales, porque si no, quien contrata el agente de comunicaciones se
+  cree que va a mandar correos.
+- **Las 79 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -395,7 +429,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 77 pruebas (~7 min)
+npm run prueba           # las 79 pruebas (~7 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

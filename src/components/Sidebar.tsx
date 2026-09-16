@@ -31,6 +31,7 @@ interface Props {
   /** Abre Grupos: varias personas hablando con ECLIPSE a la vez. */
   onGrupos: () => void;
   onExamen: () => void;
+  onAgentes: () => void;
   /** Hay resultados de encargos sin ver: se enciende un punto. */
   tareasNuevas?: boolean;
   onInicio: () => void;
@@ -61,6 +62,7 @@ export default function Sidebar({
   onBiblioteca,
   onGrupos,
   onExamen,
+  onAgentes,
   tareasNuevas = false,
   onInicio,
   user = null,
@@ -391,6 +393,21 @@ export default function Sidebar({
             <Icon.Brain width={16} height={16} />
             <span className="flex-1 text-left">Modo Examen</span>
             {plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>}
+          </button>
+
+          {/*
+            El Catálogo de Agentes, justo encima de Conexiones.
+
+            Ahí y no en otro sitio porque es lo primero que se hace y lo segundo:
+            eliges el agente, y acto seguido te manda a conectarle las cuentas
+            con las que va a trabajar. Verlos juntos cuenta esa historia sola.
+          */}
+          <button
+            onClick={onAgentes}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-muted transition hover:bg-panel hover:text-ink"
+          >
+            <Icon.Bot width={16} height={16} />
+            <span className="flex-1 text-left">Agentes</span>
           </button>
 
           <button

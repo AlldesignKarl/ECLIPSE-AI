@@ -7,6 +7,7 @@ import {
 } from "../openai-compat";
 import type { Attachment, Mode, Plan, Source, Speed } from "../types";
 import { comoEsquemaOpenAI, ejecutarHerramienta, herramientasPara } from "./registro";
+import type { Herramienta } from "./tipos";
 
 /**
  * El bucle de herramientas: lo que convierte a ECLIPSE en algo que *hace*.
@@ -90,10 +91,20 @@ export async function* conversarConHerramientas(opts: {
    * conexiones no se encontraban y el encargo escribía de memoria.
    */
   dueno?: string;
+  /**
+   * Las herramientas EXACTAS que puede usar, en vez de las de su modo.
+   *
+   * Lo usan los agentes. Un agente no es "ECLIPSE con otro prompt": es ECLIPSE
+   * con un juego de herramientas recortado a lo que ese agente tiene contratado
+   * y conectado. Y recortarlo aquí, donde se monta la lista, es lo único que lo
+   * hace de verdad: pedirle por prompt que no use una herramienta que tiene
+   * delante es confiar en que haga caso.
+   */
+  herramientas?: Herramienta[];
   signal?: AbortSignal;
 }): AsyncGenerator<EventoBucle> {
   const ultimoTurno = [...opts.turns].reverse().find((t) => t.role === "user");
-  const herramientas = await herramientasPara(
+  const herramientas = opts.herramientas ?? (await herramientasPara(
     opts.mode,
     opts.plan,
     {
@@ -101,7 +112,7 @@ export async function* conversarConHerramientas(opts: {
       conImagen: Boolean(ultimoTurno?.attachments?.some((a) => a.kind === "image" && a.data)),
     },
     opts.dueno,
-  );
+  ));
 
   // Sin herramientas que ofrecer, esto es una conversación normal y corriente.
   if (herramientas.length === 0) {
