@@ -364,10 +364,8 @@ export default function Sidebar({
           >
             <Icon.Calendar width={16} height={16} />
             <span className="flex-1 text-left">Programar</span>
-            {tareasNuevas ? (
+            {tareasNuevas && (
               <span className="h-1.5 w-1.5 rounded-full bg-pro" aria-label="Hay algo nuevo" />
-            ) : (
-              plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>
             )}
           </button>
 
@@ -377,7 +375,6 @@ export default function Sidebar({
           >
             <Icon.Group width={16} height={16} />
             <span className="flex-1 text-left">Grupos</span>
-            {plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>}
           </button>
 
           {/*

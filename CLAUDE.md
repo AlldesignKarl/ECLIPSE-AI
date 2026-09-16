@@ -24,11 +24,11 @@ No es un envoltorio de un chat. Hace, de menos a más raro:
   agenda (Shopify, WooCommerce, PrestaShop, Wix, Stripe, HubSpot, Notion,
   Airtable, Trello, Todoist, Calendly, Mailchimp, Brevo, Slack, Telegram,
   Discord, GitHub, Vercel, IONOS, Cloudflare, Binance) y el modelo las consulta.
-- **Programar**: encargos que se hacen solos, con calendario, y un plan entero
-  que monta ECLIPSE cuando le dices qué quieres conseguir.
+- **Programar** (gratis): encargos que se hacen solos, con calendario, y un plan
+  entero que monta ECLIPSE cuando le dices qué quieres conseguir.
 - **Biblioteca**: imágenes libres de museos y archivos, para inspirarse.
 - **Llamadas**: hablar con ECLIPSE por voz, con interrupciones.
-- **Grupos**: varias personas hablándole a ECLIPSE en el mismo sitio. Él está
+- **Grupos** (gratis): varias personas hablándole a ECLIPSE en el mismo sitio. Él está
   dentro contestando a todo de fábrica, se ve en la lista de gente, y el dueño
   puede pasarlo a "solo si le nombran" o apagarlo.
 - **Modo Examen**: subes fotos de tus apuntes y te resume, te pregunta y te
@@ -183,8 +183,14 @@ menos de archivo.
 
 Cookie `eclipse_plan` firmada. Se desbloquea con `PRO_ACCESS_CODE`, con
 `PRO_EMAILS`, o pagando por Stripe. Son de Pro: ECLIPSE CODE, modo Profundo,
-respuestas aceleradas, Conexiones, Programar y crear grupos (entrar en un grupo
-no lo es: paga quien monta la mesa).
+respuestas aceleradas, Conexiones y Modo Examen.
+
+**Grupos y Programar son GRATIS**, y lo decidió Carlos: *"lo de grupos para
+chatear y programar quiero que esté en gratis"*. Los dos siguen pidiendo CUENTA,
+y eso no es una puerta de pago: en un grupo hay que saber quién habla, y un
+encargo corre de madrugada sin nadie delante, así que sin saber de quién es no
+hay a quién entregarle el parte. El tope diario de mensajes sigue siendo el de
+cada plan, así que por ahí no se cuela nadie.
 
 ---
 

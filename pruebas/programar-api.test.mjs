@@ -105,15 +105,17 @@ function sesion() {
 try {
   console.log("\nLas puertas");
   const anon = sesion();
+  // Programar es GRATIS; lo que sigue haciendo falta es CUENTA, y no por
+  // dinero: el encargo corre de madrugada y sin saber de quién es no hay a
+  // quién entregarle el parte.
   const sinNada = await anon("/api/tareas", { method: "POST", body: JSON.stringify({ instruccion: "x", cuando: { tipo: "diario" } }) });
-  ok(sinNada.estado === 402, `sin Pro no se puede programar (${sinNada.estado})`);
+  ok(sinNada.estado === 401, `sin cuenta no se puede programar (${sinNada.estado})`);
 
   const yo = sesion();
   const correo = `tareas${Date.now()}@ejemplo.com`;
   await yo("/api/auth", { method: "POST", body: JSON.stringify({ action: "signup", email: correo, password: "eclipse2026" }) });
-  await yo("/api/pro", { method: "POST", body: JSON.stringify({ code: "ECLIPSE-PRO" }) });
 
-  console.log("\nCrear un encargo");
+  console.log("\nCrear un encargo (con el plan GRATIS, a propósito)");
   const hoy = new Date().getUTCDay();
   const creado = await yo("/api/tareas", {
     method: "POST",

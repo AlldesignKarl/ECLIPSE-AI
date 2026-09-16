@@ -30,9 +30,14 @@ export const maxDuration = 60;
 /**
  * Programar: los encargos que ECLIPSE hace solo.
  *
- * Del plan Pro y con cuenta, por lo mismo que las conexiones: esto vive en el
- * servidor y corre cuando no hay nadie delante, así que necesita saber de quién
- * es. Se comprueba aquí en cada petición y no en la pantalla.
+ * GRATIS desde que Carlos lo dijo: "lo de grupos para chatear y programar
+ * quiero que esté en gratis".
+ *
+ * Lo que sí hace falta es CUENTA, y eso no es una puerta de pago: es que un
+ * encargo corre en el servidor de madrugada, cuando no hay nadie delante, y sin
+ * saber de quién es no hay a quién entregarle el parte. El tope diario de
+ * mensajes sigue siendo el de cada plan, así que esto no se puede usar para
+ * saltárselo.
  */
 
 async function puerta(): Promise<{ error: string; code: string; status: number } | { email: string }> {
@@ -42,9 +47,6 @@ async function puerta(): Promise<{ error: string; code: string; status: number }
       code: "no_store",
       status: 503,
     };
-  if ((await currentPlan()) !== "pro")
-    return { error: "Programar encargos es del plan Pro.", code: "solo_pro", status: 402 };
-
   const email = await currentUser();
   if (!email)
     return {

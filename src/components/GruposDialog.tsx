@@ -126,11 +126,9 @@ function encogerFoto(fichero: File): Promise<string> {
 interface Props {
   open: boolean;
   onClose: () => void;
-  plan: Plan;
-  onUpgrade: () => void;
 }
 
-export default function GruposDialog({ open, onClose, plan, onUpgrade }: Props) {
+export default function GruposDialog({ open, onClose }: Props) {
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [dentro, setDentro] = useState<Grupo | null>(null);
   const [sinCuenta, setSinCuenta] = useState(false);
@@ -314,24 +312,7 @@ export default function GruposDialog({ open, onClose, plan, onUpgrade }: Props) 
           </div>
         )}
 
-        {plan !== "pro" && !sinCuenta ? (
-          <div className="rounded-xl border border-pro/25 bg-gradient-to-r from-pro/10 to-transparent p-4">
-            <div className="flex items-center gap-2 text-[13.5px] font-medium text-ink">
-              <Icon.Sparkle width={15} height={15} className="text-pro" />
-              Crear un grupo es del plan Pro
-            </div>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
-              Montas el grupo, invitas a quien quieras y todos le preguntáis a ECLIPSE en el mismo
-              sitio. Ellos no necesitan Pro para entrar: solo paga quien monta la mesa.
-            </p>
-            <button
-              onClick={onUpgrade}
-              className="mt-3 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-void transition hover:opacity-90"
-            >
-              Ver el plan Pro
-            </button>
-          </div>
-        ) : !sinCuenta ? (
+        {!sinCuenta ? (
           <div>
             <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">
               Crear uno nuevo

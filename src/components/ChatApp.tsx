@@ -1408,15 +1408,7 @@ export default function ChatApp({
         }}
       />
 
-      <GruposDialog
-        open={gruposOpen}
-        onClose={() => setGruposOpen(false)}
-        plan={plan}
-        onUpgrade={() => {
-          setGruposOpen(false);
-          setUpgradeOpen(true);
-        }}
-      />
+      <GruposDialog open={gruposOpen} onClose={() => setGruposOpen(false)} />
 
       <ExamenDialog
         open={examenOpen}
@@ -1440,11 +1432,6 @@ export default function ChatApp({
       <ProgramarDialog
         open={programarOpen}
         onClose={() => setProgramarOpen(false)}
-        plan={plan}
-        onUpgrade={() => {
-          setProgramarOpen(false);
-          setUpgradeOpen(true);
-        }}
         onLeidos={() => setTareasNuevas(false)}
       />
 

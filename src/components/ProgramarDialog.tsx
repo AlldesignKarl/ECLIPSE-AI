@@ -102,13 +102,11 @@ const EJEMPLOS: { icono: string; titulo: string; instruccion: string; cuando: Cu
 interface Props {
   open: boolean;
   onClose: () => void;
-  plan: Plan;
-  onUpgrade: () => void;
   /** Para apagar el punto del menú cuando ya se han visto. */
   onLeidos?: () => void;
 }
 
-export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeidos }: Props) {
+export default function ProgramarDialog({ open, onClose, onLeidos }: Props) {
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [resultados, setResultados] = useState<Resultado[]>([]);
   const [problema, setProblema] = useState<string | null>(null);
@@ -201,7 +199,7 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
   }, []);
 
   useEffect(() => {
-    if (!open || plan !== "pro") return;
+    if (!open) return;
     void (async () => {
       const quedan = await recargar();
       await fetch("/api/tareas", {
@@ -215,10 +213,10 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
         await ponerseAlDia(quedan);
       }
     })();
-  }, [open, plan, recargar, ponerseAlDia, onLeidos]);
+  }, [open, recargar, ponerseAlDia, onLeidos]);
 
   useEffect(() => {
-    if (!open || plan !== "pro") return;
+    if (!open) return;
     void (async () => {
       try {
         const d = (await (await fetch("/api/conexiones")).json()) as { conexiones?: unknown[] };
@@ -227,7 +225,7 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
         setConectadas(null);
       }
     })();
-  }, [open, plan]);
+  }, [open]);
 
   const sinLeer = resultados.filter((r) => r.nueva).length;
 
@@ -280,32 +278,15 @@ export default function ProgramarDialog({ open, onClose, plan, onUpgrade, onLeid
         </div>
 
         {vista === "quedadas" && (
-          <Quedadas plan={plan} onUpgrade={onUpgrade} dentro={quedada} setDentro={setQuedada} />
+          <Quedadas dentro={quedada} setDentro={setQuedada} />
         )}
-        {vista === "encargos" && plan !== "pro" ? (
-          <div className="rounded-xl border border-pro/25 bg-gradient-to-r from-pro/10 to-transparent p-4">
-            <div className="flex items-center gap-2 text-[13.5px] font-medium text-ink">
-              <Icon.Sparkle width={15} height={15} className="text-pro" />
-              Programar es del plan Pro
-            </div>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
-              Le dejas dicho una vez qué quieres saber y te lo encuentras hecho: cómo va tu tienda,
-              planes para el finde, lo que tienes pendiente. Sin pedírselo cada vez.
-            </p>
-            <button
-              onClick={onUpgrade}
-              className="mt-3 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-void transition hover:opacity-90"
-            >
-              Ver el plan Pro
-            </button>
-          </div>
-        ) : vista === "encargos" && problema ? (
+        {vista === "encargos" && problema ? (
           <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
             <p className="text-[12.5px] leading-relaxed text-muted">{problema}</p>
           </div>
         ) : null}
 
-        {vista === "encargos" && plan === "pro" && !problema && (
+        {vista === "encargos" && !problema && (
           <>
             {/*
               Mientras se pone al día.
@@ -1020,13 +1001,9 @@ function Planificador({ tareas, onCreado }: { tareas: Tarea[]; onCreado: () => v
  * que no haya dos chats distintos que mantener, con uno quedándose atrás.
  */
 function Quedadas({
-  plan,
-  onUpgrade,
   dentro,
   setDentro,
 }: {
-  plan: Plan;
-  onUpgrade: () => void;
   dentro: Grupo | null;
   setDentro: (g: Grupo | null) => void;
 }) {
@@ -1091,26 +1068,6 @@ function Quedadas({
       setCreando(false);
     }
   };
-
-  if (plan !== "pro")
-    return (
-      <div className="rounded-xl border border-pro/25 bg-gradient-to-r from-pro/10 to-transparent p-4">
-        <div className="flex items-center gap-2 text-[13.5px] font-medium text-ink">
-          <Icon.Sparkle width={15} height={15} className="text-pro" />
-          Las quedadas son del plan Pro
-        </div>
-        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
-          Eliges un día, pones de qué va y se abre un chat con quien invites. Ellos no necesitan
-          Pro para entrar: paga quien monta la quedada.
-        </p>
-        <button
-          onClick={onUpgrade}
-          className="mt-3 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-void transition hover:opacity-90"
-        >
-          Ver el plan Pro
-        </button>
-      </div>
-    );
 
   return (
     <div className="space-y-4">

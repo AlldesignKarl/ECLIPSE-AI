@@ -2,7 +2,7 @@
 
 Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.45**
+usuario: **2.46**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -12,8 +12,9 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 ## 1. Resumen en tres líneas
 
 La aplicación está **en producción y funcionando**, con 77 pruebas en verde.
-Lo último: **Modo Examen**, para estudiar con tus propios apuntes sin que se
-invente ni una pregunta. Antes: un **router de motores** que manda cada pregunta a donde mejor se
+Lo último: **Grupos y Programar ya son gratis**. Antes: **Modo Examen**, para
+estudiar con tus propios apuntes sin que se invente ni una pregunta; y un
+**router de motores** que manda cada pregunta a donde mejor se
 resuelve sin que se note por fuera. Antes: ECLIPSE **aprende cómo le gusta a
 cada uno que le hablen** y se
 adapta poco a poco, con personalidad propia de partida. Antes de eso: los
@@ -42,10 +43,10 @@ Todo esto está hecho, probado y desplegado.
 | Zona | Estado |
 |---|---|
 | **Conexiones** (21 servicios) | Funciona. Catálogo con logos reales, buscador y categorías |
-| **Programar** | Funciona. Calendario de 14 días y plan automático, nuevos en esta sesión |
+| **Programar** | Funciona, y GRATIS. Calendario de quedadas + encargos con plan automático |
 | **Biblioteca** | Funciona. Arreglada en esta sesión: daba 401 |
 | **Llamadas** | Funciona. Arranca con la primera frase; voz de hombre o mujer |
-| **Grupos** | Funciona. ECLIPSE visible dentro, con interruptor de cuándo habla |
+| **Grupos** | Funciona, y GRATIS. ECLIPSE dentro con su interruptor, fotos y caras |
 | **Memoria** | Funciona. Nuevo en esta sesión |
 | **Ubicación** | Funciona sin claves (OpenStreetMap); mejor con Google Maps |
 | **Tema claro** | Funciona. Contraste medido: 17,2 texto / 14,7 burbuja / 16,3 código |
@@ -68,7 +69,30 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: Modo Examen
+## 3. Lo último: Grupos y Programar, gratis
+
+Carlos: *"lo de grupos para chatear y programar quiero que esté en gratis"*.
+Hecho, y quitado de todas partes: la puerta del servidor en las dos rutas, las
+cartelas de "es del plan Pro" en Grupos, en Programar y en las Quedadas, y las
+etiquetas PRO del menú.
+
+Los dos siguen pidiendo **cuenta**, y eso no es una puerta de pago disfrazada:
+en un grupo hay que saber quién habla, y un encargo corre de madrugada sin nadie
+delante, así que sin saber de quién es no hay a quién entregarle el parte. El
+tope diario de mensajes sigue siendo el de cada plan, así que esto no abre una
+puerta trasera al cupo.
+
+Siguen siendo de Pro: ECLIPSE CODE, modo Profundo, respuestas aceleradas,
+Conexiones y Modo Examen.
+
+Dos pruebas cambiaron a propósito, y aquí se dice: `grupos.test.mjs` comprobaba
+que crear sin Pro devolvía 402 y ahora comprueba lo contrario —que se crea—, y
+`programar-api.test.mjs` recorre ahora TODO el flujo con el plan gratis, sin
+desbloquear Pro en ningún momento.
+
+---
+
+## 3 bis. Antes: Modo Examen
 
 Estudiar con TUS apuntes. Lo que decide si esto sirve o no está en una sola
 idea, y Carlos la dejó dicha tres veces: **si algo no aparece en los materiales,

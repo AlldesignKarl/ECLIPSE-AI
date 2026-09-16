@@ -101,12 +101,8 @@ try {
   const correoAna = `ana${Date.now()}@ejemplo.com`;
   await ana("/api/auth", { method: "POST", body: JSON.stringify({ action: "signup", email: correoAna, password: "eclipse2026", nombre: "Ana" }) });
 
-  const sinPro = await ana("/api/grupos", { method: "POST", body: JSON.stringify({ nombre: "El viaje" }) });
-  ok(sinPro.estado === 402, `crear sin Pro se rechaza (${sinPro.estado})`);
-
-  await ana("/api/pro", { method: "POST", body: JSON.stringify({ code: "ECLIPSE-PRO" }) });
   const creado = await ana("/api/grupos", { method: "POST", body: JSON.stringify({ nombre: "El viaje" }) });
-  ok(creado.estado === 200 && creado.json?.grupo?.id, "con Pro se crea");
+  ok(creado.estado === 200 && creado.json?.grupo?.id, "se crea sin tener Pro: los grupos son gratis");
   ok(creado.json?.grupo?.soyDueno === true, "y quien lo crea es el dueño");
   ok(Boolean(creado.json?.grupo?.invitacion), "con su invitación");
   const grupo = creado.json.grupo;

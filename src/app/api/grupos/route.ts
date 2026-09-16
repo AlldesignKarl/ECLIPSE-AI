@@ -32,10 +32,14 @@ export const maxDuration = 60;
 /**
  * Los grupos.
  *
- * Una decisión que importa: CREAR un grupo es del plan Pro, pero ENTRAR en uno
- * no. Si para unirte a un grupo hiciera falta pagar, los grupos no existirían:
- * quien lo crea invita a cinco amigos y cinco de cinco se dan la vuelta en la
- * puerta. Paga quien monta la mesa, no quien se sienta.
+ * GRATIS, y lo decidió Carlos: "lo de grupos para chatear y programar quiero
+ * que esté en gratis".
+ *
+ * Tiene todo el sentido y por eso el gratis aquí no es una rebaja: un grupo es
+ * la única parte de ECLIPSE que no se usa solo. Cobrarle a quien monta la mesa
+ * era cobrarle por traer a cinco personas que no pagaban nada, y el que se lo
+ * pensaba dos veces dejaba fuera a los otros cinco. Lo único que hace falta es
+ * cuenta, porque en un grupo hay que saber quién habla.
  */
 
 function no(error: string, status: number, code?: string) {
@@ -169,7 +173,6 @@ export async function POST(req: NextRequest) {
     return Response.json({ grupo: comoSeVe(r.grupo, email), yaEstaba: r.yaEstaba });
   }
 
-  if ((await currentPlan()) !== "pro") return no("Crear grupos es del plan Pro.", 402, "solo_pro");
 
   const nombre = (cuerpo.nombre ?? "").replace(/\s+/g, " ").trim();
   if (!nombre) return no("Ponle un nombre al grupo.", 400);

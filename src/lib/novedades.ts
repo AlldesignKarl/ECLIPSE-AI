@@ -27,6 +27,18 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.46",
+    // Grupos y Programar dejan de ser de pago.
+    nombre: "Para todos",
+    titulo: "Grupos y Programar ya son gratis",
+    entrada: "Sin plan Pro y sin límite de tiempo. Solo hace falta tener cuenta.",
+    puntos: [
+      "Crear grupos y quedadas ya no pide Pro. Montas el grupo, invitas a quien quieras y todos le habláis a ECLIPSE en el mismo sitio.",
+      "Programar tampoco: le dejas dicho una vez qué quieres saber —cómo van tus pedidos, planes para el finde, lo que tienes pendiente— y te lo encuentras hecho.",
+      "Lo único que hace falta es cuenta, y no por dinero: en un grupo hay que saber quién habla, y un encargo corre de madrugada cuando tú no estás, así que hay que saber a quién entregarle el parte.",
+    ],
+  },
+  {
     version: "2.45",
     // Modo Examen: estudiar con tus propios apuntes, sin invenciones.
     nombre: "Modo Examen",
