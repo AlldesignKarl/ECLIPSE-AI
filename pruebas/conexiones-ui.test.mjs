@@ -194,8 +194,19 @@ try {
   await cabGmail.click();
   await p.waitForTimeout(600);
   const conGmail = await p.evaluate(() => document.body.innerText);
-  ok(/todavía no tiene configurado el acceso con Google/i.test(conGmail),
+  ok(/Todavía no se puede conectar Gmail en este servidor/i.test(conGmail),
      "se dice que falta configurarlo en el servidor, sin códigos ni tecnicismos");
+  ok(/cosa de quien lo administra, no tuya/i.test(conGmail),
+     "y de quién depende, para no quedarse buscando qué has hecho mal");
+  /*
+    Y el botón de la fila no puede poner "Conectar".
+
+    Es justo lo que pulsó Carlos: ponía Conectar y solo abría y cerraba la
+    ficha. Un botón que promete algo que el servidor no puede hacer todavía es
+    peor que un botón apagado.
+  */
+  ok((await p.getByRole("button", { name: "Sin configurar" }).count()) > 0,
+     "y el botón de la fila lo dice en vez de prometer que conecta");
   ok((await p.getByRole("link", { name: "Conectar con Google" }).count()) === 0,
      "y no se enseña un botón que no llevaría a ninguna parte");
   ok(!/pulsa «Conectar con Google»/i.test(conGmail),
@@ -206,6 +217,8 @@ try {
   );
   ok(aGoogle.length === 0,
      `ni un enlace a la cuenta de Google, que es donde se QUITA el permiso y no donde se da (${aGoogle.join(" · ")})`);
+
+  await p.screenshot({ path: AQUI + "cx8-gmail-sin-google.png" });
 
   ok(errores.length === 0, `sin errores de JavaScript (${errores.slice(0, 2).join(" | ")})`);
 } finally {

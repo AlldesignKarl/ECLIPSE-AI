@@ -146,6 +146,15 @@ permiso, solo DESPUÉS de conectar y diciendo lo que es. Y si el servidor no
 tiene Google configurado no se enseñan ni el botón ni unos pasos que empiezan
 por pulsarlo.
 
+**6. Y el botón de conectar conecta.** Pulsarlo en un servicio de permiso
+desplegaba la ficha y ya: *"solo abre y cierra eso con las instrucciones"*. En
+los de clave desplegar está bien —dentro hay un formulario— pero en los de
+permiso no hay nada que rellenar, así que ahora va DERECHO a la pantalla de
+Google, desde el catálogo y desde la ficha del agente. Y cuando el servidor no
+tiene Google configurado, el botón deja de poner "Conectar": pone "Sin
+configurar", y lo que impide conectar se lee ARRIBA de la ficha en vez de
+debajo de las cuatro cosas que el servicio sabe hacer.
+
 **Comprobado, no prometido.** `pruebas/gmail.test.mjs` (el baile de OAuth y las
 acciones de Gmail, pieza a pieza) y `pruebas/gmail-api.test.mjs` (la aplicación
 levantada: conectar exige Pro y cuenta, la firma manda sobre la cookie, INBOX se

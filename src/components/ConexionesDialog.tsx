@@ -396,47 +396,94 @@ function Tarjeta({
         abierto ? "border-line bg-panel/60" : "border-line-soft bg-panel/30 hover:border-line"
       }`}
     >
-      <button onClick={onAbrir} className="flex w-full items-center gap-3 text-left">
-        <LogoDe servicio={servicio} />
+      <div className="flex w-full items-center gap-3">
+        <button onClick={onAbrir} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+          <LogoDe servicio={servicio} />
 
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className="truncate text-[14px] font-medium text-ink">{servicio.nombre}</span>
-            {servicio.conectado && (
-              <span className="shrink-0 rounded-md bg-panel px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-faint">
-                {servicio.permiso === "escribir" ? "puede cambiar" : "solo lee"}
-              </span>
-            )}
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              <span className="truncate text-[14px] font-medium text-ink">{servicio.nombre}</span>
+              {servicio.conectado && (
+                <span className="shrink-0 rounded-md bg-panel px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-faint">
+                  {servicio.permiso === "escribir" ? "puede cambiar" : "solo lee"}
+                </span>
+              )}
+            </span>
+            {/*
+              Dos líneas y punto. `block` sobra aquí y además estorbaba: pisaba
+              el `display` que necesita el recorte, y cada fila se estiraba a
+              cinco líneas hasta dejar el catálogo en cuatro servicios por
+              pantalla. Lo largo se lee al abrir el servicio.
+            */}
+            <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-muted">
+              {servicio.conectado ? servicio.cuenta : servicio.resumen}
+            </span>
           </span>
-          {/*
-            Dos líneas y punto. `block` sobra aquí y además estorbaba: pisaba
-            el `display` que necesita el recorte, y cada fila se estiraba a
-            cinco líneas hasta dejar el catálogo en cuatro servicios por
-            pantalla. Lo largo se lee al abrir el servicio.
-          */}
-          <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-muted">
-            {servicio.conectado ? servicio.cuenta : servicio.resumen}
-          </span>
-        </span>
+        </button>
 
         {/*
-          El botón a la derecha, como en cualquier catálogo de aplicaciones: es
-          donde la mano lo busca, y dice de un vistazo qué está puesto y qué no
-          sin tener que leer nada.
+          El botón de la derecha, y lo que hace al pulsarlo.
+
+          Antes SIEMPRE abría la ficha. En los de clave está bien: dentro hay un
+          formulario que rellenar. En los de permiso no hay nada que rellenar, y
+          entonces un botón que pone "Conectar" y solo despliega un texto es una
+          promesa incumplida —Carlos: *"el botón de conectar no funciona, solo
+          abre y cierra eso con las instrucciones"*—. Así que en esos va DIRECTO
+          a la pantalla de permisos, que es lo que dice que hace.
+
+          Y cuando ese permiso no está configurado en el servidor, deja de
+          prometer: no pone "Conectar", pone lo que pasa.
         */}
-        <span
-          className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition ${
-            servicio.conectado
-              ? "border border-ok/40 text-ok"
-              : "bg-ink text-void"
-          }`}
-        >
-          {servicio.conectado ? "Conectado" : "Conectar"}
-        </span>
-      </button>
+        {servicio.oauth && !servicio.conectado ? (
+          puede && servicio.oauthListo ? (
+            <a
+              href={`/api/conexiones/oauth/${servicio.id}?empezar=1`}
+              className="shrink-0 rounded-full bg-ink px-3.5 py-1.5 text-[12.5px] font-medium text-void transition hover:opacity-90"
+            >
+              Conectar
+            </a>
+          ) : (
+            <button
+              onClick={onAbrir}
+              className="shrink-0 rounded-full border border-line px-3.5 py-1.5 text-[12.5px] font-medium text-faint transition"
+            >
+              {servicio.oauthListo === false ? "Sin configurar" : "Conectar"}
+            </button>
+          )
+        ) : (
+          <button
+            onClick={onAbrir}
+            className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition ${
+              servicio.conectado ? "border border-ok/40 text-ok" : "bg-ink text-void"
+            }`}
+          >
+            {servicio.conectado ? "Conectado" : "Conectar"}
+          </button>
+        )}
+      </div>
 
       {abierto && (
         <div className="mt-3.5 space-y-3.5 border-t border-line-soft pt-3.5">
+          {/*
+            Lo que impide conectar va PRIMERO.
+
+            Estaba debajo de las cuatro cosas que sabe hacer, así que había que
+            leerse el catálogo entero para enterarse de que no se podía conectar
+            todavía. Lo que te para se lee antes que lo que te promete.
+          */}
+          {servicio.oauth && servicio.oauthListo === false && !servicio.conectado && (
+            <div className="rounded-xl border border-pro/25 bg-pro/[0.06] p-3">
+              <p className="text-[12.5px] leading-relaxed text-ink">
+                Todavía no se puede conectar {servicio.nombre} en este servidor.
+              </p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                Conectarlo va con un permiso de Google, y para eso el servidor necesita tener dada
+                de alta su aplicación en Google. Es cosa de quien lo administra, no tuya: no hay
+                nada que puedas hacer desde aquí todavía.
+              </p>
+            </div>
+          )}
+
           <div>
             <div className="mb-1 text-[11.5px] uppercase tracking-wide text-faint">Qué sabe hacer</div>
             <ul className="space-y-1">
@@ -568,17 +615,13 @@ function Tarjeta({
                     >
                       Conectar con Google
                     </a>
-                  ) : (
-                    <p className="rounded-xl border border-line-soft bg-panel/40 p-3 text-[12px] leading-relaxed text-muted">
-                      Este servidor todavía no tiene configurado el acceso con Google, así que el
-                      botón no llevaría a ninguna parte. En cuanto esté, {servicio.nombre} se conecta
-                      desde aquí en dos toques.
+                  ) : null}
+                  {servicio.oauthListo !== false && (
+                    <p className="text-[11px] leading-relaxed text-faint">
+                      Se conecta pudiendo mirar y no tocar. Si quieres que además escriba, se activa
+                      aquí después, cuando veas que acierta.
                     </p>
                   )}
-                  <p className="text-[11px] leading-relaxed text-faint">
-                    Se conecta pudiendo mirar y no tocar. Si quieres que además escriba, se activa
-                    aquí después, cuando veas que acierta.
-                  </p>
                 </div>
               ) : (
                 <>

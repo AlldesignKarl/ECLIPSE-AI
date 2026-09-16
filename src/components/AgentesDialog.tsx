@@ -615,12 +615,30 @@ function Panel({
                       {!c.oauth && c.pasos[0] && (
                         <p className="mt-0.5 text-[11px] leading-relaxed text-faint">{c.pasos[0]}</p>
                       )}
-                      <button
-                        onClick={() => onConectar(c.servicio)}
-                        className="mt-1.5 rounded-lg bg-ink px-3 py-1 text-[11.5px] font-medium text-void transition hover:opacity-90"
-                      >
-                        {c.oauth ? `Conectar ${c.nombre} con Google` : `Conectar ${c.nombre}`}
-                      </button>
+                      {/*
+                        Y el botón hace lo que dice.
+
+                        En los de permiso va DIRECTO a la pantalla del
+                        proveedor: no hay nada que rellenar, así que pasar antes
+                        por Conexiones es un toque de más para leer lo mismo. En
+                        los de clave sí lleva a Conexiones, que es donde está el
+                        formulario y los pasos para conseguirla.
+                      */}
+                      {c.oauth && c.oauthListo ? (
+                        <a
+                          href={`/api/conexiones/oauth/${c.servicio}?empezar=1`}
+                          className="mt-1.5 inline-block rounded-lg bg-ink px-3 py-1 text-[11.5px] font-medium text-void transition hover:opacity-90"
+                        >
+                          Conectar {c.nombre} con Google
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => onConectar(c.servicio)}
+                          className="mt-1.5 rounded-lg bg-ink px-3 py-1 text-[11.5px] font-medium text-void transition hover:opacity-90"
+                        >
+                          {c.oauth ? `Ver por qué no se puede todavía` : `Conectar ${c.nombre}`}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

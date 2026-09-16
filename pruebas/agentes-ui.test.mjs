@@ -9,6 +9,7 @@ import { spawn } from "node:child_process";
 import { readFileSync, existsSync, unlinkSync, openSync } from "node:fs";
 import { createServer as unPuerto } from "node:net";
 import { crear, ESPERADO } from "./apis-falsas.mjs";
+import { crear as crearGoogle, ESPERADO as GOOGLE } from "./google-falso.mjs";
 import { RAIZ, abrirNavegador } from "./entorno.mjs";
 
 const AQUI = new URL(".", import.meta.url).pathname;
@@ -17,6 +18,11 @@ const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 const apis = crear();
 await new Promise((r) => apis.listen(0, "127.0.0.1", r));
 const baseApis = `http://127.0.0.1:${apis.address().port}`;
+
+// El Google de mentira, para poder PULSAR el botón y ver dónde acaba uno.
+const { servidor: google } = crearGoogle();
+await new Promise((r) => google.listen(0, "127.0.0.1", r));
+const baseGoogle = `http://127.0.0.1:${google.address().port}`;
 
 const puertoRedis = `${AQUI}redis-agentes-ui.txt`;
 if (existsSync(puertoRedis)) unlinkSync(puertoRedis);
@@ -38,7 +44,10 @@ const app = spawn("npx", ["next", "start", "-p", String(PUERTO)], {
     CONEXION_BASE_NOTION: baseApis,
     // Google configurado: así la ficha de Gmail ofrece el botón de permiso en
     // vez de decir que este servidor no lo tiene puesto.
-    GOOGLE_OAUTH_ID: "id-de-mentira", GOOGLE_OAUTH_SECRET: "secreto-de-mentira",
+    GOOGLE_OAUTH_ID: GOOGLE.ID, GOOGLE_OAUTH_SECRET: GOOGLE.SECRETO,
+    CONEXION_BASE_OAUTH_GOOGLE: `${baseGoogle}/oauth/auth`,
+    CONEXION_BASE_OAUTH_GOOGLE_TOKEN: `${baseGoogle}/oauth/token`,
+    CONEXION_BASE_GMAIL: `${baseGoogle}/gmail/v1/users/me`,
   },
 });
 const URL_APP = `http://127.0.0.1:${PUERTO}`;
@@ -97,24 +106,8 @@ try {
   ok(/Incluido/i.test(texto), "el agente incluido en Pro no se anuncia como «0 €»");
   await p.screenshot({ path: `${AQUI}ag1-inbox.png` });
 
-  const botonGmail = p.getByRole("button", { name: /Conectar Gmail con Google/ }).first();
-  ok(await botonGmail.isVisible(), "y hay un botón para conectarlo, ahí mismo");
-
-  console.log("\nY el botón lleva a donde se hace");
-  await botonGmail.click();
-  await p.waitForTimeout(1800);
-  ok(await p.getByRole("heading", { name: "Conexiones" }).first().isVisible().catch(() => false)
-     || /Conexiones/.test(await p.evaluate(() => document.body.innerText)),
-     "se abre Conexiones");
-  const enConexiones = await p.evaluate(() => document.body.innerText);
-  ok(/cómo se conecta/i.test(enConexiones),
-     "con la ficha de Gmail ya ABIERTA: sus pasos delante, sin buscarla entre veintidós");
-  ok(/Pulsa «Conectar con Google»/.test(enConexiones), "y con los pasos de Gmail, no los de otro");
-  ok(await p.getByRole("link", { name: "Conectar con Google" }).first().isVisible(),
-     "y el botón de permiso de Google, que es todo lo que hay que hacer");
-
   /*
-    Y NADA que lleve a otro sitio.
+    Y NADA que lleve a otro sitio que no sea conectar.
 
     Aquí había un "Abrir Gmail" que apuntaba a la lista de aplicaciones
     vinculadas de tu cuenta de Google —donde se QUITA el permiso, no donde se
@@ -122,21 +115,41 @@ try {
     en una lista donde por definición todavía no podía estar.
   */
   const enlaces = await p.evaluate(() =>
-    [...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href")),
+    [...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href") ?? ""),
   );
-  ok(!enlaces.some((h) => /myaccount\.google\.com/.test(h ?? "")),
-     `antes de conectar no hay ningún enlace a la cuenta de Google: ahí no habría nada que ver (${
-       enlaces.filter((h) => /google/.test(h ?? "")).join(" · ") || "ninguno"
+  ok(!enlaces.some((h) => /myaccount\.google\.com/.test(h)),
+     `no hay ningún enlace a la cuenta de Google, que es donde se QUITA el permiso (${
+       enlaces.filter((h) => /google/.test(h)).join(" · ") || "ninguno"
      })`);
-  const aFuera = enlaces.filter((h) => /^https?:/.test(h ?? ""));
-  ok(aFuera.length === 0,
-     `y lo único que se puede pulsar es conectar, no irse a otra web (${aFuera.join(" · ")})`);
-  await p.screenshot({ path: `${AQUI}ag2-gmail.png` });
+
+  const botonGmail = p.getByRole("link", { name: /Conectar Gmail con Google/ }).first();
+  ok(await botonGmail.isVisible(), "y hay un botón para conectarlo, ahí mismo");
+  ok((await botonGmail.getAttribute("href")) === "/api/conexiones/oauth/gmail?empezar=1",
+     "que apunta a empezar el permiso, no a abrir otra pantalla");
+  await p.screenshot({ path: `${AQUI}ag1-inbox.png` });
+
+  /*
+    Y al pulsarlo, se ACABA en Google.
+
+    Esto es lo que Carlos no conseguía: *"el botón de conectar no funciona, solo
+    abre y cierra eso con las instrucciones"*. Un botón que dice conectar y
+    despliega un texto no conecta. Aquí se pulsa de verdad y se mira dónde
+    aterriza el navegador.
+  */
+  console.log("\nY al pulsarlo se acaba en Google, no en otra pantalla de la app");
+  await botonGmail.click();
+  await p.waitForURL(/oauth\/auth/, { timeout: 15_000 }).catch(() => {});
+  const donde = new URL(p.url());
+  ok(p.url().startsWith(`${baseGoogle}/oauth/auth`), `el navegador acaba en Google (${p.url().slice(0, 80)})`);
+  ok(donde.searchParams.get("access_type") === "offline", "pidiendo un permiso de los que duran");
+  ok(Boolean(donde.searchParams.get("state")), "y con el estado firmado, que es de quien lo empezó");
+  ok(donde.searchParams.get("redirect_uri")?.endsWith("/api/conexiones/oauth/gmail"),
+     "y con la vuelta a ECLIPSE");
 
   console.log("\nUn agente de los de clave dice otra cosa distinta");
-  // Se recarga en vez de ir cerrando a mano: así cada tramo empieza limpio y un
-  // modal que se quedó abierto no se cuela como un fallo de lo que se prueba.
-  await p.reload({ waitUntil: "networkidle" });
+  // Se vuelve a la aplicación por la puerta en vez de ir cerrando a mano: aquí
+  // el navegador está en Google, y además así cada tramo empieza limpio.
+  await p.goto(URL_APP, { waitUntil: "networkidle" });
   await p.waitForTimeout(1200);
   await abrirAgentes();
   await p.getByText("ECLIPSE SUPPORT").first().click();
@@ -146,16 +159,49 @@ try {
      "a los de clave les dice qué te van a pedir, que no es lo mismo que un permiso de Google");
   ok(/secreto de la integración/i.test(soporte),
      "y con las palabras de ESE servicio: Notion pide su secreto de integración");
-  ok(await p.getByRole("button", { name: /^Conectar Notion$/ }).first().isVisible(),
-     "con su botón, sin «con Google» donde no toca");
+  const botonNotion = p.getByRole("button", { name: /^Conectar Notion$/ }).first();
+  ok(await botonNotion.isVisible(), "con su botón, sin «con Google» donde no toca");
   await p.screenshot({ path: `${AQUI}ag3-support.png` });
+
+  /*
+    Y ESE sí lleva a Conexiones, porque ahí hay un formulario que rellenar.
+
+    Es la diferencia entre los dos caminos: donde no hay nada que escribir se va
+    derecho al proveedor; donde hay una clave que pegar se va a la ficha, con
+    sus pasos y su formulario, y abierta ya, no perdida entre veintidós.
+  */
+  console.log("\nY el de clave lleva a su ficha, que es donde está el formulario");
+  await botonNotion.click();
+  await p.waitForTimeout(1800);
+  const enConexiones = await p.evaluate(() => document.body.innerText);
+  ok(/cómo se conecta/i.test(enConexiones),
+     "se abre Conexiones con la ficha de Notion ya abierta");
+  ok(/notion\.so\/my-integrations/.test(enConexiones), "con los pasos de Notion, no los de otro");
+  ok(await p.getByRole("button", { name: /^Conectar Notion$/ }).first().isVisible(),
+     "y su botón de conectar, con el campo de la clave delante");
+  ok(await p.locator('input[type="password"]').first().isVisible(),
+     "que es lo que hay que rellenar, y por eso este camino sí pasa por aquí");
+  /*
+    Y en esa misma lista, el botón de la fila de Gmail tampoco despliega nada.
+
+    Es el que pulsó Carlos: ponía "Conectar" y solo abría y cerraba la ficha.
+    En un servicio de permiso no hay nada dentro que rellenar, así que ese botón
+    tiene que ser el camino a Google, no un acordeón.
+  */
+  const pastilla = await p.evaluate(() => {
+    const filas = [...document.querySelectorAll("a[href]")];
+    return filas.map((a) => a.getAttribute("href") ?? "").find((h) => /oauth\/gmail/.test(h)) ?? "";
+  });
+  ok(pastilla === "/api/conexiones/oauth/gmail?empezar=1",
+     `en el catálogo, el botón de Gmail lleva a dar el permiso (${pastilla || "no lleva a ninguna parte"})`);
+  await p.screenshot({ path: `${AQUI}ag4-notion.png` });
 
   console.log("\nLo ya conectado deja de pedir nada");
   await p.evaluate((token) => fetch("/api/conexiones", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ servicio: "notion", campos: { token } }),
   }), ESPERADO.TOKEN_NOTION);
-  await p.reload({ waitUntil: "networkidle" });
+  await p.goto(URL_APP, { waitUntil: "networkidle" });
   await p.waitForTimeout(1200);
   await abrirAgentes();
   await p.getByText("ECLIPSE SUPPORT").first().click();
@@ -171,6 +217,7 @@ try {
   await ctx.close().catch(() => {});
   await navegador.close().catch(() => {});
   apis.close();
+  google.close();
   try { process.kill(-app.pid, "SIGKILL"); } catch { app.kill("SIGKILL"); }
   redis.kill();
   if (existsSync(puertoRedis)) unlinkSync(puertoRedis);

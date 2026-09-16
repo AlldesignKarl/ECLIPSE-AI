@@ -481,6 +481,14 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
   de Google, que es donde se QUITA el permiso: antes de conectar ahí no hay
   nada, y Carlos acabó justo en esa pantalla buscando ECLIPSE entre Brawl Stars
   y WhatsApp. Después de conectar sí sale, y dice lo que es.
+- **Que el botón de una conexión de OAuth vaya DIRECTO al proveedor, y no
+  despliegue la ficha.** En los de clave desplegar está bien: dentro hay un
+  formulario. En los de permiso no hay nada que rellenar, así que un botón que
+  pone "Conectar" y solo abre un texto es una promesa incumplida —Carlos:
+  *"el botón de conectar no funciona, solo abre y cierra eso con las
+  instrucciones"*—. Vale para el catálogo de Conexiones y para la ficha de un
+  agente. Y cuando el proveedor no está configurado en el servidor, ese botón
+  deja de decir "Conectar" y dice lo que pasa.
 - **Las 82 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
