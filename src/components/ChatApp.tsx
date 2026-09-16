@@ -125,6 +125,9 @@ export default function ChatApp({
 
   const [plan, setPlan] = useState<Plan>("free");
   const [conexionesOpen, setConexionesOpen] = useState(false);
+  // Qué conexión hay que abrir al entrar. Se pone cuando se llega desde un
+  // agente al que le falta esa cuenta; así no hay que buscarla entre 22.
+  const [conexionPedida, setConexionPedida] = useState<string | null>(null);
   const [programarOpen, setProgramarOpen] = useState(false);
   const [bibliotecaOpen, setBibliotecaOpen] = useState(false);
   const [llamando, setLlamando] = useState(false);
@@ -1264,7 +1267,10 @@ export default function ChatApp({
         onRename={(id, title) => upsert(id, (c) => ({ ...c, title }))}
         onUpgrade={() => setUpgradeOpen(true)}
         onSettings={() => setSettingsOpen(true)}
-        onConexiones={() => setConexionesOpen(true)}
+        onConexiones={() => {
+          setConexionPedida(null);
+          setConexionesOpen(true);
+        }}
         onProgramar={() => setProgramarOpen(true)}
         onBiblioteca={() => setBibliotecaOpen(true)}
         onGrupos={() => setGruposOpen(true)}
@@ -1365,7 +1371,10 @@ export default function ChatApp({
               <Welcome
                 plan={plan}
                 mode={mode}
-                onConectar={() => setConexionesOpen(true)}
+                onConectar={() => {
+                  setConexionPedida(null);
+                  setConexionesOpen(true);
+                }}
               />
             ) : (
               <>
@@ -1476,7 +1485,18 @@ export default function ChatApp({
 
       <GruposDialog open={gruposOpen} onClose={() => setGruposOpen(false)} />
 
-      <AgentesDialog open={agentesOpen} onClose={() => setAgentesOpen(false)} />
+      <AgentesDialog
+        open={agentesOpen}
+        onClose={() => setAgentesOpen(false)}
+        onConectar={(servicio) => {
+          // Los dos modales a la vez son un fondo oscuro por encima del de
+          // dentro: se ve todo y no responde nada. Se cierra Agentes y se abre
+          // Conexiones ya puesto en lo que hacía falta.
+          setAgentesOpen(false);
+          setConexionPedida(servicio);
+          setConexionesOpen(true);
+        }}
+      />
 
       <ExamenDialog
         open={examenOpen}
@@ -1505,7 +1525,11 @@ export default function ChatApp({
 
       <ConexionesDialog
         open={conexionesOpen}
-        onClose={() => setConexionesOpen(false)}
+        onClose={() => {
+          setConexionesOpen(false);
+          setConexionPedida(null);
+        }}
+        empezarEn={conexionPedida}
         plan={plan}
         onUpgrade={() => {
           setConexionesOpen(false);

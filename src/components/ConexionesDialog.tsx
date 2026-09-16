@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { logoDe } from "@/lib/conexiones/logos";
 import Modal from "./Modal";
 import * as Icon from "./Icons";
@@ -93,9 +93,17 @@ interface Props {
   onClose: () => void;
   plan: Plan;
   onUpgrade: () => void;
+  /**
+   * Abrir directamente la ficha de este servicio.
+   *
+   * Se llega aquí desde un agente al que le falta una cuenta: mandarle a la
+   * lista entera y que busque "Gmail" entre veintidós es exactamente el paso
+   * donde la gente se cae. Se le abre lo suyo, con sus pasos delante.
+   */
+  empezarEn?: string | null;
 }
 
-export default function ConexionesDialog({ open, onClose, plan, onUpgrade }: Props) {
+export default function ConexionesDialog({ open, onClose, plan, onUpgrade, empezarEn }: Props) {
   const [estado, setEstado] = useState<Estado | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -117,6 +125,15 @@ export default function ConexionesDialog({ open, onClose, plan, onUpgrade }: Pro
   useEffect(() => {
     if (open) void recargar();
   }, [open, recargar]);
+
+  // Al abrir con un servicio pedido, se limpian buscador y categoría: si no, la
+  // ficha que se acaba de abrir puede quedar filtrada fuera y no se ve nada.
+  useEffect(() => {
+    if (!open || !empezarEn) return;
+    setBusca("");
+    setCategoria("todo");
+    setAbierto(empezarEn);
+  }, [open, empezarEn]);
 
   const conectados = estado?.servicios.filter((s) => s.conectado).length ?? 0;
 
@@ -192,6 +209,7 @@ export default function ConexionesDialog({ open, onClose, plan, onUpgrade }: Pro
                     servicio={s}
                     puede={plan === "pro" && Boolean(estado.conCuenta && estado.almacen)}
                     abierto={abierto === s.id}
+                    traido={empezarEn === s.id}
                     onAbrir={() => setAbierto(abierto === s.id ? null : s.id)}
                     onCambio={recargar}
                   />
@@ -286,15 +304,19 @@ function Tarjeta({
   servicio,
   puede,
   abierto,
+  traido,
   onAbrir,
   onCambio,
 }: {
   servicio: Servicio;
   puede: boolean;
   abierto: boolean;
+  /** Se ha llegado aquí buscando ESTE: hay que enseñarlo, no dejarlo abajo. */
+  traido?: boolean;
   onAbrir: () => void;
   onCambio: () => void;
 }) {
+  const caja = useRef<HTMLDivElement>(null);
   const [valores, setValores] = useState<Record<string, string>>({});
   const [escribir, setEscribir] = useState(servicio.permiso === "escribir");
   const [busy, setBusy] = useState(false);
@@ -303,6 +325,13 @@ function Tarjeta({
   useEffect(() => {
     setEscribir(servicio.permiso === "escribir");
   }, [servicio.permiso]);
+
+  // Venir de un agente y aterrizar en mitad de una lista de veintidós, con lo
+  // tuyo abierto pero fuera de la pantalla, se parece demasiado a que no pase
+  // nada. Se sube solo.
+  useEffect(() => {
+    if (traido && abierto) caja.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [traido, abierto]);
 
   const completo = servicio.campos.every((c) => (valores[c.id] ?? "").trim());
 
@@ -362,7 +391,8 @@ function Tarjeta({
 
   return (
     <div
-      className={`rounded-xl border p-3 transition ${
+      ref={caja}
+      className={`scroll-mt-2 rounded-xl border p-3 transition ${
         abierto ? "border-line bg-panel/60" : "border-line-soft bg-panel/30 hover:border-line"
       }`}
     >

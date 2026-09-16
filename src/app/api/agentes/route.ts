@@ -4,6 +4,8 @@ import { currentPlan } from "@/lib/plan-server";
 import { stripeAvailable } from "@/lib/stripe";
 import { abrirPasarela, comprobarPago, gratisPara, suscripcionViva } from "@/lib/agentes/cobro";
 import { misConexiones } from "@/lib/conexiones/almacen";
+import { servicioDe } from "@/lib/conexiones/registro";
+import { oauthListo, proveedorDe } from "@/lib/conexiones/oauth";
 import {
   agentesListos,
   cambiarConfig,
@@ -43,10 +45,59 @@ function no(error: string, status = 400, code?: string) {
 const texto = (v: unknown, tope: number) =>
   typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, tope) : "";
 
+/**
+ * Cómo se conecta CADA cosa que este agente necesita.
+ *
+ * Esto existe porque faltaba lo más obvio: la ficha decía "requiere conexión:
+ * Gmail" y ahí se acababa. Ni cómo, ni dónde, ni qué te van a pedir. Carlos lo
+ * dijo tal cual: *"te dice que no está conectado a Google, pero tampoco aparece
+ * nada de cómo hacerlo"*.
+ *
+ * Y no vale una instrucción genérica, porque no se parecen: Gmail se conecta
+ * dando permiso a Google y no pide nada que copiar; Shopify pide el dominio de
+ * la tienda y un token; Telegram pide el token del bot. Así que lo que sale de
+ * aquí es lo de CADA servicio, sacado del conector de verdad —sus pasos, sus
+ * campos, dónde se saca— y no una frase escrita a mano que se quedaría vieja el
+ * día que ese servicio cambie su panel.
+ */
+function comoSeConectan(
+  agente: { integraciones: { servicio: string; nombre: string; necesaria: boolean; pendiente?: boolean }[] },
+  mias: { servicio: string; cuenta: string; permiso: string }[],
+) {
+  const porId = new Map(mias.map((c) => [c.servicio, c]));
+
+  return agente.integraciones.map((i) => {
+    const servicio = servicioDe(i.servicio);
+    const puesta = porId.get(i.servicio);
+    const proveedor = servicio?.oauth ? proveedorDe(servicio.oauth) : undefined;
+
+    return {
+      servicio: i.servicio,
+      nombre: i.nombre,
+      necesaria: i.necesaria,
+      // `pendiente` en el catálogo es una promesa; que NO exista el conector es
+      // un hecho. Se manda el hecho, para que no puedan desviarse.
+      pendiente: Boolean(i.pendiente) || !servicio,
+      conectado: Boolean(puesta),
+      cuenta: puesta?.cuenta,
+      permiso: puesta?.permiso,
+      /** Se conecta dando permiso (Google) en vez de pegando una clave. */
+      oauth: servicio?.oauth,
+      /** Y si ese permiso está configurado en ESTE servidor. */
+      oauthListo: proveedor ? oauthListo(proveedor) : undefined,
+      /** Qué te van a pedir, con las palabras del propio conector. */
+      pide: (servicio?.campos ?? []).map((c) => c.etiqueta),
+      pasos: servicio?.pasos ?? [],
+      enlace: servicio?.enlace,
+    };
+  });
+}
+
 /** El catálogo con el estado real para esta empresa. */
 export async function GET(req: NextRequest) {
   const email = await quien();
-  const conectados = email ? (await misConexiones(email)).map((c) => c.servicio) : [];
+  const mias = email ? await misConexiones(email) : [];
+  const conectados = mias.map((c) => c.servicio);
   const contratos = email ? await contratosDe(email) : [];
 
   const url = new URL(req.url);
@@ -62,6 +113,7 @@ export async function GET(req: NextRequest) {
       contrato,
       diagnostico: estadoDe(agente, conectados),
       servicios: serviciosDe(agente, conectados),
+      conectores: comoSeConectan(agente, mias),
       registro: email && contrato ? await registroDe(email, uno) : [],
       pendientes: email ? (await pendientesDe(email)).filter((p) => p.agenteId === uno) : [],
       cobroListo: stripeAvailable(),

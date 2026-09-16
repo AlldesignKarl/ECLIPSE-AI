@@ -72,6 +72,28 @@ interface Ficha {
   herramientas: string[];
 }
 
+/**
+ * Cómo se conecta una cosa concreta que este agente necesita.
+ *
+ * Viene del conector de verdad, no de un texto escrito a mano: sus pasos, lo
+ * que te va a pedir y dónde se saca. Por eso puede decir la verdad de cada uno
+ * en vez de una frase genérica que sirve para ninguno.
+ */
+interface Conector {
+  servicio: string;
+  nombre: string;
+  necesaria: boolean;
+  pendiente: boolean;
+  conectado: boolean;
+  cuenta?: string;
+  permiso?: string;
+  oauth?: string;
+  oauthListo?: boolean;
+  pide: string[];
+  pasos: string[];
+  enlace?: string;
+}
+
 interface Apunte {
   id: string;
   cuando: number;
@@ -109,7 +131,16 @@ function cuandoDe(t: number): string {
   return `${d.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-export default function AgentesDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function AgentesDialog({
+  open,
+  onClose,
+  onConectar,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Llevar a Conexiones abriendo ESE servicio, que es donde se hace de verdad. */
+  onConectar: (servicio: string) => void;
+}) {
   const [lista, setLista] = useState<EnLista[]>([]);
   const [mensual, setMensual] = useState(0);
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -191,7 +222,7 @@ export default function AgentesDialog({ open, onClose }: { open: boolean; onClos
         />
       )}
 
-      {!problema && abierto && <Panel id={abierto} onCambio={cargar} />}
+      {!problema && abierto && <Panel id={abierto} onCambio={cargar} onConectar={onConectar} />}
     </Modal>
   );
 }
@@ -336,8 +367,17 @@ function Catalogo({
 
 /* --------------------------- Ficha y panel ------------------------------- */
 
-function Panel({ id, onCambio }: { id: string; onCambio: () => void }) {
+function Panel({
+  id,
+  onCambio,
+  onConectar,
+}: {
+  id: string;
+  onCambio: () => void;
+  onConectar: (servicio: string) => void;
+}) {
   const [ficha, setFicha] = useState<Ficha | null>(null);
+  const [conectores, setConectores] = useState<Conector[]>([]);
   const [contrato, setContrato] = useState<Contrato | null>(null);
   const [diagnostico, setDiagnostico] = useState<Diagnostico | null>(null);
   const [registro, setRegistro] = useState<Apunte[]>([]);
@@ -357,11 +397,13 @@ function Panel({ id, onCambio }: { id: string; onCambio: () => void }) {
       agente?: Ficha;
       contrato?: Contrato | null;
       diagnostico?: Diagnostico;
+      conectores?: Conector[];
       registro?: Apunte[];
       pendientes?: Pendiente[];
       cobroListo?: boolean;
     };
     if (d.agente) setFicha(d.agente);
+    setConectores(d.conectores ?? []);
     setContrato(d.contrato ?? null);
     setDiagnostico(d.diagnostico ?? null);
     setRegistro(d.registro ?? []);
@@ -509,31 +551,80 @@ function Panel({ id, onCambio }: { id: string; onCambio: () => void }) {
             </ul>
           </div>
 
+          {/*
+            Las integraciones, y CÓMO se conecta cada una.
+
+            Antes esto era una lista de puntitos: "Gmail · requiere conexión" y
+            se acababa ahí. Carlos lo dijo así: *"te dice que no está conectado
+            a Google, pero tampoco aparece nada de cómo hacerlo"*. Y cada una se
+            conecta distinto —Gmail con un permiso, Shopify con un dominio y un
+            token, Telegram con el token del bot—, así que lo que se enseña es
+            lo de CADA una, sacado de su conector, con el botón que lleva al
+            sitio donde se hace.
+          */}
           <div>
-            <div className="mb-1 text-[11.5px] uppercase tracking-wide text-faint">Integraciones</div>
-            <div className="space-y-1">
-              {ficha.integraciones.map((i) => {
-                const conectada = diagnostico.listas.some((l) => l.servicio === i.servicio);
-                return (
-                  <div key={i.servicio} className="flex items-center gap-2 text-[12px]">
-                    <span
-                      className={
-                        i.pendiente ? "text-faint" : conectada ? "text-ok" : "text-pro"
-                      }
-                    >
-                      {i.pendiente ? "○" : conectada ? "●" : "○"}
+            <div className="mb-1 text-[11.5px] uppercase tracking-wide text-faint">
+              Qué hay que conectarle
+            </div>
+            <div className="space-y-1.5">
+              {(conectores.length ? conectores : []).map((c) => (
+                <div
+                  key={c.servicio}
+                  className={`rounded-lg border px-3 py-2 ${
+                    c.conectado
+                      ? "border-line-soft bg-panel/30"
+                      : c.pendiente
+                        ? "border-line-soft bg-panel/20"
+                        : "border-pro/25 bg-pro/[0.05]"
+                  }`}
+                >
+                  <div className="flex items-baseline gap-2">
+                    <span className={c.pendiente ? "text-faint" : c.conectado ? "text-ok" : "text-pro"}>
+                      {c.conectado ? "●" : "○"}
                     </span>
-                    <span className="text-ink">{i.nombre}</span>
-                    <span className="text-faint">
-                      {i.pendiente
-                        ? "· todavía no se puede conectar"
-                        : conectada
-                          ? "· conectada"
-                          : `· requiere conexión${i.necesaria ? " (necesaria)" : ""}`}
+                    <span className="min-w-0 flex-1 text-[12.5px] text-ink">{c.nombre}</span>
+                    <span className="shrink-0 text-[11px] text-faint">
+                      {c.necesaria ? "necesaria" : "opcional"}
                     </span>
                   </div>
-                );
-              })}
+
+                  {c.conectado ? (
+                    <p className="mt-0.5 pl-5 text-[11.5px] leading-relaxed text-faint">
+                      Conectada{c.cuenta ? ` a ${c.cuenta}` : ""}
+                      {c.permiso === "escribir" ? " · puede hacer cambios" : " · solo mirar"}.
+                    </p>
+                  ) : c.pendiente ? (
+                    <p className="mt-0.5 pl-5 text-[11.5px] leading-relaxed text-faint">
+                      Todavía no se puede conectar: nos falta construir esa integración. No es que
+                      te falte a ti nada.
+                    </p>
+                  ) : (
+                    <div className="mt-1 pl-5">
+                      <p className="text-[11.5px] leading-relaxed text-muted">
+                        {c.oauth
+                          ? c.oauthListo === false
+                            ? "Se conecta dando permiso a Google, pero este servidor todavía no lo tiene configurado."
+                            : "Se conecta con tu cuenta de Google, en dos toques y sin darle ninguna contraseña."
+                          : c.pide.length
+                            ? `Te va a pedir: ${c.pide.join(", ").toLowerCase()}.`
+                            : "Se conecta desde Conexiones."}
+                      </p>
+                      {/* El primer paso, que es el que dice DÓNDE se saca. Los
+                          demás están enteros en su ficha de Conexiones, que es
+                          adonde lleva el botón. */}
+                      {!c.oauth && c.pasos[0] && (
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-faint">{c.pasos[0]}</p>
+                      )}
+                      <button
+                        onClick={() => onConectar(c.servicio)}
+                        className="mt-1.5 rounded-lg bg-ink px-3 py-1 text-[11.5px] font-medium text-void transition hover:opacity-90"
+                      >
+                        {c.oauth ? `Conectar ${c.nombre} con Google` : `Conectar ${c.nombre}`}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 

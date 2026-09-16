@@ -37,6 +37,7 @@ export const NOVEDADES: Novedad[] = [
       "ECLIPSE INBOX, el agente del correo, va INCLUIDO con el plan Pro: busca entre miles de correos, te dice qué tienes sin leer, abre el hilo que le pidas y te prepara la respuesta.",
       "Enviar es una decisión aparte. La conexión nace pudiendo mirar y no tocar, y si quieres puedes pedir que cada correo pase por tu aprobación antes de salir.",
       "Y tus agentes contratados salen ahora arriba del todo en Agentes, con su estado, en vez de perdidos dentro del catálogo.",
+      "Cada agente dice QUÉ hay que conectarle y CÓMO: con tu cuenta de Google unos, y otros diciéndote exactamente qué te va a pedir y dónde se saca. Con su botón al lado, que te deja la ficha abierta y lista.",
     ],
   },
   {

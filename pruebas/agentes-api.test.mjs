@@ -236,6 +236,29 @@ try {
   ok(activado.json?.contrato?.estado === "activo", "con el pago confirmado, el agente se activa");
   ok(Boolean(activado.json?.contrato?.suscripcion), "y se guarda su suscripción, para poder comprobar que sigue viva");
 
+  /*
+    Que la ficha DIGA CÓMO se conecta cada cosa.
+
+    Es lo que faltaba: "requiere conexión: HubSpot" y ahí se acababa. Ahora cada
+    integración llega con lo suyo —qué te va a pedir, dónde se saca— sacado del
+    conector de verdad, no de un texto escrito a mano que envejece solo.
+  */
+  console.log("\nLa ficha dice cómo se conecta cada cosa, y cada una es distinta");
+  const fichaSales = await yo("/api/agentes?id=sales");
+  const conectores = fichaSales.json?.conectores ?? [];
+  ok(conectores.length === fichaSales.json?.agente?.integraciones?.length,
+     `viene una por integración (${conectores.length})`);
+  const hs = conectores.find((c) => c.servicio === "hubspot");
+  ok(hs?.pide?.length >= 1 && hs.pasos.length >= 2,
+     `HubSpot dice qué pide y dónde se saca: ${JSON.stringify(hs?.pide)}`);
+  const sp = conectores.find((c) => c.servicio === "shopify");
+  ok(JSON.stringify(sp?.pide) !== JSON.stringify(hs?.pide),
+     "y no es el mismo texto para todos: Shopify pide otras cosas que HubSpot");
+  ok(conectores.every((c) => c.pendiente || c.pasos.length >= 2),
+     "ninguna se queda sin explicar, salvo las que aún no se pueden conectar");
+  ok(!JSON.stringify(conectores).includes(ESPERADO.TOKEN_NOTION),
+     "y al decir cómo se conecta no se filtra ninguna clave ya guardada");
+
   console.log("\nSin la conexión que necesita, tampoco trabaja");
   await activar(yo, "sales");
   const sinCrm = await yo("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "encargar", id: "sales", encargo: "dame los leads" }) });

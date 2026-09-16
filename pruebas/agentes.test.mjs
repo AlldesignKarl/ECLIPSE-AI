@@ -10,7 +10,7 @@ const jiti = await crearJiti(import.meta.url, { alias: { "@": SRC } });
 const { AGENTES, agenteDe, totalMensual } = await jiti.import(enSrc("lib/agentes/catalogo.ts"));
 const { estadoDe, serviciosDe, herramientasDe, puedeTrabajar, configPorDefecto } =
   await jiti.import(enSrc("lib/agentes/tipos.ts"));
-const { SERVICIOS } = await jiti.import(enSrc("lib/conexiones/registro.ts"));
+const { SERVICIOS, servicioDe } = await jiti.import(enSrc("lib/conexiones/registro.ts"));
 
 const fallos = [];
 const ok = (cond, que) => { console.log(`  ${cond ? "✓" : "✗"} ${que}`); if (!cond) fallos.push(que); };
@@ -43,6 +43,40 @@ ok(pendientes.includes("whatsapp") && pendientes.includes("outlook"),
 ok(!pendientes.includes("gmail"), "y Gmail ya NO: tiene conector, así que se puede conectar de verdad");
 ok(AGENTES.some((a) => a.integraciones.some((i) => i.servicio === "gmail" && !i.pendiente)),
    "y sale como integración conectable de quien la lleva");
+
+/*
+  Lo que faltaba y que Carlos encontró en cinco minutos: la ficha de un agente
+  decía "requiere conexión: Gmail" y ahí se acababa. Ni cómo, ni qué te van a
+  pedir. Esto comprueba que TODO lo que un agente dice necesitar se puede
+  conectar de verdad y que el conector explica cómo, en sus propias palabras.
+*/
+console.log("\nTodo lo que un agente pide se puede conectar, y se explica cómo");
+for (const a of AGENTES) {
+  const sinExplicar = [];
+  for (const i of a.integraciones) {
+    if (i.pendiente) continue;
+    const s = servicioDe(i.servicio);
+    // Pasos para saber DÓNDE se saca, y después o un botón de permiso (oauth)
+    // o al menos un campo que pegar. Sin una de las dos cosas, la ficha manda a
+    // alguien a una pantalla donde no hay nada que hacer.
+    if (!s || s.pasos.length < 2 || (!s.oauth && s.campos.length < 1)) sinExplicar.push(i.servicio);
+  }
+  ok(sinExplicar.length === 0,
+     `${a.nombre}: todas sus conexiones dicen cómo se hacen${sinExplicar.length ? ` (falta: ${sinExplicar})` : ""}`);
+}
+
+/*
+  Y al revés, que es lo que se pudre solo.
+
+  Gmail estuvo marcado `pendiente` meses; el día que tuvo conector, la marca se
+  quedó y la ficha seguía disculpándose por algo que ya se podía conectar. Una
+  marca de "todavía no" sobre algo que SÍ existe es peor que no tenerla.
+*/
+const marcadaYExiste = AGENTES.flatMap((a) =>
+  a.integraciones.filter((i) => i.pendiente && servicioDe(i.servicio)).map((i) => `${a.id}/${i.servicio}`),
+);
+ok(marcadaYExiste.length === 0,
+   `ninguna integración se disculpa por algo que ya tiene conector${marcadaYExiste.length ? ` (${marcadaYExiste})` : ""}`);
 
 console.log("\nSin conexiones, nadie finge estar listo");
 const sales = agenteDe("sales");

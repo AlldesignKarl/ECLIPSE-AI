@@ -138,7 +138,7 @@ src/
                                 toda la lógica y no toca la red
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        81 pruebas. Ver pruebas/LEEME.md
+pruebas/                        82 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -466,7 +466,16 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
   al contratar y en cada acción después.** Si solo se comprobara al contratar,
   quien se dio de alta siendo Pro se quedaría el agente para siempre; y si se
   comprobara en la pantalla, se activaría llamando a la API.
-- **Las 81 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que la ficha de un agente diga CÓMO se conecta cada cosa que le falta**
+  (`comoSeConectan` en `api/agentes`, y el botón que lleva a Conexiones con esa
+  ficha abierta). Una pantalla que te dice lo que te falta y no te dice cómo
+  conseguirlo es peor que no decir nada: te deja mirando. Y sale del conector de
+  verdad —sus pasos, sus campos— y no de un texto escrito a mano, que se
+  quedaría viejo el día que ese servicio cambie su panel.
+- **Que `ConexionesDialog` con `empezarEn` limpie buscador y categoría.** Si no,
+  la ficha que se acaba de abrir puede quedar filtrada fuera y no se ve nada,
+  que se parece demasiado a que el botón no hace nada.
+- **Las 82 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -479,7 +488,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 81 pruebas (~7 min)
+npm run prueba           # las 82 pruebas (~7 min)
 npm run prueba:ligeras   # las 60 que no abren navegador (~12 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

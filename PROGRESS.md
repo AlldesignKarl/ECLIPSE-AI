@@ -11,7 +11,7 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 81 pruebas en verde.
+La aplicación está **en producción y funcionando**, con 82 pruebas en verde.
 Lo último: **Gmail se conecta de verdad** (OAuth con Google, sin pedirle a nadie
 ninguna contraseña), hay un **agente del correo incluido en el plan Pro**
 (ECLIPSE INBOX) y **tus agentes contratados salen arriba del todo**. Antes: los
@@ -126,11 +126,24 @@ la dirección de vuelta `https://eclipse-ia.vercel.app/api/conexiones/oauth/gmai
 letra por letra. Sin esas dos variables, ECLIPSE lo dice en la pantalla en vez
 de enseñar un botón que no lleva a ninguna parte.
 
+**4. Cada agente dice qué conectarle y cómo.** Lo encontró Carlos en cinco
+minutos: la ficha decía *"requiere conexión: Gmail"* y ahí se acababa; ni cómo,
+ni dónde, ni qué te van a pedir. Ahora cada integración de cada agente llega con
+lo suyo, sacado del conector de verdad (`comoSeConectan` en `api/agentes`):
+Gmail dice que se conecta con tu cuenta de Google; Notion, que te va a pedir el
+secreto de la integración y dónde se saca; Shopify, el dominio y el token. Y
+cada una con su botón, que cierra Agentes y abre Conexiones **con esa ficha ya
+abierta y subida a la vista**, en vez de soltarte en una lista de veintidós.
+Lo ya conectado dice a qué cuenta y con qué permiso, y deja de ofrecer nada.
+
 **Comprobado, no prometido.** `pruebas/gmail.test.mjs` (el baile de OAuth y las
 acciones de Gmail, pieza a pieza) y `pruebas/gmail-api.test.mjs` (la aplicación
 levantada: conectar exige Pro y cuenta, la firma manda sobre la cookie, INBOX se
 activa sin pasarela, lee el correo de verdad, en solo lectura no sale ni un
-correo, con aprobación se PARA y al aprobar sale, y sin Pro se apaga).
+correo, con aprobación se PARA y al aprobar sale, y sin Pro se apaga). Y
+`pruebas/agentes-ui.test.mjs`, en un móvil de verdad: que la ficha diga cómo se
+conecta cada cosa, que cada una diga algo DISTINTO, y que el botón aterrice en
+la ficha de Conexiones que era.
 
 ---
 
@@ -757,7 +770,7 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**81 archivos, todas en verde.** Viven en `pruebas/`.
+**82 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
 npm run prueba           # todas (~6 min)
