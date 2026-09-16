@@ -8,7 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "prueba": "node pruebas/correr.mjs",
-    "prueba:ligeras": "node pruebas/correr.mjs ligeras"
+    "prueba:ligeras": "node pruebas/correr.mjs ligeras",
+    "promo": "node promo/src/todo.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

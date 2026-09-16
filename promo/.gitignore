@@ -1,0 +1,5 @@
+# Lo intermedio: se regenera solo y pesa cientos de megas.
+.fotogramas/
+.audio/
+.ojeadas/
+.hoja-temporal.html

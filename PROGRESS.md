@@ -1,8 +1,9 @@
 # Estado del proyecto
 
-Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
-Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.46**
+Última actualización: **16 de septiembre de 2026**
+Rama: `claude/eclipse-promotional-video-zkzd2u` (la de siempre sigue siendo
+`claude/multimodal-ai-free-pro-tbxhtn`) · Versión que ve el usuario: **2.46**,
+sin tocar: esta sesión no ha cambiado la aplicación.
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -12,7 +13,9 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 ## 1. Resumen en tres líneas
 
 La aplicación está **en producción y funcionando**, con 77 pruebas en verde.
-Lo último: **Grupos y Programar ya son gratis**. Antes: **Modo Examen**, para
+Lo último: el **anuncio en vídeo** de ECLIPSE, montado entero dentro del
+repositorio (`promo/`) y con la interfaz de verdad dentro. Antes:
+**Grupos y Programar ya son gratis**. Antes: **Modo Examen**, para
 estudiar con tus propios apuntes sin que se invente ni una pregunta; y un
 **router de motores** que manda cada pregunta a donde mejor se
 resuelve sin que se note por fuera. Antes: ECLIPSE **aprende cómo le gusta a
@@ -69,7 +72,52 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: Grupos y Programar, gratis
+## 3. Lo último: el anuncio
+
+Un vídeo promocional vertical de 28 segundos para TikTok, Reels y Shorts:
+`promo/salida/eclipse-promo.mp4` (1080×1920, 30 fps, H.264 con audio). Todo el
+proyecto que lo genera está en `promo/`, y se vuelve a montar con `npm run promo`.
+
+**Lo que decide si esto sirve o no**: no hay ni una pantalla dibujada a mano. Las
+siete que salen son capturas de la aplicación corriendo de verdad en un
+Chromium a tamaño de móvil (`promo/src/capturar.mjs`). Lo único que se sustituye
+son las respuestas del servidor —en el contenedor no hay ni claves de modelo ni
+Redis— y se sustituyen respetando las formas exactas de `src/lib/types.ts` y
+`src/lib/examen/tipos.ts`, así que quien pinta sigue siendo el código de ECLIPSE.
+Si mañana cambia el diseño, se relanza `capturar.mjs` y el anuncio se actualiza.
+
+**Lo que cuenta**: que ECLIPSE estudia con TUS apuntes y nunca se lo inventa. Lo
+que sale en pantalla existe: adjuntar fotos de apuntes en el chat, la respuesta
+con las fuentes ordenadas por fiabilidad, y del Modo Examen el mapa de "qué
+entra", el resumen, el test, la corrección con su explicación y el progreso por
+temas. No se dice ningún precio: el Modo Examen es de Pro y un "gratis" en
+pantalla sería mentira a medias.
+
+**Cómo está hecho**, por si hay que volver:
+
+- El motor es una función `pintar(t)` y nada más: sin animaciones de CSS. Una
+  animación de CSS avanza con el reloj del navegador y cada captura la pillaría
+  donde le apeteciera; así el fotograma 431 es idéntico cada vez.
+- Se graban 60 fotogramas por segundo y se monta a 30 promediando cada dos. Eso
+  es un obturador de 180°: desenfoque de movimiento de verdad.
+- **La cámara nunca recorta la captura.** El primer planteamiento ampliaba la
+  imagen para que se leyera la letra y se comía la primera palabra de cada
+  línea. Ahora lo que se acerca es el teléfono, como una cámara de verdad.
+- La música está sintetizada nota a nota en `promo/src/musica.mjs`. Una música
+  de biblioteca tiene licencia, y una licencia mal leída es un anuncio retirado.
+- Los tiempos y los textos están todos juntos en `promo/src/guion.js`: es el
+  único archivo que hay que tocar para cambiar una frase o una escena.
+
+El storyboard entero y la guía de sonido con sus marcas de tiempo están en
+`promo/GUION.md`; cómo montarlo y qué tocar, en `promo/LEEME.md`.
+
+**No hay entrada en `novedades.ts` ni subida de versión**, y es a propósito: la
+aplicación no ha cambiado, y un aviso de "hemos hecho un anuncio" delante de
+quien entra a estudiar es ruido.
+
+---
+
+## 3 bis. Antes: Grupos y Programar, gratis
 
 Carlos: *"lo de grupos para chatear y programar quiero que esté en gratis"*.
 Hecho, y quitado de todas partes: la puerta del servidor en las dos rutas, las
@@ -587,6 +635,16 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 6. **`ubicacion.test.mjs` tarda 139 s**, casi la mitad de lo que tarda la suite
    entera. Espera a diálogos de permiso del navegador.
+
+7. **En TEMA CLARO, la negrita de las respuestas es INVISIBLE.** Encontrado al
+   fotografiar la aplicación para el anuncio: `globals.css` pone
+   `.prose-eclipse strong { color: #fff }` y el tema claro no lo redefine, así
+   que una palabra en negrita sale blanca sobre fondo blanco. En una respuesta
+   sobre mitosis, "dos divisiones", "cuatro" y "profase I" —justo lo que el
+   modelo resalta porque es lo importante— desaparecen. Se arregla con una
+   línea (`:root[data-tema="claro"] .prose-eclipse strong { color: var(--color-ink) }`),
+   pero no se ha tocado en esta sesión porque no era el encargo. **Es lo primero
+   que hay que hacer en la siguiente.**
 
 ---
 

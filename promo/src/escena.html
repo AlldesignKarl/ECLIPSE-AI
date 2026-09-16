@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>ECLIPSE · anuncio</title>
+<link rel="stylesheet" href="fuentes/HankenGrotesk.css">
+<link rel="stylesheet" href="fuentes/Newsreader.css">
+<style>
+/*
+  El lienzo del anuncio: 1080 × 1920, que es lo que piden TikTok, Reels y
+  Shorts. Todo lo que se ve está aquí dentro y en posición absoluta, porque el
+  motor lo mueve por transformaciones y no por flujo: el flujo re-calcula
+  posiciones y eso, fotograma a fotograma, se nota como un temblor.
+
+  Los colores son los de la aplicación, copiados de `globals.css`. Si allí
+  cambian, aquí también.
+*/
+:root{
+  --void:#06070a; --surface:#0c0e13; --panel:#12151c; --raised:#191d26;
+  --line:#242936; --line-soft:#1a1e28; --ink:#eceef2; --muted:#8e95a5;
+  --faint:#5d6474; --halo:#cfd6e6; --pro:#b8a6ff;
+  --sans:"Hanken Grotesk",system-ui,sans-serif;
+  --serif:"Newsreader",Georgia,serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:1080px;height:1920px;background:#000;overflow:hidden;}
+#lienzo{
+  position:relative;width:1080px;height:1920px;background:var(--void);
+  overflow:hidden;
+  /* Sin esto, los hijos con transform 3D se recortan mal en los bordes. */
+  transform-style:preserve-3d;
+}
+.capa{position:absolute;inset:0;pointer-events:none;}
+
+/* ------------------------------------------------------------- El fondo */
+#cielo{
+  background:
+    radial-gradient(70% 45% at 50% 30%, rgba(184,166,255,.10), transparent 72%),
+    radial-gradient(50% 40% at 82% 16%, rgba(207,214,230,.06), transparent 70%),
+    linear-gradient(180deg,#07080c 0%, #06070a 55%, #040507 100%);
+  opacity:0;
+}
+#rejilla{
+  background-image:
+    linear-gradient(to right, rgba(36,41,54,.55) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(36,41,54,.55) 1px, transparent 1px);
+  background-size:88px 88px;
+  -webkit-mask-image:radial-gradient(58% 46% at 50% 46%, #000, transparent 76%);
+  mask-image:radial-gradient(58% 46% at 50% 46%, #000, transparent 76%);
+  opacity:0;
+}
+#vineta{
+  background:radial-gradient(78% 62% at 50% 46%, transparent 42%, rgba(0,0,0,.55) 100%);
+  opacity:.9;
+}
+#particulas,#grano{position:absolute;inset:0;pointer-events:none;}
+#grano{width:1080px;height:1920px;mix-blend-mode:overlay;opacity:.05;}
+#fundido{position:absolute;inset:0;background:#000;opacity:1;pointer-events:none;}
+
+/* ------------------------------------------------ El eclipse de la marca */
+#marca{
+  position:absolute;left:50%;top:50%;width:var(--m);height:var(--m);
+  translate:-50% -50%;opacity:0;
+}
+#marca .luz{position:absolute;left:50%;top:50%;translate:-50% -50%;pointer-events:none;border-radius:999px;}
+#marca .bloom{
+  width:265%;height:265%;filter:blur(64px);
+  background:radial-gradient(circle at 50% 50%,
+    rgba(228,238,255,.56) 0%, rgba(176,158,255,.32) 22%,
+    rgba(126,146,232,.13) 40%, rgba(90,110,200,.05) 54%, transparent 66%);
+}
+#marca .rim{
+  width:165%;height:165%;filter:blur(48px);
+  background:radial-gradient(circle at 50% 50%,
+    transparent 28%, rgba(243,247,255,.38) 38%, rgba(196,206,242,.16) 50%, transparent 68%);
+}
+#marca .franja{
+  width:430%;height:24%;filter:blur(22px);
+  background:radial-gradient(ellipse at 50% 50%,
+    rgba(255,255,255,.62) 0%, rgba(202,214,255,.24) 22%,
+    rgba(150,170,240,.08) 40%, transparent 60%);
+}
+#marca svg{position:relative;width:100%;height:100%;color:var(--ink);display:block;}
+
+/* La línea de luz del arranque: el eclipse antes de ser eclipse. */
+#chispa{
+  position:absolute;left:50%;top:50%;translate:-50% -50%;
+  width:1400px;height:200px;opacity:0;filter:blur(1px);
+  background:radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(255,255,255,1) 0%, rgba(214,226,255,.75) 14%,
+    rgba(150,170,240,.22) 34%, transparent 66%);
+}
+
+/* ------------------------------------------------------------ Los textos */
+.texto{
+  position:absolute;left:50%;width:960px;translate:-50% 0;
+  text-align:center;opacity:0;will-change:transform,opacity;
+}
+.serif{font-family:var(--serif);color:var(--ink);font-weight:500;letter-spacing:-.015em;line-height:1.1;}
+.sans{font-family:var(--sans);color:var(--ink);}
+
+#nombre{
+  font-family:var(--sans);font-weight:600;font-size:58px;letter-spacing:.34em;
+  color:var(--ink);text-indent:.34em; /* compensa el espaciado de la última letra */
+  text-shadow:0 0 40px rgba(210,222,255,.30), 0 0 100px rgba(150,170,240,.16);
+}
+#frase1{font-size:76px;}
+#frase2{font-size:78px;}
+#fraseHero{font-size:82px;}
+#heroPie{font-family:var(--sans);font-size:31px;color:var(--muted);letter-spacing:.01em;}
+#cierreFrase{font-size:46px;color:var(--muted);}
+#url{
+  font-family:var(--sans);font-size:30px;letter-spacing:.14em;color:var(--halo);
+  text-transform:none;
+}
+#urlCaja{
+  position:absolute;left:50%;translate:-50% 0;opacity:0;
+  border:1px solid var(--line);border-radius:999px;padding:18px 40px;
+  background:rgba(18,21,28,.55);backdrop-filter:blur(6px);
+}
+
+/* La etiqueta de cada paso, arriba del móvil. Fuera de la zona donde TikTok
+   y Reels pintan sus botones. */
+.paso{
+  position:absolute;left:50%;top:268px;width:920px;translate:-50% 0;
+  text-align:center;font-family:var(--sans);font-size:44px;font-weight:500;
+  color:var(--ink);opacity:0;line-height:1.25;letter-spacing:-.005em;
+}
+
+/* ---------------------------------------------------------- Los papeles */
+.papel{
+  position:absolute;left:50%;top:50%;width:330px;
+  translate:-50% -50%;opacity:0;border-radius:10px;overflow:hidden;
+  box-shadow:0 50px 90px -40px rgba(0,0,0,.95), 0 0 0 1px rgba(255,255,255,.05);
+  will-change:transform,opacity,filter;
+}
+.papel img{display:block;width:100%;}
+
+/* ----------------------------------------------------------- El teléfono */
+#camara{position:absolute;inset:0;perspective:2200px;perspective-origin:50% 46%;}
+#telefono{
+  position:absolute;left:50%;top:50%;width:592px;height:1244px;
+  translate:-50% -50%;opacity:0;transform-style:preserve-3d;
+  will-change:transform,opacity;
+}
+#marco{
+  position:absolute;inset:0;border-radius:60px;padding:16px;
+  background:linear-gradient(160deg,#2a2f3c 0%, #14171f 26%, #0a0c11 60%, #1d222c 100%);
+  box-shadow:
+    0 80px 160px -60px rgba(0,0,0,1),
+    0 0 0 1px rgba(255,255,255,.07),
+    inset 0 0 0 1px rgba(255,255,255,.05);
+}
+#cristal{
+  position:relative;width:100%;height:100%;border-radius:44px;overflow:hidden;
+  background:var(--void);
+}
+.pantalla{position:absolute;inset:0;opacity:0;overflow:hidden;will-change:opacity,transform;}
+.pantalla img{
+  position:absolute;left:0;top:0;width:100%;display:block;
+  transform-origin:50% 50%;
+}
+/* El brillo del cristal: una banda diagonal muy tenue. Un móvil sin reflejo
+   parece un recorte, no un objeto. */
+#reflejo{
+  position:absolute;inset:0;border-radius:44px;pointer-events:none;
+  /* Un reflejo de cristal, no un velo: si cubre la pantalla entera, la
+     interfaz pierde el contraste que tiene de verdad y parece apagada. */
+  background:linear-gradient(118deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.04) 9%,
+    transparent 22%, transparent 84%, rgba(255,255,255,.06) 100%);
+  opacity:.55;mix-blend-mode:screen;
+}
+/* La barra de luz que recorre la pantalla cuando ECLIPSE lee los apuntes. */
+#escaner{
+  position:absolute;left:-10%;width:120%;height:260px;opacity:0;
+  background:linear-gradient(180deg, transparent, rgba(207,214,230,.20) 42%,
+    rgba(255,255,255,.55) 50%, rgba(207,214,230,.20) 58%, transparent);
+  mix-blend-mode:screen;filter:blur(2px);
+}
+#velo{position:absolute;inset:0;background:#05060a;opacity:0;}
+/* El halo que envuelve al móvil en el plano hero. */
+#aura{
+  position:absolute;left:50%;top:50%;width:1500px;height:1500px;translate:-50% -50%;
+  opacity:0;filter:blur(70px);border-radius:999px;
+  background:radial-gradient(circle at 50% 50%,
+    rgba(214,226,255,.30) 0%, rgba(176,158,255,.18) 26%, rgba(110,130,210,.06) 46%, transparent 64%);
+}
+/* El corte de luz de las transiciones. */
+#corte{position:absolute;inset:0;background:#e9edf6;opacity:0;mix-blend-mode:screen;}
+/*
+  El velo del titular.
+
+  Cuando la cámara se acerca, el móvil ocupa la pantalla entera y el texto de
+  arriba caería encima de la interfaz. Un degradado oscuro por arriba lo
+  resuelve como lo resuelve el cine: el rótulo se lee, y debajo se sigue viendo
+  lo que hay.
+*/
+#veloTitular{
+  background:linear-gradient(180deg, rgba(4,5,8,.985) 0%, rgba(4,5,8,.96) 32%,
+    rgba(4,5,8,.80) 54%, rgba(4,5,8,.38) 76%, transparent 100%);
+  height:660px;bottom:auto;opacity:0;
+}
+</style>
+</head>
+<body>
+<div id="lienzo">
+  <div class="capa" id="cielo"></div>
+  <div class="capa" id="rejilla"></div>
+  <canvas class="capa" id="particulas" width="1080" height="1920"></canvas>
+
+  <div id="aura"></div>
+  <div id="chispa"></div>
+
+  <!-- Las fotos de apuntes de la escena del problema -->
+  <div class="capa" id="papeles"></div>
+
+  <!-- El eclipse -->
+  <div id="marca" style="--m:360px">
+    <div class="luz bloom"></div>
+    <div class="luz rim"></div>
+    <div class="luz franja"></div>
+    <svg viewBox="0 0 240 240" aria-hidden="true">
+      <defs>
+        <linearGradient id="llamarada" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="currentColor" stop-opacity="0"/>
+          <stop offset="22%" stop-color="currentColor" stop-opacity=".72"/>
+          <stop offset="55%" stop-color="currentColor" stop-opacity=".96"/>
+          <stop offset="100%" stop-color="currentColor" stop-opacity="1"/>
+        </linearGradient>
+      </defs>
+      <g id="llamaradas">
+        <path id="flareA" fill="url(#llamarada)"
+          d="M 2 120 C 44 118.4, 62 114, 70 99 C 75.5 110.5, 75.5 129.5, 70 141 C 62 126, 44 121.6, 2 120 Z"/>
+        <path id="flareB" fill="url(#llamarada)" transform="translate(240,0) scale(-1,1)"
+          d="M 2 120 C 44 118.4, 62 114, 70 99 C 75.5 110.5, 75.5 129.5, 70 141 C 62 126, 44 121.6, 2 120 Z"/>
+      </g>
+      <circle id="anillo" cx="120" cy="120" r="58" fill="none" stroke="currentColor" stroke-width="10"
+              pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/>
+    </svg>
+  </div>
+
+  <!-- El móvil con la interfaz de verdad -->
+  <div id="camara">
+    <div id="telefono">
+      <div id="marco">
+        <div id="cristal">
+          <div id="pantallas"></div>
+          <div id="escaner"></div>
+          <div id="velo"></div>
+          <div id="reflejo"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- El velo va DEBAJO de los textos y encima del móvil: si se pone después,
+       apaga el propio rótulo que venía a dejar legible. -->
+  <div class="capa" id="veloTitular"></div>
+
+  <!-- Los textos -->
+  <div class="texto serif" id="frase1"></div>
+  <div class="texto serif" id="frase2"></div>
+  <div class="texto serif" id="fraseHero"></div>
+  <div class="texto" id="heroPie"></div>
+  <div class="texto" id="nombre"></div>
+  <div class="texto serif" id="cierreFrase"></div>
+  <div id="urlCaja"><span id="url"></span></div>
+  <div class="paso" id="paso"></div>
+
+  <div class="capa" id="vineta"></div>
+  <canvas id="grano" width="540" height="960"></canvas>
+  <div class="capa" id="corte"></div>
+  <div id="fundido"></div>
+</div>
+<script type="module" src="motor.js"></script>
+</body>
+</html>
