@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 
+import { currentPlan } from "@/lib/plan-server";
 import { stripeAvailable } from "@/lib/stripe";
 import { abrirPasarela, comprobarPago, gratisPara, suscripcionViva } from "@/lib/agentes/cobro";
 import { misConexiones } from "@/lib/conexiones/almacen";
@@ -72,6 +73,9 @@ export async function GET(req: NextRequest) {
       id: a.id,
       nombre: a.nombre,
       precio: a.precio,
+      // Sin esto, un agente incluido en Pro se anuncia en la lista como
+      // "0 €/mes", que se lee como una tarifa rara y no como lo que es.
+      conPro: a.conPro,
       periodo: a.periodo,
       resumen: a.resumen,
       tono: a.tono,
@@ -117,6 +121,27 @@ export async function POST(req: NextRequest) {
       3. Sin Stripe, pendiente de pago y se explica. Nadie cobra nada y el
          agente no ejecuta nada.
     */
+    /*
+      Los que van incluidos en Pro no abren pasarela: no hay nada que cobrar.
+
+      Y se comprueba que de verdad sea Pro AQUÍ, en el servidor. Si esto se
+      quedara en la pantalla, cualquiera podría activarlo llamando a la API.
+    */
+    if (agente.conPro) {
+      if ((await currentPlan()) !== "pro")
+        return no(
+          `${agente.nombre} va incluido con el plan Pro. Mejora el plan y lo tienes sin coste aparte.`,
+          402,
+          "solo_pro",
+        );
+      const contrato = await contratar(email, id, "activo");
+      return Response.json({
+        contrato,
+        conPro: true,
+        aviso: `${agente.nombre} activado: va incluido en tu plan Pro, no se cobra aparte.`,
+      });
+    }
+
     if (gratisPara(email)) {
       const contrato = await contratar(email, id, "activo");
       return Response.json({
@@ -155,6 +180,22 @@ export async function POST(req: NextRequest) {
 
   const contrato = await contratoDe(email, id);
   if (!contrato) return no("Ese agente no está contratado.", 404);
+
+  /*
+    Un agente incluido en Pro se apaga si se deja de ser Pro.
+
+    Es lo mismo que hace la suscripción de Stripe con los de pago: lo que
+    sostiene el contrato se comprueba antes de trabajar, no solo al contratar.
+    Sin esto, quien contrata siendo Pro y luego lo deja se quedaría con el
+    agente para siempre.
+  */
+  const suAgente = agenteDe(id);
+  if (suAgente?.conPro && (await currentPlan()) !== "pro" && accion !== "rescindir")
+    return no(
+      `${suAgente.nombre} va incluido con el plan Pro, y ahora mismo no lo tienes. Vuelve a Pro y sigue donde lo dejaste.`,
+      402,
+      "solo_pro",
+    );
 
   /* ------------------------- Volver del pago -------------------------- */
   if (accion === "confirmar") {

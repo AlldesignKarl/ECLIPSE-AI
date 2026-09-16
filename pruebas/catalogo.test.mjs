@@ -19,7 +19,11 @@ ok(SERVICIOS.length >= 21, `hay ${SERVICIOS.length} servicios para conectar`);
 ok(new Set(SERVICIOS.map((s) => s.id)).size === SERVICIOS.length, "ningún identificador está repetido");
 ok(SERVICIOS.every((s) => s.nombre && s.resumen && s.enlace), "todos se presentan: nombre, para qué sirve y dónde se saca la clave");
 ok(SERVICIOS.every((s) => s.pasos.length >= 2), "todos explican cómo conseguir la clave, paso a paso");
-ok(SERVICIOS.every((s) => s.campos.length >= 1), "todos dicen qué hay que pegar");
+// Los de clave dicen qué hay que pegar. Los de OAuth no piden nada: lo que dan
+// es un botón, y un formulario vacío ahí sería una pantalla sin nada dentro.
+ok(SERVICIOS.every((s) => (s.oauth ? s.campos.length === 0 : s.campos.length >= 1)),
+   "los de clave dicen qué hay que pegar, y los de permiso no piden nada que pegar");
+ok(SERVICIOS.filter((s) => s.oauth).length >= 1, "y hay al menos uno que se conecta con permiso, no con clave");
 ok(SERVICIOS.every((s) => s.acciones.length >= 1), "y todos saben hacer algo");
 
 console.log("\nNadie borra nada");
@@ -72,6 +76,10 @@ const estado = estadoDe(SERVICIOS[0], { cuenta: "la tienda de pruebas", permiso:
 const PERMITIDO = new Set([
   "id", "nombre", "color", "marca", "familia", "resumen", "pasos", "enlace",
   "campos", "conectado", "cuenta", "permiso", "conectadoEl", "acciones",
+  // De los de OAuth sale QUÉ proveedor es y si el servidor lo tiene
+  // configurado. Ni el identificador de cliente ni el secreto, que son del
+  // servidor, ni por supuesto ningún testigo.
+  "oauth", "oauthListo",
 ]);
 const colados = Object.keys(estado).filter((k) => !PERMITIDO.has(k));
 ok(!colados.length, `lo que se le manda al navegador solo lleva lo que tiene que llevar${colados.length ? `: se ha colado ${colados.join(", ")}` : ""}`);

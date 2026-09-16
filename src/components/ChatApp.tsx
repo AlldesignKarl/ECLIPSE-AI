@@ -339,6 +339,35 @@ export default function ChatApp({
       window.history.replaceState({}, "", "/");
       setNotice("Has salido del pago. No se ha contratado ni cobrado nada.");
     }
+
+    /*
+      Vuelta de conectar una cuenta con permiso (Google).
+
+      Aquí no hay nada que confirmar: lo ha hecho todo el servidor antes de
+      devolver a nadie. Lo único que falta es DECIR qué ha pasado. Una vuelta
+      muda de una pantalla de permisos deja a la persona sin saber si se conectó
+      o si canceló, y volviendo a intentarlo por si acaso.
+    */
+    const conexion = params.get("conexion");
+    if (conexion) {
+      window.history.replaceState({}, "", "/");
+      const dicho: Record<string, string> = {
+        sin_configurar:
+          "Este servidor todavía no tiene configurado el acceso con Google, así que no se ha podido conectar.",
+        solo_pro: "Conectar tus aplicaciones es del plan Pro.",
+        sin_cuenta: "Para conectar una cuenta hay que haber entrado con la tuya.",
+        cancelada: "No has dado el permiso, así que no se ha conectado nada.",
+        caducada: "Ha pasado demasiado tiempo desde que empezaste. Vuelve a darle a conectar.",
+        no_existe: "Ese servicio no existe.",
+        fallo: "No se ha podido conectar. Inténtalo otra vez.",
+      };
+      if (conexion.startsWith("ok_")) {
+        setNotice("Cuenta conectada. Está en modo mirar; si quieres que escriba, actívalo en Conexiones.");
+        setConexionesOpen(true);
+      } else {
+        setNotice(dicho[conexion] ?? "No se ha podido conectar. Inténtalo otra vez.");
+      }
+    }
   }, []);
 
   useEffect(() => {

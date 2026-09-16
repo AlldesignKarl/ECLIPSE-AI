@@ -180,7 +180,7 @@ export async function credencialesDe(
   servicio: string,
   /** El dueño, cuando no hay nadie delante (un encargo programado). */
   deQuien?: string,
-): Promise<{ cred: Credenciales; permiso: Permiso } | null> {
+): Promise<{ cred: Credenciales; permiso: Permiso; cuenta: string } | null> {
   const email = deQuien ?? (await quien());
   if (!email) return null;
 
@@ -188,7 +188,9 @@ export async function credencialesDe(
   if (!guardada) return null;
 
   const cred = abrir(guardada.sobre);
-  return cred ? { cred, permiso: guardada.permiso } : null;
+  // La cuenta va también: quien renueve un testigo de OAuth tiene que poder
+  // volver a guardar la conexión sin perder a cuál estaba conectada.
+  return cred ? { cred, permiso: guardada.permiso, cuenta: guardada.cuenta } : null;
 }
 
 /** Guardar una conexión ya comprobada. */

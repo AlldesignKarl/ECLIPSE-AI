@@ -102,6 +102,16 @@ export interface Servicio {
   enlace: string;
   campos: Campo[];
   /**
+   * Se conecta por OAuth, no pegando una clave. Aquí va el proveedor: `google`.
+   *
+   * Cambia la pantalla y el camino entero: no hay formulario que rellenar —no
+   * hay nada que escribir— sino un botón que manda a la persona al proveedor y
+   * la trae de vuelta con el permiso concedido. Y las credenciales que se
+   * guardan no son una clave suya, son unos testigos que caducan y se renuevan
+   * solos.
+   */
+  oauth?: string;
+  /**
    * Comprueba que las credenciales sirven ANTES de guardarlas, y devuelve a
    * qué cuenta pertenecen. Guardar una clave mala es condenar al usuario a
    * descubrirlo tres días después, cuando le falle algo por otro motivo.
@@ -124,6 +134,10 @@ export interface EstadoConexion {
   pasos: string[];
   enlace: string;
   campos: Campo[];
+  /** Si se conecta con un botón en vez de con un formulario. */
+  oauth?: string;
+  /** Y si ese proveedor está configurado en ESTE servidor. */
+  oauthListo?: boolean;
   conectado: boolean;
   /** A qué cuenta: "la tienda mitienda.myshopify.com". */
   cuenta?: string;

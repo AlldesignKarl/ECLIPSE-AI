@@ -1,5 +1,5 @@
 import { airtable } from "./airtable";
-import { credencialesDe } from "./almacen";
+import { credencialesDe, guardarConexion } from "./almacen";
 import { brevo } from "./brevo";
 import { calendly } from "./calendly";
 import { cloudflare } from "./cloudflare";
@@ -10,6 +10,8 @@ import { hubspot } from "./hubspot";
 import { mailchimp } from "./mailchimp";
 import { ionos } from "./ionos";
 import { mercados } from "./mercados";
+import { gmail } from "./gmail";
+import { oauthListo, proveedorDe } from "./oauth";
 import { notion } from "./notion";
 import { prestashop } from "./prestashop";
 import { shopify } from "./shopify";
@@ -46,6 +48,7 @@ export const SERVICIOS: Servicio[] = [
   calendly,
   mailchimp,
   brevo,
+  gmail,
   slackServicio,
   telegram,
   discord,
@@ -90,6 +93,10 @@ export function estadoDe(
     pasos: servicio.pasos,
     enlace: servicio.enlace,
     campos: servicio.campos,
+    oauth: servicio.oauth,
+    oauthListo: servicio.oauth
+      ? Boolean(proveedorDe(servicio.oauth) && oauthListo(proveedorDe(servicio.oauth)!))
+      : undefined,
     conectado: Boolean(conectada),
     cuenta: conectada?.cuenta,
     permiso: conectada?.permiso,
@@ -187,8 +194,27 @@ export async function ejecutarConexion({
 
   const accion = accionDe(servicio, idAccion)!;
 
+  /*
+    Una copia de las credenciales ANTES de ejecutar.
+
+    Las conexiones por OAuth se renuevan solas: su testigo de acceso caduca a la
+    hora y la acción saca uno nuevo por el camino. Si ese testigo nuevo no se
+    guarda, se renueva otra vez en la llamada siguiente, y en la siguiente: un
+    viaje de más a Google en CADA acción, para siempre. Comparar aquí es la
+    forma de darse cuenta sin que cada conector tenga que acordarse de guardar.
+  */
+  const antes = JSON.stringify(guardada.cred);
+
   try {
     const texto = await accion.ejecutar({ cred: guardada.cred, args: datos, signal });
+
+    if (JSON.stringify(guardada.cred) !== antes)
+      await guardarConexion(servicio.id, guardada.cred, guardada.cuenta, guardada.permiso, dueno).catch(
+        () => {
+          /* si no se puede guardar, la acción ya ha salido bien: se renovará otra vez */
+        },
+      );
+
     return { texto };
   } catch (err) {
     if ((err as Error)?.name === "AbortError") throw err;

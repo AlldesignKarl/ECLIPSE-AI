@@ -20,10 +20,12 @@ No es un envoltorio de un chat. Hace, de menos a más raro:
 - Conversación con búsqueda web y fuentes ordenadas por fiabilidad.
 - Lee imágenes, PDF y archivos; crea imágenes; convierte formatos.
 - **ECLIPSE CODE**: construye proyectos enteros con vista previa y ZIP.
-- **Conexiones**: 21 servicios. Enchufa tu tienda, tu web, tu correo o tu
+- **Conexiones**: 22 servicios. Enchufa tu tienda, tu web, tu correo o tu
   agenda (Shopify, WooCommerce, PrestaShop, Wix, Stripe, HubSpot, Notion,
   Airtable, Trello, Todoist, Calendly, Mailchimp, Brevo, Slack, Telegram,
   Discord, GitHub, Vercel, IONOS, Cloudflare, Binance) y el modelo las consulta.
+  **Gmail** es la excepción y la primera de su clase: no se conecta pegando una
+  clave sino dando permiso (OAuth), con su botón de "Conectar con Google".
 - **Programar** (gratis): encargos que se hacen solos, con calendario, y un plan
   entero que monta ECLIPSE cuando le dices qué quieres conseguir.
 - **Biblioteca**: imágenes libres de museos y archivos, para inspirarse.
@@ -34,8 +36,9 @@ No es un envoltorio de un chat. Hace, de menos a más raro:
 - **Modo Examen**: subes fotos de tus apuntes y te resume, te pregunta y te
   corrige exámenes de desarrollo, SOLO con lo que pone en tus materiales.
 - **Agentes**: catálogo de agentes de empresa (OMNI, COMMS, SALES, SUPPORT,
-  AUTOMATION) por suscripción mensual. Cada uno con SUS herramientas, SUS
-  cuentas conectadas, permisos, aprobación humana y registro de lo que hace.
+  AUTOMATION) por suscripción mensual, más **INBOX** —el del correo— que va
+  INCLUIDO con el plan Pro y no se cobra aparte. Cada uno con SUS herramientas,
+  SUS cuentas conectadas, permisos, aprobación humana y registro de lo que hace.
 - **Memoria**: aprende de ti y puede mirar conversaciones anteriores.
 - **Ubicación**: excursiones, sitios cerca y cómo llegar.
 
@@ -107,7 +110,10 @@ src/
                                 Gemini de especialista donde gana
     gemini.ts, anthropic.ts     Los otros dos motores
     tools/                      Herramientas que el modelo puede usar
-    conexiones/                 Un archivo por servicio + registro + almacén
+    conexiones/                 Un archivo por servicio + registro + almacén.
+                                `oauth.ts` es aparte: el baile de permisos de
+                                Google (estado firmado, canje y refresco) que
+                                usa `gmail.ts` y usará Calendar y Drive
     tareas/  grupos/  memoria/  Cada uno: tipos.ts + almacen.ts (+ lógica)
     agentes/                    Los agentes de empresa. `catalogo.ts` es la
                                 configuración central —añadir un agente es
@@ -132,7 +138,7 @@ src/
                                 toda la lógica y no toca la red
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        79 pruebas. Ver pruebas/LEEME.md
+pruebas/                        81 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -435,7 +441,32 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
   todas piden OAuth). `estadoDe()` las cuenta SIEMPRE en lo que dice, aunque
   sean opcionales, porque si no, quien contrata el agente de comunicaciones se
   cree que va a mandar correos.
-- **Las 79 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que de quién es una vuelta de OAuth lo diga el `state` FIRMADO y no la
+  cookie** (`leerEstado` en `conexiones/oauth.ts`, y su uso en la ruta de
+  vuelta). Con la cookie, una vuelta abierta en otro navegador —o en el mismo
+  después de cambiar de cuenta— conectaría el buzón de una persona a la cuenta
+  de otra. Va firmado con el secreto del servidor y caduca en cinco minutos, y
+  se compara en tiempo constante.
+- **Que al refrescar un testigo NO se pierda el de refresco**
+  (`refresco: nuevos.refresco || cred.refresco` en `accesoVigente`). Google no
+  devuelve `refresh_token` al refrescar: machacarlo con la cadena vacía deja una
+  conexión que funciona hoy y está muerta dentro de una hora, sin ningún error
+  por ninguna parte.
+- **Que `ejecutarConexion` GUARDE las credenciales si han cambiado durante la
+  acción.** Sin eso el testigo se renueva en cada llamada: funciona, nadie ve un
+  error, y cada acción cuesta un viaje de más a Google.
+- **Que se pida `access_type=offline` y `prompt=consent`** al mandar a alguien a
+  Google. Sin lo primero no hay testigo de refresco y la conexión dura una hora;
+  sin lo segundo, quien ya había autorizado antes vuelve sin él.
+- **Que Gmail nazca en SOLO LECTURA aunque Google haya concedido también el
+  enviar.** El permiso del proveedor y el permiso de ECLIPSE son dos cosas
+  distintas: se piden juntos para no volver a molestar, y usarlos es una segunda
+  decisión que se toma en Conexiones.
+- **Que un agente incluido en Pro (`conPro`) compruebe el plan EN EL SERVIDOR,
+  al contratar y en cada acción después.** Si solo se comprobara al contratar,
+  quien se dio de alta siendo Pro se quedaría el agente para siempre; y si se
+  comprobara en la pantalla, se activaría llamando a la API.
+- **Las 81 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -448,8 +479,8 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 79 pruebas (~7 min)
-npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
+npm run prueba           # las 81 pruebas (~7 min)
+npm run prueba:ligeras   # las 60 que no abren navegador (~12 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```
 

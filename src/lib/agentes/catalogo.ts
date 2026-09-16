@@ -8,15 +8,16 @@ import type { Agente } from "./tipos";
  * la ejecución leen de aquí. Cambiar "ECLIPSE SALES" de 400 a 350 es cambiar un
  * número en esta línea y ya está en toda la aplicación.
  *
- * Y una cosa importante sobre lo que NO hay: Gmail, Outlook, Google Calendar,
- * Google Drive y WhatsApp Business aparecen marcados `pendiente: true`. No es
- * un descuido: esas cuatro se conectan por OAuth —pantalla de permisos, vuelta
- * con el código, refresco del testigo, dónde guardarlo— y eso todavía no está
- * construido en ECLIPSE. Marcarlo así hace que la ficha diga "todavía no se
- * puede conectar" en vez de enseñar un botón que no lleva a ninguna parte.
+ * Y una cosa importante sobre lo que NO hay: Outlook, Google Calendar, Google
+ * Drive y WhatsApp Business aparecen marcados `pendiente: true`. No es un
+ * descuido: esas cuatro se conectan por OAuth —pantalla de permisos, vuelta con
+ * el código, refresco del testigo, dónde guardarlo— y todavía no tienen
+ * conector. Marcarlo así hace que la ficha diga "todavía no se puede conectar"
+ * en vez de enseñar un botón que no lleva a ninguna parte.
  *
- * Los que NO llevan esa marca son conectores de verdad, de los 21 que ECLIPSE
- * ya tiene: se pega la clave y funcionan.
+ * Gmail SÍ lo tiene desde que existe `conexiones/oauth.ts`, y por eso ya no
+ * lleva la marca: es un conector de verdad como los otros 21, solo que en vez
+ * de pegar una clave se pulsa "Conectar con Google".
  */
 
 /** Cómo se comporta CUALQUIER agente de ECLIPSE. Lo comparten los cinco. */
@@ -41,6 +42,49 @@ Lo que NUNCA haces:
 Escribes en castellano, en corto y al grano. Quien te lee está trabajando.`;
 
 export const AGENTES: Agente[] = [
+  {
+    id: "inbox",
+    nombre: "ECLIPSE INBOX",
+    // Cero: va incluido en el plan Pro. Ver `conPro`.
+    precio: 0,
+    periodo: "mes",
+    tono: "ok",
+    conPro: true,
+    resumen: "Tu correo: busca, lee, resume y responde. Incluido con Pro.",
+    descripcion:
+      "El agente del correo, y el más fácil de probar porque no necesita nada de tu negocio: solo tu Gmail. Busca entre miles de correos en segundos, te dice qué hay pendiente, abre el hilo que le pidas y te prepara la respuesta. Enviar es una segunda decisión, aparte: nace pudiendo mirar y no tocar.",
+    funciones: [
+      "Busca en tu correo con la misma sintaxis que Gmail (de quién, sin leer, de la última semana…).",
+      "Te dice qué tienes sin leer y de qué va cada cosa.",
+      "Abre un correo entero y te lo resume.",
+      "Redacta la respuesta con el contexto del hilo.",
+      "Y lo envía, si le das permiso de escritura; con aprobación humana si la pides.",
+    ],
+    ejemplos: [
+      "¿Qué tengo sin leer que sea importante?",
+      "Busca los correos de este cliente del último mes y dime en qué quedamos.",
+      "Prepárame la respuesta a este correo y déjamela para aprobar.",
+    ],
+    integraciones: [{ servicio: "gmail", nombre: "Gmail", necesaria: true }],
+    herramientas: ["conexion", "buscar_web", "crear_archivo"],
+    apruebaPorDefecto: true,
+    instrucciones: `${BASE}
+
+Eres ECLIPSE INBOX, el agente del correo.
+
+Tu trabajo es que nadie tenga que abrir el buzón para saber qué hay dentro.
+BUSCA siempre antes de contestar: si te preguntan por un cliente, busca sus
+correos; si te preguntan qué hay pendiente, mira lo que está sin leer. Contestar
+en general a una pregunta sobre un correo concreto es no contestar.
+
+Cuando redactes una respuesta, hazlo con el hilo delante: quién escribió, qué
+pidió y en qué quedó la cosa. Y cuando envíes, di a quién y con qué asunto. Si
+no has ejecutado el envío, NO digas que lo has mandado: di que está preparado.
+
+El correo de alguien es lo más privado que te van a dejar mirar. Lo usas para el
+encargo que te han dado y no sacas de ahí nada que no te hayan pedido.`,
+  },
+
   {
     id: "omni",
     nombre: "ECLIPSE OMNI",
@@ -96,10 +140,10 @@ cuenta es una respuesta de un chat cualquiera, y para eso no te han contratado.`
     tono: "halo",
     resumen: "Las comunicaciones: mensajería de equipo, avisos y campañas.",
     descripcion:
-      "El agente de las comunicaciones. Redacta y envía por los canales que la empresa tenga conectados, mantiene el tono de la casa y avisa a quien toca. Hoy trabaja de verdad con Slack, Discord, Telegram y las listas de correo de Mailchimp y Brevo. El correo personal (Gmail y Outlook) y WhatsApp Business necesitan OAuth y todavía no están conectados: cuando lo estén, entran aquí sin tocar nada más.",
+      "El agente de las comunicaciones. Redacta y envía por los canales que la empresa tenga conectados, mantiene el tono de la casa y avisa a quien toca. Hoy trabaja de verdad con Gmail, Slack, Discord, Telegram y las listas de correo de Mailchimp y Brevo. Outlook y WhatsApp Business necesitan su propio OAuth y todavía no están conectados: cuando lo estén, entran aquí sin tocar nada más.",
     funciones: [
       "Redacta mensajes y avisos con el tono de la empresa.",
-      "Los manda por los canales conectados: Slack, Discord, Telegram.",
+      "Los manda por los canales conectados: Gmail, Slack, Discord, Telegram.",
       "Consulta las listas de suscriptores de Mailchimp y Brevo.",
       "Prepara campañas y textos listos para enviar.",
       "Todo lo que sale fuera pasa por aprobación si así lo configuras.",
@@ -115,7 +159,7 @@ cuenta es una respuesta de un chat cualquiera, y para eso no te han contratado.`
       { servicio: "telegram", nombre: "Telegram", necesaria: false },
       { servicio: "mailchimp", nombre: "Mailchimp", necesaria: false },
       { servicio: "brevo", nombre: "Brevo", necesaria: false },
-      { servicio: "gmail", nombre: "Gmail", necesaria: false, pendiente: true },
+      { servicio: "gmail", nombre: "Gmail", necesaria: false },
       { servicio: "outlook", nombre: "Outlook", necesaria: false, pendiente: true },
       { servicio: "whatsapp", nombre: "WhatsApp Business", necesaria: false, pendiente: true },
     ],
@@ -210,7 +254,7 @@ no los sacas a ninguna parte.`,
       { servicio: "shopify", nombre: "Shopify", necesaria: false },
       { servicio: "woocommerce", nombre: "WooCommerce", necesaria: false },
       { servicio: "todoist", nombre: "Todoist", necesaria: false },
-      { servicio: "gmail", nombre: "Gmail", necesaria: false, pendiente: true },
+      { servicio: "gmail", nombre: "Gmail", necesaria: false },
     ],
     herramientas: ["conexion", "buscar_web", "crear_archivo"],
     apruebaPorDefecto: true,

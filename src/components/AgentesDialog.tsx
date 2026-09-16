@@ -50,6 +50,7 @@ interface EnLista {
   id: string;
   nombre: string;
   precio: number;
+  conPro?: boolean;
   periodo: string;
   resumen: string;
   tono: string;
@@ -62,6 +63,7 @@ interface Ficha {
   id: string;
   nombre: string;
   precio: number;
+  conPro?: boolean;
   resumen: string;
   descripcion: string;
   funciones: string[];
@@ -209,8 +211,62 @@ function Catalogo({
   cobroListo: boolean;
   onAbrir: (id: string) => void;
 }) {
+  /*
+    Los tuyos arriba, y el catálogo debajo.
+
+    Lo pidió Carlos: "una sección donde estén tus agentes comprados". Y tiene
+    razón en que sea así y no una pestaña aparte: quien ya tiene dos agentes
+    entra a MIRARLOS, no a comprar el tercero. Lo que se usa a diario va
+    primero.
+  */
+  const mios = lista.filter((a) => a.contrato);
+  const resto = lista.filter((a) => !a.contrato);
+
   return (
     <div className="space-y-3">
+      {mios.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-[11.5px] uppercase tracking-wide text-faint">
+            Tus agentes
+          </div>
+          {mios.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => onAbrir(a.id)}
+              className="block w-full rounded-xl border border-line bg-panel p-3.5 text-left transition hover:border-halo/30 hover:bg-raised"
+            >
+              <div className="flex items-baseline gap-2">
+                <span className={`min-w-0 flex-1 truncate text-[13.5px] font-semibold ${TONOS[a.tono] ?? "text-ink"}`}>
+                  {a.nombre}
+                </span>
+                <span
+                  className={`shrink-0 text-[11px] ${
+                    a.contrato?.estado === "activo"
+                      ? "text-ok"
+                      : a.contrato?.estado === "pausado"
+                        ? "text-faint"
+                        : "text-pro"
+                  }`}
+                >
+                  {a.contrato?.estado === "activo"
+                    ? "● Activo"
+                    : a.contrato?.estado === "pausado"
+                      ? "❙❙ En pausa"
+                      : "● Pendiente de pago"}
+                </span>
+              </div>
+              <p className={`mt-0.5 text-[12px] leading-relaxed ${colorDe(a.diagnostico)}`}>
+                {a.diagnostico.dice}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="text-[11.5px] uppercase tracking-wide text-faint">
+        {mios.length ? "Añadir otro" : "Catálogo"}
+      </div>
+
       <p className="text-[12.5px] leading-relaxed text-muted">
         Cada agente trabaja dentro de las cuentas que le conectes: lee, escribe si le das permiso, y
         deja constancia de lo que ha hecho. No son chats con otro nombre.
@@ -242,7 +298,7 @@ function Catalogo({
 
       {cargando && <p className="text-[12.5px] text-faint">Un momento…</p>}
 
-      {lista.map((a) => (
+      {resto.map((a) => (
         <button
           key={a.id}
           onClick={() => onAbrir(a.id)}
@@ -253,7 +309,13 @@ function Catalogo({
               {a.nombre}
             </span>
             <span className="shrink-0 text-[13px] font-medium text-ink">
-              {a.precio} €<span className="text-[11px] text-faint">/mes</span>
+              {a.conPro ? (
+                <span className="text-ok">Con Pro</span>
+              ) : (
+                <>
+                  {a.precio} €<span className="text-[11px] text-faint">/mes</span>
+                </>
+              )}
             </span>
           </div>
           <p className="mt-0.5 text-[12px] leading-relaxed text-muted">{a.resumen}</p>
@@ -265,15 +327,6 @@ function Catalogo({
                   ? "● Requiere conexión"
                   : "● Falta construir la integración"}
             </span>
-            {a.contrato && (
-              <span className="rounded-md bg-raised px-1.5 py-0.5 text-[10px] text-muted">
-                {a.contrato.estado === "activo"
-                  ? "Contratado"
-                  : a.contrato.estado === "pausado"
-                    ? "En pausa"
-                    : "Pendiente de pago"}
-              </span>
-            )}
           </div>
         </button>
       ))}
@@ -365,8 +418,19 @@ function Panel({ id, onCambio }: { id: string; onCambio: () => void }) {
       {/* Estado, arriba del todo y sin adornos. */}
       <div className="rounded-xl border border-line-soft bg-panel/40 p-3.5">
         <div className="flex items-baseline gap-2">
-          <span className="text-[16px] font-semibold text-ink">{ficha.precio} €</span>
-          <span className="text-[11.5px] text-faint">al mes</span>
+          {/* Un agente incluido en Pro poniendo "0 € al mes" se lee como una
+              tarifa rara, no como un regalo. Se dice lo que es. */}
+          {ficha.conPro ? (
+            <>
+              <span className="text-[16px] font-semibold text-ok">Incluido</span>
+              <span className="text-[11.5px] text-faint">con tu plan Pro</span>
+            </>
+          ) : (
+            <>
+              <span className="text-[16px] font-semibold text-ink">{ficha.precio} €</span>
+              <span className="text-[11.5px] text-faint">al mes</span>
+            </>
+          )}
           {contrato && (
             <span className="ml-auto rounded-md bg-raised px-2 py-0.5 text-[11px] text-muted">
               {contrato.estado === "activo" ? "Activo" : contrato.estado === "pausado" ? "En pausa" : "Pendiente de pago"}
@@ -500,7 +564,11 @@ function Panel({ id, onCambio }: { id: string; onCambio: () => void }) {
               }}
               className="w-full rounded-xl bg-ink px-4 py-2.5 text-[13.5px] font-medium text-void transition hover:opacity-90 disabled:opacity-50"
             >
-              {busy ? "Un momento…" : `Contratar · ${ficha.precio} €/mes`}
+              {busy
+                ? "Un momento…"
+                : ficha.conPro
+                  ? "Activar · incluido con tu plan Pro"
+                  : `Contratar · ${ficha.precio} €/mes`}
             </button>
           ) : (
             <Probar

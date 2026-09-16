@@ -49,6 +49,10 @@ interface Servicio {
   pasos: string[];
   enlace: string;
   campos: Campo[];
+  /** Si está puesto, esto no se conecta con una clave sino con un permiso. */
+  oauth?: string;
+  /** Y si el servidor lo tiene configurado. Sin esto el botón no lleva a nada. */
+  oauthListo?: boolean;
   conectado: boolean;
   cuenta?: string;
   permiso?: "leer" | "escribir";
@@ -342,7 +346,10 @@ function Tarjeta({
   };
 
   const desconectar = async () => {
-    if (!confirm(`¿Desconectar ${servicio.nombre}? La clave se borra del todo.`)) return;
+    const que = servicio.oauth
+      ? `¿Desconectar ${servicio.nombre}? ECLIPSE deja de tener acceso. Puedes retirar el permiso también desde tu cuenta de Google.`
+      : `¿Desconectar ${servicio.nombre}? La clave se borra del todo.`;
+    if (!confirm(que)) return;
     setBusy(true);
     try {
       await fetch(`/api/conexiones?servicio=${servicio.id}`, { method: "DELETE" });
@@ -438,7 +445,7 @@ function Tarjeta({
                 className="flex items-center gap-2 text-[12.5px] text-faint transition hover:text-danger"
               >
                 <Icon.Trash width={14} height={14} />
-                Desconectar y borrar la clave
+                {servicio.oauth ? "Desconectar y retirar el acceso" : "Desconectar y borrar la clave"}
               </button>
             </>
           ) : (
@@ -466,6 +473,45 @@ function Tarjeta({
                 </a>
               </div>
 
+              {/*
+                Hay dos formas de conectar, y no se parecen en nada.
+
+                Las de toda la vida piden una clave que el usuario saca del
+                panel de su servicio. Google no da ninguna: da un permiso. Por
+                eso aquí no hay formulario —no habría nada que escribir— sino un
+                botón que lleva a su pantalla de permisos y vuelve conectado.
+              */}
+              {servicio.oauth ? (
+                <div className="space-y-2.5">
+                  {servicio.oauthListo ? (
+                    <a
+                      href={`/api/conexiones/oauth/${servicio.id}?empezar=1`}
+                      onClick={(e) => {
+                        if (!puede) e.preventDefault();
+                      }}
+                      aria-disabled={!puede}
+                      className={`block w-full rounded-xl py-2.5 text-center text-[13.5px] font-medium transition ${
+                        puede
+                          ? "bg-ink text-void hover:opacity-90"
+                          : "pointer-events-none bg-line text-faint"
+                      }`}
+                    >
+                      Conectar con Google
+                    </a>
+                  ) : (
+                    <p className="rounded-xl border border-line-soft bg-panel/40 p-3 text-[12px] leading-relaxed text-muted">
+                      Este servidor todavía no tiene configurado el acceso con Google, así que el
+                      botón no llevaría a ninguna parte. En cuanto esté, {servicio.nombre} se conecta
+                      desde aquí en dos toques.
+                    </p>
+                  )}
+                  <p className="text-[11px] leading-relaxed text-faint">
+                    Se conecta pudiendo mirar y no tocar. Si quieres que además escriba, se activa
+                    aquí después, cuando veas que acierta.
+                  </p>
+                </div>
+              ) : (
+                <>
               <div className="space-y-2.5">
                 {servicio.campos.map((c) => (
                   <label key={c.id} className="block">
@@ -513,6 +559,8 @@ function Tarjeta({
               >
                 {busy ? "Comprobando la clave…" : `Conectar ${servicio.nombre}`}
               </button>
+                </>
+              )}
             </>
           )}
         </div>

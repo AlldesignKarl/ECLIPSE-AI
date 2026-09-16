@@ -184,8 +184,12 @@ try {
   console.log("\nEl catálogo se lee sin cuenta, y dice la verdad");
   const anon = sesion();
   const publico = await anon("/api/agentes");
-  ok((publico.json?.agentes ?? []).length === 5, `los cinco agentes están en el catálogo (${publico.json?.agentes?.length})`);
-  ok(publico.json?.agentes?.every((a) => a.precio > 0), "todos con su precio");
+  ok((publico.json?.agentes ?? []).length === 6, `los seis agentes están en el catálogo (${publico.json?.agentes?.length})`);
+  // INBOX vale cero porque va incluido en Pro; los de pago llevan su precio, y
+  // un precio a cero en uno de esos sería un agente que se regala sin querer.
+  ok(publico.json?.agentes?.filter((a) => a.id !== "inbox").every((a) => a.precio > 0),
+     "los de pago, todos con su precio");
+  ok(publico.json?.agentes?.find((a) => a.id === "inbox")?.precio === 0, "y el incluido en Pro, a cero");
   ok(publico.json?.cobroListo === true, "y el cobro está configurado: se puede contratar de verdad");
   const comms = publico.json.agentes.find((a) => a.id === "comms");
   ok(/todavía no se puede conectar/i.test(comms.diagnostico.dice), "COMMS avisa de lo que aún no se puede conectar (Gmail, WhatsApp)");

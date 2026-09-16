@@ -16,8 +16,13 @@ const fallos = [];
 const ok = (cond, que) => { console.log(`  ${cond ? "✓" : "✗"} ${que}`); if (!cond) fallos.push(que); };
 
 console.log("\nEl catálogo se configura en un solo sitio");
-ok(AGENTES.length === 5, `hay cinco agentes (${AGENTES.length})`);
-ok(AGENTES.every((a) => a.precio > 0 && a.periodo === "mes"), "todos con precio mensual");
+ok(AGENTES.length === 6, `hay seis agentes (${AGENTES.length})`);
+// Uno va incluido en Pro y por eso vale cero. Los demás cobran, y un cero ahí
+// sería un agente regalado sin querer.
+ok(AGENTES.every((a) => a.periodo === "mes"), "todos se cobran al mes");
+ok(AGENTES.filter((a) => !a.conPro).every((a) => a.precio > 0), "los de pago, todos con su precio");
+ok(AGENTES.filter((a) => a.conPro).every((a) => a.precio === 0),
+   "y los incluidos en Pro a cero, que es lo que son: no se cobran aparte");
 ok(new Set(AGENTES.map((a) => a.id)).size === AGENTES.length, "sin identificadores repetidos");
 ok(AGENTES.every((a) => a.instrucciones.length > 200), "todos con instrucciones de verdad, no una frase");
 ok(AGENTES.every((a) => a.ejemplos.length >= 2 && a.funciones.length >= 3), "y con qué hacen y ejemplos");
@@ -31,8 +36,13 @@ for (const a of AGENTES) {
   ok(mentira.length === 0, `${a.nombre}: ninguna integración inventada${mentira.length ? ` (${mentira.map((m) => m.servicio)})` : ""}`);
 }
 const pendientes = AGENTES.flatMap((a) => a.integraciones.filter((i) => i.pendiente).map((i) => i.servicio));
-ok(pendientes.includes("gmail") && pendientes.includes("whatsapp"),
-   "Gmail y WhatsApp están marcados como todavía-no-conectables, no escondidos");
+ok(pendientes.includes("whatsapp") && pendientes.includes("outlook"),
+   "WhatsApp y Outlook están marcados como todavía-no-conectables, no escondidos");
+// Gmail estuvo en esa lista hasta que tuvo conector de verdad. Que ya no esté
+// es lo que hace que la ficha ofrezca conectarlo en vez de disculparse.
+ok(!pendientes.includes("gmail"), "y Gmail ya NO: tiene conector, así que se puede conectar de verdad");
+ok(AGENTES.some((a) => a.integraciones.some((i) => i.servicio === "gmail" && !i.pendiente)),
+   "y sale como integración conectable de quien la lleva");
 
 console.log("\nSin conexiones, nadie finge estar listo");
 const sales = agenteDe("sales");
@@ -54,8 +64,8 @@ console.log("\nLo que el cliente no puede arreglar se dice aparte");
 const comms = agenteDe("comms");
 const conSlack = estadoDe(comms, ["slack"]);
 ok(conSlack.estado === "listo", "COMMS con Slack ya trabaja");
-ok(/todavía no se puede conectar/i.test(conSlack.dice), "pero se dice igual que Gmail y WhatsApp aún no se pueden conectar");
-ok(conSlack.sinConector.length === 3, "las tres pendientes salen contadas");
+ok(/todavía no se puede conectar/i.test(conSlack.dice), "pero se dice igual que Outlook y WhatsApp aún no se pueden conectar");
+ok(conSlack.sinConector.length === 2, `las que faltan salen contadas (${conSlack.sinConector.length})`);
 
 console.log("\nUn agente que NECESITA algo que no existe, no puede trabajar");
 const inventado = {

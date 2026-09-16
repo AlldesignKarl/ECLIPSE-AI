@@ -33,6 +33,7 @@ const PESADAS = new Set([
   "examen-api.test.mjs",
   "foto.test.mjs",
   "fondo.test.mjs",
+  "gmail-api.test.mjs",
   "grupos-ui.test.mjs",
   "grupos.test.mjs",
   "llamada-ui.test.mjs",

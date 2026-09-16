@@ -84,6 +84,15 @@ export interface Agente {
   apruebaPorDefecto: boolean;
   /** El color de su tarjeta. Del tema, no inventado. */
   tono: "pro" | "ok" | "halo" | "tuyo";
+  /**
+   * Va incluido con el plan Pro, sin cobrar aparte.
+   *
+   * No es un descuento: es un agente que entra en lo que ya se paga. Se activa
+   * directamente —no hay pasarela que abrir cuando no hay nada que cobrar— y se
+   * apaga solo si esa persona deja de ser Pro, igual que el resto de lo que
+   * incluye el plan.
+   */
+  conPro?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */

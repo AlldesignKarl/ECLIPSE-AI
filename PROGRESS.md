@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
+Última actualización: **16 de septiembre de 2026**
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.48**
+usuario: **2.49**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,9 +11,12 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 79 pruebas en verde.
-Lo último: los **agentes ya se cobran de verdad** por Stripe, con una instancia
-propia por contratación. Antes: el **Catálogo de Agentes**, agentes de empresa
+La aplicación está **en producción y funcionando**, con 81 pruebas en verde.
+Lo último: **Gmail se conecta de verdad** (OAuth con Google, sin pedirle a nadie
+ninguna contraseña), hay un **agente del correo incluido en el plan Pro**
+(ECLIPSE INBOX) y **tus agentes contratados salen arriba del todo**. Antes: los
+**agentes ya se cobran de verdad** por Stripe, con una instancia propia por
+contratación. Antes: el **Catálogo de Agentes**, agentes de empresa
 que trabajan dentro de las cuentas conectadas. Antes: **Grupos y Programar ya son gratis**, y
 **Modo Examen**, para
 estudiar con tus propios apuntes sin que se invente ni una pregunta; y un
@@ -45,7 +48,7 @@ Todo esto está hecho, probado y desplegado.
 ### Las nueve cosas grandes
 | Zona | Estado |
 |---|---|
-| **Conexiones** (21 servicios) | Funciona. Catálogo con logos reales, buscador y categorías |
+| **Conexiones** (22 servicios) | Funciona. Catálogo con logos reales, buscador y categorías. Gmail con botón de Google, los demás con clave |
 | **Programar** | Funciona, y GRATIS. Calendario de quedadas + encargos con plan automático |
 | **Biblioteca** | Funciona. Arreglada en esta sesión: daba 401 |
 | **Llamadas** | Funciona. Arranca con la primera frase; voz de hombre o mujer |
@@ -55,12 +58,16 @@ Todo esto está hecho, probado y desplegado.
 | **Tema claro** | Funciona. Contraste medido: 17,2 texto / 14,7 burbuja / 16,3 código |
 | **Chat temporal** | Funciona. No se guarda, no sale en la lista, no usa memoria |
 
-### Los 21 conectores
+### Los 22 conectores
 Comercio: `shopify`, `woocommerce`, `prestashop`, `wix`. Dinero: `stripe`.
 Trabajo: `hubspot`, `notion`, `airtable`, `trello`, `slack`. Agenda: `todoist`,
-`calendly`. Correo: `mailchimp`, `brevo`. Mensajes: `telegram`, `discord`.
-Webs y dominios: `github`, `vercel`, `ionos`, `cloudflare`. Mercados:
+`calendly`. Correo: `gmail`, `mailchimp`, `brevo`. Mensajes: `telegram`,
+`discord`. Webs y dominios: `github`, `vercel`, `ionos`, `cloudflare`. Mercados:
 `mercados` (Binance).
+
+`gmail` es el único que no se conecta pegando una clave: se conecta dando
+permiso a Google. Necesita `GOOGLE_OAUTH_ID` y `GOOGLE_OAUTH_SECRET` en el
+servidor; sin ellas lo dice y no enseña un botón que no lleva a ninguna parte.
 
 Todos nacen en solo lectura, ninguno puede borrar nada y Binance no puede
 operar ni aunque se le pida. De los doce nuevos, nueve no tienen ni una acción
@@ -72,7 +79,62 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: los agentes se cobran de verdad
+## 3. Lo último: el correo, de verdad
+
+Carlos pidió tres cosas: una sección con los agentes comprados, un agente de
+Gmail gratis solo para quien tiene Pro, y que todo lo de los agentes funcione al
+100% comprobado, *"no vaya a ser que hagan el pago y luego no les vaya bien el
+asistente de IA"*.
+
+**1. Tus agentes, arriba del todo.** En Agentes, lo contratado sale primero, con
+su estado (activo, en pausa, pendiente de pago) y lo que le falta para trabajar.
+El catálogo pasa a ser "Añadir otro". Antes había que entrar agente por agente
+para saber cuáles eran tuyos.
+
+**2. Gmail se conecta DE VERDAD.** Es la primera conexión de ECLIPSE que no se
+hace pegando una clave, porque Google no da ninguna: da un permiso, para una
+cuenta concreta y revocable desde su panel. Eso son piezas nuevas enteras
+(`lib/conexiones/oauth.ts` y `api/conexiones/oauth/[servicio]`):
+
+- Se manda a la persona a Google con `access_type=offline` —sin eso la conexión
+  dura una hora— y un `state` FIRMADO con el secreto del servidor.
+- De quién es la vuelta lo dice esa firma, **no la cookie**. Con la cookie, una
+  vuelta abierta en otro navegador conectaría el buzón de alguien a la cuenta de
+  otro. Está comprobado en la prueba: se usa a propósito el estado de otra
+  cuenta y el buzón NO cae en la del navegador.
+- El código se cambia por los testigos hablando con Google **desde el servidor**.
+  Al navegador no llega ni uno.
+- Cuando el testigo de acceso caduca se saca otro solo, y se GUARDA. Y no se
+  pierde el de refresco al hacerlo, que es el fallo que haría que todo
+  funcionara hoy y estuviera muerto mañana sin ningún error por ninguna parte.
+
+Y hace lo que tiene que hacer: `buscar_correo` con la sintaxis de Gmail,
+`sin_leer`, `leer_correo` (el texto sale entero aunque venga anidado en tres
+capas de MIME) y `enviar_correo`. **Ninguna acción borra nada**, como en todas.
+Nace en solo lectura aunque Google haya concedido también el enviar: el permiso
+del proveedor y el de ECLIPSE son dos cosas distintas.
+
+**3. ECLIPSE INBOX, incluido con Pro.** El agente del correo. No cuesta nada
+aparte y no abre pasarela; lo que hace es comprobar que de verdad eres Pro **en
+el servidor**, al contratar y en cada acción después. Si dejas de ser Pro, deja
+de trabajar y lo dice. Es el agente más fácil de probar porque no necesita nada
+del negocio de nadie: solo el correo.
+
+**Qué hace falta poner en Vercel para que esto funcione en producción:**
+`GOOGLE_OAUTH_ID` y `GOOGLE_OAUTH_SECRET`, y dar de alta en el panel de Google
+la dirección de vuelta `https://eclipse-ia.vercel.app/api/conexiones/oauth/gmail`
+letra por letra. Sin esas dos variables, ECLIPSE lo dice en la pantalla en vez
+de enseñar un botón que no lleva a ninguna parte.
+
+**Comprobado, no prometido.** `pruebas/gmail.test.mjs` (el baile de OAuth y las
+acciones de Gmail, pieza a pieza) y `pruebas/gmail-api.test.mjs` (la aplicación
+levantada: conectar exige Pro y cuenta, la firma manda sobre la cookie, INBOX se
+activa sin pasarela, lee el correo de verdad, en solo lectura no sale ni un
+correo, con aprobación se PARA y al aprobar sale, y sin Pro se apaga).
+
+---
+
+## 3 bis. Antes: los agentes se cobran de verdad
 
 Tres cosas que pidió Carlos, y las tres están.
 
@@ -655,10 +717,18 @@ Ninguno bloquea nada, pero conviene saberlos.
    han visto funcionar contra la API de verdad**:
    - Wikimedia Commons y Art Institute (Biblioteca)
    - OpenStreetMap / Nominatim y Google Maps (ubicación)
-   - Los 21 conectores (Shopify, Stripe, Telegram…). Los doce nuevos, más aún:
+   - Los 22 conectores (Shopify, Stripe, Telegram…). Los doce nuevos, más aún:
      están escritos contra la documentación de cada API y probados contra un
      servidor que habla como ella, pero nadie ha visto todavía una respuesta de
      verdad de PrestaShop, Slack o HubSpot.
+   - **Gmail y el OAuth de Google**, que es lo más nuevo y lo que más piezas
+     tiene. La pantalla de permisos de Google no se ha visto nunca desde aquí.
+     Lo primero que hay que mirar si falla en producción: que la dirección de
+     vuelta dada de alta en el panel de Google sea EXACTAMENTE
+     `https://eclipse-ia.vercel.app/api/conexiones/oauth/gmail`, y que la
+     aplicación de Google tenga aprobados los permisos de Gmail (Google los
+     considera sensibles y puede pedir verificación antes de abrirlos a
+     cualquiera que no sea el dueño de la aplicación).
    - Los modelos de imagen (Pollinations, Cloudflare)
    Si algo de esto falla en producción, el fallo estará en la forma de la
    respuesta real, no en la lógica.
@@ -687,17 +757,18 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**79 archivos, todas en verde.** Viven en `pruebas/`.
+**81 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
 npm run prueba           # todas (~6 min)
-npm run prueba:ligeras   # las 53 sin navegador (~10 s) ← para trabajar
+npm run prueba:ligeras   # las 60 sin navegador (~12 s) ← para trabajar
 node pruebas/mapa.test.mjs   # una suelta
 ```
 
 No hay framework a propósito: cada prueba es un programa de Node que sale con 0
 si va bien, así que se puede lanzar sola y lo que falla se lee en cristiano.
-Levantan servidores de mentira (`apis-falsas.mjs`, `redis-falso.mjs`) y, cuando
+Levantan servidores de mentira (`apis-falsas.mjs`, `google-falso.mjs`,
+`redis-falso.mjs`) y, cuando
 hace falta, la aplicación entera con Playwright. Detalles en `pruebas/LEEME.md`.
 
 ---
@@ -715,13 +786,14 @@ hace falta, la aplicación entera con Playwright. Detalles en `pruebas/LEEME.md`
 
 1. **Actualizar el `README.md`** con lo que hace la app hoy. Es lo que ve quien
    llega al repositorio, y miente.
-2. **Los conectores que faltan piden OAuth.** Los que quedan por interés
-   —Google Calendar, Gmail, Google Analytics, Etsy, Amazon Seller— no se
-   conectan pegando una clave: hay que montar el baile de OAuth (pantalla de
-   permisos, vuelta con el código, refresco del testigo y dónde guardarlo). Eso
-   es un trabajo aparte del de escribir un conector, y hasta que exista no se
-   pueden añadir. Los que sí se pueden hacer como los 21 de ahora: Etsy no,
-   Mailerlite sí, Sendgrid sí, BigCommerce sí, Webflow sí.
+2. **Los conectores de Google que faltan ya son fáciles.** El baile de OAuth
+   está construido (`lib/conexiones/oauth.ts`) y Gmail lo estrena. Google
+   Calendar, Drive y Analytics son ahora un archivo de conector más: añadir sus
+   permisos a `GOOGLE.permisos` y escribir sus acciones. Outlook y WhatsApp
+   Business necesitan su propio proveedor (otro `Proveedor` en `oauth.ts`, con
+   sus variables de entorno), no uno nuevo desde cero. Los que se pueden hacer
+   como los de clave: Mailerlite sí, Sendgrid sí, BigCommerce sí, Webflow sí;
+   Etsy y Amazon Seller no.
 3. **Partir `ChatApp.tsx`.** 1478 líneas. Los diálogos ya están fuera; lo que
    queda por separar es el envío y el estado de la conversación.
 4. **Que la memoria avise cuando no puede aprender** (problema 4 de arriba), o

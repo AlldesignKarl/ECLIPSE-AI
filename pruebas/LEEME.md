@@ -1,10 +1,10 @@
 # Las pruebas de ECLIPSE
 
-79 archivos. Todas pasan.
+81 archivos. Todas pasan.
 
 ```bash
 npm run prueba           # todas (~5,8 min)
-npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
+npm run prueba:ligeras   # las 60 que no abren navegador (~12 s)
 node pruebas/correr.mjs pesadas   # solo las 21 lentas
 node pruebas/correr.mjs mapa      # las que lleven "mapa" en el nombre
 node pruebas/mapa.test.mjs        # una suelta, con toda su salida
@@ -41,6 +41,13 @@ que ver. Cada uno contesta en su propio prefijo, así que un conector que se
 equivoque de ruta se ve en el acto en vez de caer en la respuesta de otro. Imita
 también las dos rarezas que importan: Slack y Cloudflare contestan 200 con el
 fallo metido dentro del cuerpo.
+
+**`google-falso.mjs`** — un Google con su pantalla de permisos, su endpoint de
+testigos y su Gmail. Se comporta como el de verdad en lo que más duele: al
+refrescar NO devuelve `refresh_token` y rechaza un testigo caducado, que es
+exactamente lo que hace que una conexión OAuth mal escrita funcione hoy y esté
+muerta mañana. `estado.duracionCanje` deja dar un testigo que nace caducado,
+que es la única forma de probar el refresco con la aplicación levantada.
 
 **`redis-falso.mjs`** — un Redis con API REST que entiende lo que usa la app
 (GET, SET, INCR, EXPIRE, DEL, KEYS y `/pipeline`). Tiene `KEYS` a propósito:

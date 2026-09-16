@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.49",
+    // Gmail por OAuth y el agente del correo, incluido con Pro.
+    nombre: "El correo",
+    titulo: "ECLIPSE ya entra en tu correo",
+    entrada: "Conecta tu Gmail con un botón, sin darle ninguna contraseña a nadie.",
+    puntos: [
+      "Conectar Gmail es pulsar «Conectar con Google» y elegir la cuenta. No hay ninguna clave que copiar: Google te dice qué permisos pide y tú decides. Se lo puedes quitar cuando quieras, desde aquí o desde tu cuenta de Google.",
+      "ECLIPSE INBOX, el agente del correo, va INCLUIDO con el plan Pro: busca entre miles de correos, te dice qué tienes sin leer, abre el hilo que le pidas y te prepara la respuesta.",
+      "Enviar es una decisión aparte. La conexión nace pudiendo mirar y no tocar, y si quieres puedes pedir que cada correo pase por tu aprobación antes de salir.",
+      "Y tus agentes contratados salen ahora arriba del todo en Agentes, con su estado, en vez de perdidos dentro del catálogo.",
+    ],
+  },
+  {
     version: "2.48",
     // Los agentes, cobrando de verdad y con instancia propia.
     nombre: "Ya se pueden contratar",
