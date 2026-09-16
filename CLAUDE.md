@@ -475,6 +475,12 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
 - **Que `ConexionesDialog` con `empezarEn` limpie buscador y categoría.** Si no,
   la ficha que se acaba de abrir puede quedar filtrada fuera y no se ve nada,
   que se parece demasiado a que el botón no hace nada.
+- **Que el enlace «Abrir X» NO salga en un servicio de OAuth antes de
+  conectarlo.** En los de clave lleva al panel donde se saca, que es media
+  conexión. En los de permiso lleva a las aplicaciones vinculadas de tu cuenta
+  de Google, que es donde se QUITA el permiso: antes de conectar ahí no hay
+  nada, y Carlos acabó justo en esa pantalla buscando ECLIPSE entre Brawl Stars
+  y WhatsApp. Después de conectar sí sale, y dice lo que es.
 - **Las 82 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.

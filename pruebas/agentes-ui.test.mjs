@@ -112,6 +112,25 @@ try {
   ok(/Pulsa «Conectar con Google»/.test(enConexiones), "y con los pasos de Gmail, no los de otro");
   ok(await p.getByRole("link", { name: "Conectar con Google" }).first().isVisible(),
      "y el botón de permiso de Google, que es todo lo que hay que hacer");
+
+  /*
+    Y NADA que lleve a otro sitio.
+
+    Aquí había un "Abrir Gmail" que apuntaba a la lista de aplicaciones
+    vinculadas de tu cuenta de Google —donde se QUITA el permiso, no donde se
+    da—. Carlos lo pulsó y acabó buscando ECLIPSE entre Brawl Stars y WhatsApp,
+    en una lista donde por definición todavía no podía estar.
+  */
+  const enlaces = await p.evaluate(() =>
+    [...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href")),
+  );
+  ok(!enlaces.some((h) => /myaccount\.google\.com/.test(h ?? "")),
+     `antes de conectar no hay ningún enlace a la cuenta de Google: ahí no habría nada que ver (${
+       enlaces.filter((h) => /google/.test(h ?? "")).join(" · ") || "ninguno"
+     })`);
+  const aFuera = enlaces.filter((h) => /^https?:/.test(h ?? ""));
+  ok(aFuera.length === 0,
+     `y lo único que se puede pulsar es conectar, no irse a otra web (${aFuera.join(" · ")})`);
   await p.screenshot({ path: `${AQUI}ag2-gmail.png` });
 
   console.log("\nUn agente de los de clave dice otra cosa distinta");

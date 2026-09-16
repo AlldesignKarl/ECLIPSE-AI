@@ -177,6 +177,36 @@ try {
   ok(await p.getByText(/ha rechazado la clave/i).count() > 0, "una clave mala se explica en la pantalla, en cristiano");
   await p.screenshot({ path: AQUI + "cx6-clave-mala.png", fullPage: true });
 
+  /*
+    Gmail en un servidor SIN Google configurado.
+
+    Este servidor de pruebas no tiene GOOGLE_OAUTH_ID ni GOOGLE_OAUTH_SECRET, o
+    sea el estado en el que está cualquier despliegue antes de darlos de alta.
+    Lo que NO puede pasar ahí es enseñar unos pasos que empiezan por "pulsa
+    Conectar con Google" cuando ese botón no existe, ni un enlace a la cuenta de
+    Google donde todavía no hay nada que ver.
+  */
+  console.log("\nGmail sin Google configurado en el servidor");
+  await p.getByPlaceholder("Buscar conexiones").fill("gmail");
+  await p.waitForTimeout(600);
+  const cabGmail = p.getByRole("button", { name: /Gmail/ }).first();
+  await cabGmail.scrollIntoViewIfNeeded();
+  await cabGmail.click();
+  await p.waitForTimeout(600);
+  const conGmail = await p.evaluate(() => document.body.innerText);
+  ok(/todavía no tiene configurado el acceso con Google/i.test(conGmail),
+     "se dice que falta configurarlo en el servidor, sin códigos ni tecnicismos");
+  ok((await p.getByRole("link", { name: "Conectar con Google" }).count()) === 0,
+     "y no se enseña un botón que no llevaría a ninguna parte");
+  ok(!/pulsa «Conectar con Google»/i.test(conGmail),
+     "ni unos pasos que empiezan por pulsar un botón que no está");
+  const aGoogle = await p.evaluate(() =>
+    [...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href") ?? "")
+      .filter((h) => /myaccount\.google\.com/.test(h)),
+  );
+  ok(aGoogle.length === 0,
+     `ni un enlace a la cuenta de Google, que es donde se QUITA el permiso y no donde se da (${aGoogle.join(" · ")})`);
+
   ok(errores.length === 0, `sin errores de JavaScript (${errores.slice(0, 2).join(" | ")})`);
 } finally {
   await navegador.close();

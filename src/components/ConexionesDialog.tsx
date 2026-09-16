@@ -469,6 +469,23 @@ function Tarjeta({
                   </span>
                 </label>
               )}
+              {/*
+                Y AQUÍ sí: una vez conectado, ese enlace lleva a donde se ve y
+                se retira el permiso. Antes de conectar no había nada que ver;
+                ahora es lo único que ese enlace sabe hacer.
+              */}
+              {servicio.oauth && (
+                <a
+                  href={servicio.enlace}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[12.5px] text-muted underline decoration-line underline-offset-2 transition hover:text-ink hover:decoration-ink"
+                >
+                  Ver o quitar este permiso en tu cuenta de Google
+                  <Icon.External width={13} height={13} />
+                </a>
+              )}
+
               <button
                 onClick={() => void desconectar()}
                 disabled={busy}
@@ -480,6 +497,15 @@ function Tarjeta({
             </>
           ) : (
             <>
+              {/*
+                Los pasos, salvo cuando el primero no existiría.
+
+                El paso 1 de un servicio de permiso es "pulsa Conectar con
+                Google". Si este servidor no tiene Google configurado ese botón
+                no está, así que enseñar los pasos sería mandar a alguien a
+                buscar algo que no hay. En ese caso manda el aviso de abajo.
+              */}
+              {!(servicio.oauth && servicio.oauthListo === false) && (
               <div>
                 <div className="mb-1.5 text-[11.5px] uppercase tracking-wide text-faint">
                   Cómo se conecta
@@ -492,16 +518,30 @@ function Tarjeta({
                     </li>
                   ))}
                 </ol>
-                <a
-                  href={servicio.enlace}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] text-ink underline decoration-line underline-offset-2 transition hover:decoration-ink"
-                >
-                  Abrir {servicio.nombre}
-                  <Icon.External width={13} height={13} />
-                </a>
+                {/*
+                  El enlace, SOLO en los de clave.
+
+                  En esos lleva al panel donde se saca, que es la mitad del
+                  trabajo. En los de permiso lleva a la lista de aplicaciones
+                  vinculadas de tu cuenta de Google, que es donde se QUITA el
+                  permiso: antes de conectar no hay nada ahí, y Carlos acabó
+                  justo en esa pantalla buscando ECLIPSE entre Brawl Stars y
+                  WhatsApp. Un enlace que promete llevarte a conectar y te
+                  lleva a otro sitio es peor que no tener enlace.
+                */}
+                {!servicio.oauth && (
+                  <a
+                    href={servicio.enlace}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] text-ink underline decoration-line underline-offset-2 transition hover:decoration-ink"
+                  >
+                    Abrir {servicio.nombre}
+                    <Icon.External width={13} height={13} />
+                  </a>
+                )}
               </div>
+              )}
 
               {/*
                 Hay dos formas de conectar, y no se parecen en nada.

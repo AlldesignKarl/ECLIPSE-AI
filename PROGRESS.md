@@ -136,6 +136,16 @@ cada una con su botón, que cierra Agentes y abre Conexiones **con esa ficha ya
 abierta y subida a la vista**, en vez de soltarte en una lista de veintidós.
 Lo ya conectado dice a qué cuenta y con qué permiso, y deja de ofrecer nada.
 
+**5. Y quitado un enlace que llevaba al sitio equivocado.** La ficha de Gmail
+tenía un «Abrir Gmail» que apuntaba a `myaccount.google.com/permissions`: la
+lista de aplicaciones vinculadas de tu cuenta de Google, que es donde se QUITA
+un permiso, no donde se da. Carlos lo pulsó y acabó buscando ECLIPSE en una
+lista donde por definición todavía no podía estar. Ahora ese enlace sale solo en
+los servicios de clave (donde lleva al panel del que se saca) y, en los de
+permiso, solo DESPUÉS de conectar y diciendo lo que es. Y si el servidor no
+tiene Google configurado no se enseñan ni el botón ni unos pasos que empiezan
+por pulsarlo.
+
 **Comprobado, no prometido.** `pruebas/gmail.test.mjs` (el baile de OAuth y las
 acciones de Gmail, pieza a pieza) y `pruebas/gmail-api.test.mjs` (la aplicación
 levantada: conectar exige Pro y cuenta, la firma manda sobre la cookie, INBOX se
