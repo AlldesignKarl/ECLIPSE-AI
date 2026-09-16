@@ -29,6 +29,7 @@ const PESADAS = new Set([
   "conexiones-ui.test.mjs",
   "convertir.test.mjs",
   "escritura.test.mjs",
+  "examen-api.test.mjs",
   "foto.test.mjs",
   "fondo.test.mjs",
   "grupos-ui.test.mjs",

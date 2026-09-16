@@ -1,5 +1,6 @@
 import { borrarUsuario, contrasenaCorrecta, currentUser } from "./auth";
 import { olvidarTodasLasDe } from "./conexiones/almacen";
+import { olvidarExamenesDe } from "./examen/almacen";
 import { salirDeTodos } from "./grupos/almacen";
 import { olvidarTodo as olvidarMemoriaDe } from "./memoria/almacen";
 import { olvidarTareasDe } from "./tareas/almacen";
@@ -32,6 +33,9 @@ export async function borrarTodoLoMio(
   // camino, se puede volver a intentar entrando otra vez.
   await olvidarMemoriaDe(email).catch(() => {});
   await olvidarTareasDe(email).catch(() => {});
+  // Los apuntes del Modo Examen son lo más suyo que hay aquí dentro: son los
+  // apuntes de alguien. Si se va, se van con él.
+  await olvidarExamenesDe(email).catch(() => {});
   await olvidarTodasLasDe(email).catch(() => {});
   await salirDeTodos(email).catch(() => {});
   await borrarUsuario(email).catch(() => {});

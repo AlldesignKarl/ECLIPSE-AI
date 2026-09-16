@@ -2,7 +2,7 @@
 
 Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.44**
+usuario: **2.45**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,8 +11,9 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 75 pruebas en verde.
-Lo último: un **router de motores** que manda cada pregunta a donde mejor se
+La aplicación está **en producción y funcionando**, con 77 pruebas en verde.
+Lo último: **Modo Examen**, para estudiar con tus propios apuntes sin que se
+invente ni una pregunta. Antes: un **router de motores** que manda cada pregunta a donde mejor se
 resuelve sin que se note por fuera. Antes: ECLIPSE **aprende cómo le gusta a
 cada uno que le hablen** y se
 adapta poco a poco, con personalidad propia de partida. Antes de eso: los
@@ -67,7 +68,71 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: el router de motores
+## 3. Lo último: Modo Examen
+
+Estudiar con TUS apuntes. Lo que decide si esto sirve o no está en una sola
+idea, y Carlos la dejó dicha tres veces: **si algo no aparece en los materiales,
+no entra en el examen**. Una aplicación de estudiar que se inventa una pregunta
+no es peor que no tenerla: te hace estudiar lo que no es, y eso no se descubre
+hasta el día del examen.
+
+**Cómo se consigue.** No pasándole los apuntes al modelo y pidiéndole que
+pregunte. En tres pasos:
+
+1. De los materiales se saca un **extracto**: trozos literales, cada uno con su
+   archivo y su página. Eso es lo único que existe.
+2. Todo lo demás —resumen, quiz, desarrollo, corrección— mira SOLO ese extracto,
+   y cada pregunta tiene que decir de qué trozo sale.
+3. Antes de enseñar nada se **comprueba**, en `examen/tipos.ts`, con una cuenta
+   y sin volver a preguntarle al modelo: que el trozo exista y que la respuesta
+   correcta esté de verdad en él. Lo que no se puede comprobar se tira.
+
+El paso 3 es el que importa. Pedirle a un modelo que no invente es una súplica;
+comprobar que lo que ha dicho está en el texto es una comprobación. Medido en la
+prueba: de tres preguntas que devuelve el modelo, la de Darwin —cierta, pero que
+no está en esos apuntes— no llega nunca a la pantalla. Y si no queda ninguna, se
+dice, en vez de preguntar cultura general.
+
+**Lo que hay dentro.** Crear examen (asignatura, título, fecha, temas, lo que
+dijo el profesor), subir fotos/PDF/textos, mapa del examen con la cobertura de
+cada tema, resumen rápido o completo, quiz con los cuatro modos que pidió
+—rápido, repaso, difícil y «mis fallos»—, examen de desarrollo con corrección
+por puntos (lo que has hecho bien, lo que falta, errores, cómo mejorar y la
+respuesta esperada), y progreso con la evolución de la nota y qué repasar.
+
+**El reparto de modelos** es el que pidió: LEER los apuntes —fotos torcidas de
+una libreta, PDF— va a quien mejor mira (Gemini, que se pone delante cuando hay
+adjuntos); resumir, preguntar y corregir salen por `una-respuesta.ts`, que
+empieza por Mistral y baja si falla. Sin endpoints ni claves nuevas: se reutiliza
+todo lo que ya había.
+
+**Tres cosas que se cuidaron y no se ven:**
+
+- Analizar material **suma** al extracto; subir una foto hoy no borra lo que se
+  leyó la semana pasada.
+- Del archivo del que no sale ni un trozo se avisa: una foto movida de unos
+  apuntes es lo más normal del mundo, y callarlo deja a alguien estudiando con
+  material que no está.
+- `palabrasDe()` corta a seis letras. Sin eso "produce" y "producir" no se
+  parecían, y una pregunta bien reformulada —que es lo que hace buena a una
+  pregunta— se caía por usar el mismo verbo en otro tiempo. Lo destapó la propia
+  prueba.
+
+**Y las caras en los grupos.** Lo pidió a la vez: "que la gente tenga la foto de
+perfil que tenga dentro de la app". Se sirven por el NOMBRE que se ve —nunca por
+el correo, ni siquiera dentro de la dirección de la imagen— y solo a quien está
+dentro del grupo. La foto no viaja dentro de la lista de gente, que se refresca
+cada pocos segundos: va aparte y la guarda el navegador. Quien no tiene foto
+sigue con su inicial y su color de siempre.
+
+Pruebas nuevas: `examen.test.mjs` (la lógica entera sin red, incluida la que
+tira lo inventado) y `examen-api.test.mjs`, que levanta la aplicación y recorre
+crear → subir apuntes → resumen → quiz → desarrollo → corrección → progreso,
+comprobando de paso que lo de cada uno es de cada uno.
+
+---
+
+## 3 bis. Antes: el router de motores
 
 Carlos: *"Mistral = cerebro general, Gemini = especialista cuando aporte una
 ventaja clara, router que decide automáticamente"*, y con una condición que
@@ -503,7 +568,7 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**75 archivos, todas en verde.** Viven en `pruebas/`.
+**77 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
 npm run prueba           # todas (~6 min)

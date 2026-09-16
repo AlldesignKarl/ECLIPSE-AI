@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 import { currentPlan } from "@/lib/plan-server";
 import {
+  avatarDe,
   borrarGrupo,
   cambiarEclipse,
   crearGrupo,
@@ -12,6 +13,7 @@ import {
   grupoDeInvitacion,
   misGrupos,
   quien,
+  quienTieneFoto,
   renovarInvitacion,
   salirse,
 } from "@/lib/grupos/almacen";
@@ -41,7 +43,7 @@ function no(error: string, status: number, code?: string) {
 }
 
 /** Lo que se le enseña a cada uno: el grupo sin los correos de los demás. */
-function comoSeVe(grupo: Grupo, email: string) {
+function comoSeVe(grupo: Grupo, email: string, conFoto = new Set<string>()) {
   return {
     id: grupo.id,
     nombre: grupo.nombre,
@@ -52,6 +54,16 @@ function comoSeVe(grupo: Grupo, email: string) {
       dueno: m.dueno,
       entro: m.entro,
       yo: m.email === email,
+      /*
+        Si tiene foto de perfil, para ponerle su cara en el grupo.
+
+        Va el SÍ o NO y no la foto. Una foto de perfil son hasta trescientos
+        kilobytes, y esta lista se pide cada pocos segundos mientras el grupo
+        está abierto: con ocho personas serían dos megas y medio cada vez, por
+        una cara que no cambia en meses. La foto se pide aparte, una vez, y el
+        navegador la guarda.
+      */
+      foto: conFoto.has(m.nombre),
     })),
     soyDueno: grupo.miembros.some((m) => m.email === email && m.dueno),
     // Si lleva día, es una quedada: el chat enseña arriba cuándo es y de qué va.
@@ -74,7 +86,35 @@ export async function GET(req: NextRequest) {
     return no("Los grupos necesitan la base de datos, y este servidor no la tiene.", 503, "no_store");
 
   const email = await quien();
-  const invitacion = new URL(req.url).searchParams.get("invitacion");
+  const url = new URL(req.url);
+  const invitacion = url.searchParams.get("invitacion");
+
+  /*
+    La cara de alguien del grupo.
+
+    Aparte y por su cuenta, para que el navegador se la guarde: se pide una vez
+    y ya no vuelve a viajar. Se busca por el nombre que se ve y nunca por el
+    correo, que en un grupo no sale ni siquiera dentro de una dirección de
+    imagen. Y solo contesta a quien está dentro: la foto de perfil de alguien
+    es de la gente con la que habla, no de internet.
+  */
+  const avatar = url.searchParams.get("avatar");
+  const deGrupo = url.searchParams.get("id");
+  if (avatar && deGrupo) {
+    const foto = await avatarDe(deGrupo, avatar);
+    if (!foto) return no("No hay foto.", 404);
+
+    const [cabeza, base64] = foto.split(",");
+    const tipo = /^data:([^;]+)/.exec(cabeza ?? "")?.[1] ?? "image/jpeg";
+    return new Response(Buffer.from(base64 ?? "", "base64"), {
+      headers: {
+        "Content-Type": tipo,
+        // Cinco minutos: una foto de perfil no cambia casi nunca, pero cuando
+        // alguien se la cambia tiene que verse el mismo rato, no mañana.
+        "Cache-Control": "private, max-age=300",
+      },
+    });
+  }
 
   // Antes de entrar se puede mirar: quién invita y si queda sitio. Sin cuenta
   // también, porque si no, el enlace no se entiende hasta después de
@@ -98,8 +138,10 @@ export async function GET(req: NextRequest) {
   }
 
   if (!email) return Response.json({ grupos: [], sinCuenta: true });
+  const mios = await misGrupos();
+  const caras = await Promise.all(mios.map((g) => quienTieneFoto(g)));
   return Response.json({
-    grupos: (await misGrupos()).map((g) => comoSeVe(g, email)),
+    grupos: mios.map((g, i) => comoSeVe(g, email, caras[i])),
     maximo: MAX_PERSONAS,
     pro: (await currentPlan()) === "pro",
   });

@@ -248,6 +248,18 @@ export async function memoriaApagada(email: string): Promise<boolean> {
   return (await leerUsuario(email))?.sinMemoria === true;
 }
 
+/**
+ * La foto de perfil de alguien, por su correo.
+ *
+ * La usan los grupos para poner la cara de cada uno al lado de sus mensajes.
+ * Devuelve la foto y nada más: ni el nombre, ni el correo, ni cuándo se
+ * registró. Quien llama ya sabe a quién se la está pidiendo y no necesita el
+ * resto, y en los grupos el correo de nadie sale de aquí.
+ */
+export async function fotoDe(email: string): Promise<string> {
+  return (await leerUsuario(email))?.foto ?? "";
+}
+
 /** Tope de la foto ya encogida. Más que esto no es una foto, es un descuido. */
 export const MAX_FOTO = 300_000;
 

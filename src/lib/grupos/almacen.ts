@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
-import { currentUser, nombreActual } from "../auth";
+import { currentUser, fotoDe, nombreActual } from "../auth";
 import { del, get, set, storeAvailable } from "../store";
 import {
   comoSeLeVe,
@@ -341,6 +341,42 @@ export async function guardarImagen(grupoId: string, dataUrl: string): Promise<s
 export async function imagenDe(id: string): Promise<string | null> {
   const v = await get(claveImagen(id)).catch(() => null);
   return v ? String(v) : null;
+}
+
+/**
+ * La foto de perfil de alguien del grupo, buscándole por el nombre que se ve.
+ *
+ * Por el nombre y no por el correo a propósito: en un grupo nadie ve el correo
+ * de nadie, ni siquiera de rebote en la dirección de una imagen. El nombre que
+ * se ve es lo único que sale de aquí, y es además con lo que ya se pinta el
+ * color de cada avatar.
+ *
+ * Solo contesta a quien está dentro del grupo. La foto de perfil de alguien no
+ * es pública: es de la gente con la que habla.
+ */
+export async function avatarDe(grupoId: string, comoSeVe: string): Promise<string | null> {
+  const email = await quien();
+  if (!email) return null;
+
+  const grupo = await grupoDe(grupoId);
+  if (!grupo || !grupo.miembros.some((m) => m.email === email)) return null;
+
+  const suyo = grupo.miembros.find((m) => m.nombre === comoSeVe);
+  if (!suyo) return null;
+
+  const foto = await fotoDe(suyo.email);
+  return foto || null;
+}
+
+/** Quién del grupo tiene foto puesta, para no pedir las que no existen. */
+export async function quienTieneFoto(grupo: Grupo): Promise<Set<string>> {
+  const con = new Set<string>();
+  await Promise.all(
+    grupo.miembros.map(async (m) => {
+      if (await fotoDe(m.email)) con.add(m.nombre);
+    }),
+  );
+  return con;
 }
 
 /** Las fotos de un grupo, de la más vieja a la más nueva. */

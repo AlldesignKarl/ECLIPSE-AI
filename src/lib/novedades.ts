@@ -27,6 +27,23 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.45",
+    // Modo Examen: estudiar con tus propios apuntes, sin invenciones.
+    nombre: "Modo Examen",
+    titulo: "Estudia con TUS apuntes, no con lo que se imagine",
+    entrada:
+      "Subes fotos de tus apuntes y ECLIPSE te resume, te pregunta y te corrige. Todo con tu temario.",
+    puntos: [
+      "Nuevo en el menú: Modo Examen. Dices de qué asignatura es, qué entra y cuándo, subes fotos de tus apuntes, del libro o los PDF del profesor, y ECLIPSE los lee.",
+      "Te enseña el mapa del examen: qué temas hay en tus materiales y cuánto material tienes de cada uno. Si de un tema tienes poco, te lo dice en vez de disimularlo.",
+      "Resumen rápido o completo, test con cuatro modos —rápido, repaso, difícil y «mis fallos»— y examen de desarrollo que escribes tú y te corrige con su nota, lo que has hecho bien, lo que te falta y la respuesta que esperaba.",
+      "Lo más importante: NO se inventa preguntas. Cada una tiene que salir de un trozo concreto de tus apuntes, y antes de enseñártela se comprueba que la respuesta correcta está de verdad ahí. La que no se puede respaldar se tira. Si no sale ninguna, te lo dice en vez de preguntarte cultura general.",
+      "Cada pregunta y cada corrección te dicen de qué archivo y de qué página salen, para que puedas ir a mirarlo.",
+      "Guarda tu progreso: notas, evolución, en qué temas fallas y qué te conviene repasar. Y sigue ahí al abrirlo desde otro móvil.",
+      "Y en los grupos ya sale la foto de perfil de cada uno en vez de sus iniciales.",
+    ],
+  },
+  {
     version: "2.44",
     // El router: Mistral de cerebro general, Gemini de especialista.
     nombre: "El mejor para cada cosa",

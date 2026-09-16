@@ -31,6 +31,8 @@ No es un envoltorio de un chat. Hace, de menos a más raro:
 - **Grupos**: varias personas hablándole a ECLIPSE en el mismo sitio. Él está
   dentro contestando a todo de fábrica, se ve en la lista de gente, y el dueño
   puede pasarlo a "solo si le nombran" o apagarlo.
+- **Modo Examen**: subes fotos de tus apuntes y te resume, te pregunta y te
+  corrige exámenes de desarrollo, SOLO con lo que pone en tus materiales.
 - **Memoria**: aprende de ti y puede mirar conversaciones anteriores.
 - **Ubicación**: excursiones, sitios cerca y cómo llegar.
 
@@ -104,6 +106,10 @@ src/
     tools/                      Herramientas que el modelo puede usar
     conexiones/                 Un archivo por servicio + registro + almacén
     tareas/  grupos/  memoria/  Cada uno: tipos.ts + almacen.ts (+ lógica)
+    examen/                     Modo Examen. `tipos.ts` es toda la lógica pura
+                                —incluida la que tira las preguntas que no se
+                                pueden respaldar con los apuntes—, `almacen.ts`
+                                lo guarda y `estudiar.ts` habla con el modelo
     tareas/planear.ts           El plan que monta ECLIPSE (y `leerPlan`, que
                                 lee lo que conteste el modelo sin romperse)
     una-respuesta.ts            Una respuesta entera del motor que haya, sea
@@ -117,7 +123,7 @@ src/
                                 toda la lógica y no toca la red
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        75 pruebas. Ver pruebas/LEEME.md
+pruebas/                        77 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -350,7 +356,27 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
   (`hayQueVolver`), y no solo si es cupo. Cuando el motor lo eligió el usuario,
   su error hay que contarlo; cuando lo elegimos nosotros, el error es nuestro y
   quien escribe se quedaría sin una respuesta que iba a tener.
-- **Las 75 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que una pregunta del Modo Examen no se enseñe sin comprobarla**
+  (`estaRespaldada` y `largaRespaldada` en `examen/tipos.ts`). Pedirle a un
+  modelo que no invente es una súplica; comprobar que la respuesta correcta está
+  en el trozo de apuntes que ha citado es una comprobación. Lo que no pasa por
+  ahí se tira sin avisar al modelo ni pedirle otra: es más barato y más fiable
+  que insistir. Y si no queda ninguna, se DICE, en vez de preguntar cultura
+  general de la asignatura.
+- **Que `palabrasDe()` corte las palabras a seis letras.** Sin eso, "produce" y
+  "producir" no se parecían en nada para esa cuenta, y una pregunta bien
+  reformulada —que es lo que hace buena a una pregunta— se caía por usar el
+  mismo verbo en otro tiempo.
+- **Que analizar material SUME al extracto en vez de sustituirlo.** Subir una
+  foto hoy no puede borrar lo que se leyó la semana pasada; eso es lo contrario
+  de lo que espera nadie que toca "añadir material".
+- **Que el archivo del que no sale ni un trozo se marque como ilegible y se
+  diga.** Una foto movida de unos apuntes es lo más normal del mundo, y callarlo
+  deja a alguien estudiando con material que no está.
+- **Que la foto de perfil de un grupo se sirva por el NOMBRE que se ve**
+  (`avatarDe`), nunca por el correo, y solo a quien está dentro. En los grupos
+  el correo de nadie sale, ni siquiera dentro de la dirección de una imagen.
+- **Las 77 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -363,7 +389,7 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 75 pruebas (~7 min)
+npm run prueba           # las 77 pruebas (~7 min)
 npm run prueba:ligeras   # las 53 que no abren navegador (~10 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```

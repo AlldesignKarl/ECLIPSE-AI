@@ -3,6 +3,7 @@ import { oneShot as oneShotGoogle } from "./gemini";
 import { KEY_PROVIDERS, resolveKey } from "./keys";
 import { unaVezCompat, type CompatProvider } from "./openai-compat";
 import { activeProvider, type Provider } from "./provider";
+import type { Attachment } from "./types";
 
 /**
  * Una respuesta entera del motor que haya, sea cual sea.
@@ -26,6 +27,14 @@ export interface Peticion {
   mensaje: string;
   /** Cuánto puede escribir. Un título son 40; un plan, mil y pico. */
   tope?: number;
+  /**
+   * Fotos, PDF o archivos que hay que MIRAR.
+   *
+   * Lo usa el Modo Examen para leer los apuntes de alguien. Con adjuntos
+   * cambia el orden en que se prueban los motores: delante los que ven, que no
+   * son todos, y por eso esto no es solo un parámetro más.
+   */
+  adjuntos?: Attachment[];
   signal?: AbortSignal;
 }
 
@@ -33,8 +42,16 @@ export type Respuesta =
   | { ok: true; texto: string; motor: Provider }
   | { ok: false; error: string };
 
-/** El orden en que se prueban: primero el de siempre, luego los que haya. */
-async function motoresAProbar(): Promise<Provider[]> {
+/**
+ * El orden en que se prueban: primero el de siempre, luego los que haya.
+ *
+ * Con adjuntos delante, el orden cambia y manda Google. No es preferencia: es
+ * que sus modelos miran imágenes y leen PDF SIEMPRE, y los de los demás
+ * dependen de qué tenga la cuenta ese día. Leer unos apuntes con un motor que
+ * no ve es perder el viaje y, peor, arriesgarse a que conteste algo de memoria
+ * en vez de decir que no ha visto nada.
+ */
+async function motoresAProbar(conAdjuntos = false): Promise<Provider[]> {
   const primero = await activeProvider();
   const orden: Provider[] = primero ? [primero] : [];
 
@@ -42,6 +59,9 @@ async function motoresAProbar(): Promise<Provider[]> {
     if (p !== primero && (await resolveKey(p))) orden.push(p);
   }
   if (primero !== "anthropic" && process.env.ANTHROPIC_API_KEY) orden.push("anthropic");
+
+  if (conAdjuntos && orden.includes("google"))
+    return ["google", ...orden.filter((p) => p !== "google")];
   return orden;
 }
 
@@ -69,7 +89,12 @@ async function conUno(motor: Provider, p: Peticion): Promise<string> {
     // Gemini no separa instrucciones y pregunta en esta llamada corta, así que
     // van pegadas. Es lo mismo que hace el titulador desde siempre.
     return (
-      await oneShotGoogle(p.sistema ? `${p.sistema}\n\n${p.mensaje}` : p.mensaje, key, tope)
+      await oneShotGoogle(
+        p.sistema ? `${p.sistema}\n\n${p.mensaje}` : p.mensaje,
+        key,
+        tope,
+        p.adjuntos,
+      )
     ).trim();
   }
 
@@ -79,12 +104,13 @@ async function conUno(motor: Provider, p: Peticion): Promise<string> {
     sistema: p.sistema,
     prompt: p.mensaje,
     tope,
+    adjuntos: p.adjuntos,
     signal: p.signal,
   });
 }
 
 export async function unaRespuesta(p: Peticion): Promise<Respuesta> {
-  const motores = await motoresAProbar();
+  const motores = await motoresAProbar(Boolean(p.adjuntos?.length));
   if (!motores.length)
     return {
       ok: false,

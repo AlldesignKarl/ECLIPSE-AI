@@ -1102,10 +1102,34 @@ export async function unaVezCompat(opts: {
   sistema?: string;
   prompt: string;
   tope?: number;
+  /**
+   * Fotos o archivos, cuando hay que MIRAR algo y no solo leer.
+   *
+   * Lo usa el Modo Examen para leer apuntes cuando no hay Google. No siempre se
+   * puede —que un modelo de esta cuenta vea imágenes depende del catálogo de
+   * ese día— y por eso esto es el segundo camino y no el primero.
+   */
+  adjuntos?: Attachment[];
   signal?: AbortSignal;
 }): Promise<string> {
   const preset = presetDe(opts.provider);
   const modelo = await modeloSuelto(opts.provider, opts.key);
+
+  /*
+    Con adjuntos, el mensaje deja de ser un texto y pasa a ser una lista de
+    trozos: es como lo pide el dialecto de OpenAI, que es el que hablan los tres.
+    Sin adjuntos se queda exactamente como estaba.
+  */
+  const conAdjuntos = (opts.adjuntos ?? []).filter((a) => a.kind === "image" && a.data);
+  const contenido = conAdjuntos.length
+    ? [
+        ...conAdjuntos.map((a) => ({
+          type: "image_url" as const,
+          image_url: { url: `data:${a.mime};base64,${a.data}` },
+        })),
+        { type: "text" as const, text: opts.prompt },
+      ]
+    : opts.prompt;
 
   const res = await fetch(`${preset.base}/chat/completions`, {
     method: "POST",
@@ -1115,7 +1139,7 @@ export async function unaVezCompat(opts: {
       model: modelo,
       messages: [
         ...(opts.sistema ? [{ role: "system", content: opts.sistema }] : []),
-        { role: "user", content: opts.prompt },
+        { role: "user", content: contenido },
       ],
       max_tokens: opts.tope ?? 1200,
       temperature: 0.4,

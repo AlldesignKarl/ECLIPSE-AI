@@ -24,6 +24,8 @@ interface Miembro {
   nombre: string;
   dueno: boolean;
   yo: boolean;
+  /** Si tiene foto de perfil puesta. La foto se pide aparte. */
+  foto?: boolean;
 }
 
 type ModoEclipse = "siempre" | "nombrado" | "no";
@@ -490,6 +492,55 @@ function colorDe(nombre: string): string {
   return `hsl(${tonos[suma % tonos.length]} 55% 58%)`;
 }
 
+/**
+ * La cara de alguien en el grupo: su foto de perfil, o sus iniciales.
+ *
+ * Lo pidió Carlos: "que la gente tenga la foto de perfil que tenga dentro de la
+ * app". Y con el respaldo puesto, que es lo que hace que esto no se vea roto
+ * nunca: quien no tiene foto sigue teniendo su inicial y su color de siempre,
+ * y si la foto no carga —se la ha quitado, o va mal la red— se cae a lo mismo.
+ *
+ * La foto se pide por su dirección y no viaja dentro de la lista de gente: esa
+ * lista se refresca cada pocos segundos y una foto de perfil son hasta
+ * trescientos kilobytes. Así se pide una vez y la guarda el navegador.
+ */
+function Cara({
+  nombre,
+  grupo,
+  foto,
+  lado,
+}: {
+  nombre: string;
+  grupo: string;
+  foto?: boolean;
+  /** Lo que mide de lado, en píxeles. Las hay de 20 y de 28. */
+  lado: number;
+}) {
+  const [falla, setFalla] = useState(false);
+  const letra = Math.max(9, Math.round(lado * 0.38));
+
+  if (foto && !falla)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={`/api/grupos?id=${encodeURIComponent(grupo)}&avatar=${encodeURIComponent(nombre)}`}
+        alt=""
+        onError={() => setFalla(true)}
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: lado, height: lado }}
+      />
+    );
+
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
+      style={{ width: lado, height: lado, fontSize: letra, background: colorDe(nombre) }}
+    >
+      {inicialesDe(nombre)}
+    </span>
+  );
+}
+
 /** La hora, corta. La fecha solo si no es de hoy. */
 function cuandoDe(momento: number): string {
   const d = new Date(momento);
@@ -768,12 +819,8 @@ export function Sala({
                 </span>
               )}
               {miembros.slice(0, 3).map((m) => (
-                <span
-                  key={m.nombre}
-                  className="flex h-5 w-5 items-center justify-center rounded-full border border-void text-[9px] font-semibold text-white"
-                  style={{ background: colorDe(m.nombre) }}
-                >
-                  {inicialesDe(m.nombre)}
+                <span key={m.nombre} className="rounded-full border border-void">
+                  <Cara nombre={m.nombre} grupo={grupo.id} foto={m.foto} lado={20} />
                 </span>
               ))}
             </span>
@@ -854,12 +901,7 @@ export function Sala({
             <ul className="space-y-1.5">
               {miembros.map((m) => (
                 <li key={m.nombre} className="flex items-center gap-2 text-[12.5px] text-muted">
-                  <span
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                    style={{ background: colorDe(m.nombre) }}
-                  >
-                    {inicialesDe(m.nombre)}
-                  </span>
+                  <Cara nombre={m.nombre} grupo={grupo.id} foto={m.foto} lado={24} />
                   <span className="truncate">
                     {m.nombre}
                     {m.yo && " (tú)"}
@@ -972,12 +1014,12 @@ export function Sala({
                         <Icon.Sparkle width={13} height={13} />
                       </span>
                     ) : (
-                      <span
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                        style={{ background: colorDe(m.nombre) }}
-                      >
-                        {inicialesDe(m.nombre)}
-                      </span>
+                      <Cara
+                        nombre={m.nombre}
+                        grupo={grupo.id}
+                        foto={miembros.find((x) => x.nombre === m.nombre)?.foto}
+                        lado={28}
+                      />
                     ))}
                 </span>
 

@@ -30,6 +30,7 @@ const ProgramarDialog = dynamic(() => import("./ProgramarDialog"), { ssr: false 
 const BibliotecaDialog = dynamic(() => import("./BibliotecaDialog"), { ssr: false });
 const Llamada = dynamic(() => import("./Llamada"), { ssr: false });
 const GruposDialog = dynamic(() => import("./GruposDialog"), { ssr: false });
+const ExamenDialog = dynamic(() => import("./ExamenDialog"), { ssr: false });
 import { encodedSize, FileTooLarge, MAX_TOTAL_ENCODED, toAttachment } from "@/lib/files";
 import {
   aligerarHistorial,
@@ -127,6 +128,7 @@ export default function ChatApp({
   const [bibliotecaOpen, setBibliotecaOpen] = useState(false);
   const [llamando, setLlamando] = useState(false);
   const [gruposOpen, setGruposOpen] = useState(false);
+  const [examenOpen, setExamenOpen] = useState(false);
 
   // Y si la dirección trae una invitación, se abre Grupos solo: el enlace
   // tiene que llevar a donde lleva, sin que nadie busque nada.
@@ -1201,6 +1203,7 @@ export default function ChatApp({
         onProgramar={() => setProgramarOpen(true)}
         onBiblioteca={() => setBibliotecaOpen(true)}
         onGrupos={() => setGruposOpen(true)}
+        onExamen={() => setExamenOpen(true)}
         tareasNuevas={tareasNuevas}
         onInicio={() => {
           setSidebar(false);
@@ -1411,6 +1414,16 @@ export default function ChatApp({
         plan={plan}
         onUpgrade={() => {
           setGruposOpen(false);
+          setUpgradeOpen(true);
+        }}
+      />
+
+      <ExamenDialog
+        open={examenOpen}
+        onClose={() => setExamenOpen(false)}
+        plan={plan}
+        onUpgrade={() => {
+          setExamenOpen(false);
           setUpgradeOpen(true);
         }}
       />

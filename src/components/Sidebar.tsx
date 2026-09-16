@@ -30,6 +30,7 @@ interface Props {
   onBiblioteca: () => void;
   /** Abre Grupos: varias personas hablando con ECLIPSE a la vez. */
   onGrupos: () => void;
+  onExamen: () => void;
   /** Hay resultados de encargos sin ver: se enciende un punto. */
   tareasNuevas?: boolean;
   onInicio: () => void;
@@ -59,6 +60,7 @@ export default function Sidebar({
   onProgramar,
   onBiblioteca,
   onGrupos,
+  onExamen,
   tareasNuevas = false,
   onInicio,
   user = null,
@@ -375,6 +377,22 @@ export default function Sidebar({
           >
             <Icon.Group width={16} height={16} />
             <span className="flex-1 text-left">Grupos</span>
+            {plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>}
+          </button>
+
+          {/*
+            Modo Examen, justo debajo de Grupos.
+
+            Aquí y no arriba con las conversaciones porque no es una forma de
+            hablar con ECLIPSE: es un sitio al que se entra a estudiar, con sus
+            apuntes dentro, como la Biblioteca o Programar.
+          */}
+          <button
+            onClick={onExamen}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-muted transition hover:bg-panel hover:text-ink"
+          >
+            <Icon.Brain width={16} height={16} />
+            <span className="flex-1 text-left">Modo Examen</span>
             {plan !== "pro" && <span className="text-[10px] font-semibold text-pro">PRO</span>}
           </button>
 

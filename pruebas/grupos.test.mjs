@@ -131,6 +131,37 @@ try {
   ok(!visto.includes(correoLuis), "ni el suyo propio");
   ok(visto.includes("Ana") && visto.includes("Luis"), "solo los nombres");
 
+  /*
+    La cara de cada uno.
+
+    Lo pidió Carlos: "que la gente tenga la foto de perfil que tenga dentro de
+    la app". Lo que importa comprobar es que la foto se sirve por SU nombre y
+    solo a quien está dentro del grupo: una foto de perfil no es pública, es de
+    la gente con la que hablas. Y que el correo no asoma ni dentro de la
+    dirección de la imagen.
+  */
+  console.log("\nCada uno con su cara");
+  const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  await ana("/api/auth", { method: "PATCH", body: JSON.stringify({ foto: PNG }) });
+
+  const conCara = await ana("/api/grupos");
+  const suGrupo = (conCara.json?.grupos ?? []).find((g) => g.id === grupo.id);
+  const ella = suGrupo?.miembros?.find((m) => m.nombre === "Ana");
+  const el = suGrupo?.miembros?.find((m) => m.nombre === "Luis");
+  ok(ella?.foto === true, "se sabe quién tiene foto puesta");
+  ok(el?.foto === false, "y quién no: así no se piden las que no existen");
+  ok(!JSON.stringify(conCara.json).includes("base64"), "la foto NO viaja dentro de la lista, que se pide cada pocos segundos");
+
+  const suya = await ana(`/api/grupos?id=${grupo.id}&avatar=Ana`);
+  ok(suya.estado === 200, `quien está dentro ve la cara de los demás (${suya.estado})`);
+
+  const mirona = sesion();
+  await mirona("/api/auth", { method: "POST", body: JSON.stringify({ action: "signup", email: `fuera${Date.now()}@ejemplo.com`, password: "eclipse2026", nombre: "Colado" }) });
+  const colada = await mirona(`/api/grupos?id=${grupo.id}&avatar=Ana`);
+  ok(colada.estado === 404, "y quien no está dentro, no: una foto de perfil no es pública");
+  const sinFoto = await ana(`/api/grupos?id=${grupo.id}&avatar=Luis`);
+  ok(sinFoto.estado === 404, "de quien no tiene foto no hay nada que servir");
+
   console.log("\nHablar en el grupo");
   // Mandar un mensaje NO espera a que conteste ECLIPSE: es lo que hace que el
   // grupo vaya rápido. Se comprueba con el reloj, que es donde se notaba.

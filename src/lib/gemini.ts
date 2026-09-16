@@ -425,11 +425,20 @@ async function* unaVuelta(opts: {
   if (sources.length) yield { sources };
 }
 
-/** Una respuesta corta y sin streaming. Se usa para titular conversaciones. */
+/**
+ * Una respuesta corta y sin streaming. Titula conversaciones, y lee apuntes.
+ *
+ * Los adjuntos son de lo segundo: el Modo Examen le pasa aquí las fotos de los
+ * apuntes y los PDF para que los LEA. Es el trabajo en el que Gemini gana con
+ * más claridad —mirar una foto torcida de una libreta y sacar lo que pone— y
+ * por eso es el que se le da a él. Va por el mismo camino que la conversación,
+ * así que no hay nada nuevo que pueda romperse: es `toContents` de siempre.
+ */
 export async function oneShot(
   prompt: string,
   key: string,
   maxOutputTokens = 40,
+  adjuntos?: Attachment[],
 ): Promise<string> {
   if (!key) throw new GeminiError("Falta la clave de Google.", 503);
 
@@ -437,7 +446,7 @@ export async function oneShot(
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      contents: toContents([{ role: "user", content: prompt, attachments: adjuntos }]),
       generationConfig: { maxOutputTokens, temperature: 0.3 },
     }),
   });
