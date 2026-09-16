@@ -406,11 +406,30 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
 - **Que haya DOS frenos independientes para escribir**: el permiso de la
   conexión (de toda la vida) y el del agente. Con uno solo, darle permiso a un
   agente sería dárselo a todos.
-- **Que un contrato nazca `pendiente_de_pago` y no se pueda activar desde la
-  API.** Sin cobro configurado no hay forma de cobrar 500 € al mes; marcarlo
-  activo sería el pago falso que no puede existir aquí. `reactivar` devuelve 409
-  a propósito cuando el contrato está pendiente de pago: esa es la puerta
-  trasera que convertiría todo lo demás en decoración.
+- **Que un contrato solo pase a activo por `confirmar`**, después de que Stripe
+  diga que el pago existe Y que es de ESTA cuenta y de ESTE agente (lo que va en
+  `metadata`). `reactivar` devuelve 409 a propósito cuando el contrato está
+  pendiente de pago: esa es la puerta trasera que convertiría todo lo demás en
+  decoración. Sin `STRIPE_SECRET_KEY` no se abre pasarela y el contrato se queda
+  pendiente, diciéndolo.
+- **Que los agentes se cobren con `price_data` y no con un precio por agente en
+  Stripe.** Es lo mismo que ya hacía el plan Pro, y significa que funcionan solo
+  con `STRIPE_SECRET_KEY`, sin crear cinco productos a mano. `STRIPE_PRICE_<ID>`
+  sigue ganando si algún día se quieren gestionar desde el panel.
+- **Que la lista de regalo vaya en `AGENTES_GRATIS` y NO escrita en el código.**
+  Este repositorio es público y el correo de una persona no se publica por
+  comodidad; por eso la lista de Pro que sí está en el código va como hash.
+- **Que cada contratación tenga su `instancia`** (`randomUUID` por compra). La
+  separación ya estaba —todo cuelga del correo— pero la instancia la hace
+  explícita y auditable: viaja en el pago de Stripe y en el registro, así que de
+  cualquier línea se puede decir de qué contratación salió. Y quien rescinde y
+  vuelve a contratar empieza otra, así que el trabajo viejo no se mezcla.
+- **Que antes de trabajar se compruebe que la suscripción sigue viva**
+  (`suscripcionViva`). Sin eso, un contrato activado por un pago de marzo
+  seguiría trabajando en diciembre aunque la tarjeta hubiera dejado de pagar: el
+  estado en nuestra base de datos diría "activo" y nadie lo desmentiría nunca.
+  Si Stripe no contesta se da por viva a propósito: cortarle el agente a quien
+  paga por un problema de red es peor que dejar trabajar de más a quien no.
 - **Que las integraciones que aún no existen vayan marcadas `pendiente: true`**
   en `agentes/catalogo.ts` (Gmail, Outlook, Google Calendar, Drive, WhatsApp:
   todas piden OAuth). `estadoDe()` las cuenta SIEMPRE en lo que dice, aunque

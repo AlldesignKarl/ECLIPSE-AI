@@ -2,7 +2,7 @@
 
 Última actualización: **15 de septiembre de 2026** (tercera sesión del día)
 Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.47**
+usuario: **2.48**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -12,8 +12,9 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 ## 1. Resumen en tres líneas
 
 La aplicación está **en producción y funcionando**, con 79 pruebas en verde.
-Lo último: el **Catálogo de Agentes**, agentes de empresa que trabajan dentro
-de las cuentas conectadas. Antes: **Grupos y Programar ya son gratis**, y
+Lo último: los **agentes ya se cobran de verdad** por Stripe, con una instancia
+propia por contratación. Antes: el **Catálogo de Agentes**, agentes de empresa
+que trabajan dentro de las cuentas conectadas. Antes: **Grupos y Programar ya son gratis**, y
 **Modo Examen**, para
 estudiar con tus propios apuntes sin que se invente ni una pregunta; y un
 **router de motores** que manda cada pregunta a donde mejor se
@@ -71,7 +72,47 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: Catálogo de Agentes
+## 3. Lo último: los agentes se cobran de verdad
+
+Tres cosas que pidió Carlos, y las tres están.
+
+**1. Cobro real con su Stripe.** Contratar abre la pasarela con el precio del
+catálogo y una suscripción mensual. Al volver, se le PREGUNTA a Stripe si el
+pago existe, y además si esa sesión es de ESTA cuenta y de ESTE agente —va en
+`metadata`—: un identificador de sesión copiado de otro sitio no activa nada.
+Comprobado en la prueba con un Stripe de mentira: pago a medias → 402; sesión
+inventada → 402; pago de otro agente → no sirve; pago bueno → activo.
+
+Y no hace falta crear cinco productos en el panel de Stripe: se cobra con
+`price_data`, que es lo que ya hacía el plan Pro. Con `STRIPE_SECRET_KEY`
+puesta, los cinco agentes cobran. `STRIPE_PRICE_OMNI` y compañía siguen ganando
+si algún día se quieren gestionar desde el panel.
+
+Además, antes de trabajar se comprueba que la suscripción sigue viva. Dar de
+baja en Stripe para el agente solo, sin tocar nada aquí.
+
+**2. Gratis para una cuenta.** `AGENTES_GRATIS` (correos separados por comas).
+Esa cuenta contrata y se activa directo, sin pasarela y sin cobro, y la
+respuesta dice que es un regalo y no un pago. Va en variable de entorno y NO
+escrito en el código: este repositorio es público.
+
+**3. Una instancia por contratación.** *"Que cada compra sea un ID distinto, que
+no tenga el mismo asistente a 100 empresas y que se les junte todo"*. La
+separación ya estaba —todo cuelga del correo de la cuenta— pero ahora cada
+contrato lleva su `instancia` (un UUID por compra), que viaja en el pago de
+Stripe y en el registro. Dos empresas con el mismo agente son dos instancias que
+no se parecen en nada, y quien rescinde y vuelve a contratar empieza otra.
+
+Lo importante es que el aislamiento está COMPROBADO, no prometido: en la prueba,
+dos empresas contratan SUPPORT, las dos conectan Notion, y se verifica que al
+agente de la segunda no le llega ni una palabra de los encargos de la primera —
+ni en sus instrucciones, ni en su historial, ni en su registro—. Cada encargo se
+monta desde cero con los datos de ese correo y nada más; no hay estado
+compartido entre clientes en ninguna parte.
+
+---
+
+## 3 bis. Antes: Catálogo de Agentes
 
 Convertir ECLIPSE en una plataforma de agentes para empresas. La condición de
 Carlos era la de siempre y aquí pesa más que nunca: *"no quiero demos,

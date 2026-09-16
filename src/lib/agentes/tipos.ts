@@ -115,6 +115,21 @@ export interface ConfigAgente {
 
 export interface Contratado {
   agenteId: string;
+  /**
+   * El identificador de ESTA contratación. Uno distinto por cada compra.
+   *
+   * Lo pidió Carlos con estas palabras: *"que cada compra mensual que hagan por
+   * bot sea un ID distinto... que no tenga el mismo asistente a 100 empresas y
+   * que se les junte todo"*.
+   *
+   * La separación de datos ya estaba —todo cuelga del correo de la cuenta— pero
+   * esto la hace EXPLÍCITA y auditable: la instancia viaja en el pago de
+   * Stripe, en el registro y en cada encargo, así que de cualquier línea se
+   * puede decir de qué contratación salió. Y si alguien rescinde y vuelve a
+   * contratar, es otra instancia: el trabajo de antes no se mezcla con el de
+   * ahora.
+   */
+  instancia: string;
   estado: EstadoContrato;
   desde: number;
   config: ConfigAgente;

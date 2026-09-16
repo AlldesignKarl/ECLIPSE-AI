@@ -21,7 +21,26 @@ export function getStripe(): Stripe {
     throw new Error(
       "Falta STRIPE_SECRET_KEY. Consíguela en el panel de Stripe (Developers → API keys).",
     );
-  if (!client) client = new Stripe(process.env.STRIPE_SECRET_KEY);
+  /*
+    `MOTOR_BASE_STRIPE` es la puerta para las pruebas, como la de Groq y la de
+    los conectores.
+
+    En producción no hay variable puesta y se habla con Stripe. En este
+    contenedor no hay internet, así que sin esto no habría forma de comprobar
+    que el cobro de un agente abre la pasarela con el precio correcto y que al
+    volver se le PREGUNTA a Stripe si el pago existe. Y eso hay que
+    comprobarlo: es dinero.
+  */
+  const propio = process.env.MOTOR_BASE_STRIPE;
+  if (!client)
+    client = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      ...(propio
+        ? (() => {
+            const u = new URL(propio);
+            return { host: u.hostname, port: u.port, protocol: "http" as const };
+          })()
+        : {}),
+    });
   return client;
 }
 

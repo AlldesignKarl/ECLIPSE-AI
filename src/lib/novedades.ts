@@ -27,6 +27,19 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    version: "2.48",
+    // Los agentes, cobrando de verdad y con instancia propia.
+    nombre: "Ya se pueden contratar",
+    titulo: "Los agentes ya se cobran de verdad",
+    entrada: "Suscripción mensual por Stripe, cada agente con su propia instancia.",
+    puntos: [
+      "Contratar un agente abre la pasarela de Stripe con su precio y su suscripción mensual. Al volver, ECLIPSE le pregunta a Stripe si el pago existe de verdad antes de activar nada: un enlace copiado de otro sitio no activa nada.",
+      "Y si das de baja en Stripe, el agente se para solo. No hace falta tocar nada aquí.",
+      "Cada contratación tiene su propio identificador. Dos empresas con el mismo agente son dos instancias que no se parecen en nada, y quien rescinde y vuelve a contratar empieza una nueva: el trabajo de antes no se mezcla con el de ahora.",
+      "El registro, las conexiones y lo que espera aprobación son de cada empresa y no salen de ahí. Comprobado: el agente de una no recibe ni una palabra de los encargos de otra.",
+    ],
+  },
+  {
     version: "2.47",
     // El catálogo de agentes empresariales.
     nombre: "Agentes",

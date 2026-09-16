@@ -301,9 +301,43 @@ export default function ChatApp({
           }
         })
         .catch(() => setNotice("No se ha podido confirmar el pago."));
-    } else if (paid === "cancelado") {
+    } else if (paid === "cancelado" && !params.get("agente")) {
       window.history.replaceState({}, "", "/");
       setNotice("Has salido del pago. No se ha cobrado nada.");
+    }
+
+    /*
+      Vuelta del pago de un AGENTE.
+
+      Va aparte del de Pro porque son dos suscripciones distintas y hay que
+      confirmar la que toca: aquí se dice de qué agente es, y el servidor le
+      pregunta a Stripe si ese pago existe Y si es de esta cuenta. Sin esa
+      segunda comprobación, un identificador de sesión copiado de otro sitio
+      activaría un agente que nadie ha pagado.
+    */
+    const agente = params.get("agente");
+    const sesionAgente = params.get("sesion");
+    if (agente && sesionAgente) {
+      window.history.replaceState({}, "", "/");
+      setNotice("Confirmando el pago del agente…");
+      void fetch("/api/agentes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "confirmar", id: agente, sesion: sesionAgente }),
+      })
+        .then((r) => r.json())
+        .then((d: { pagado?: boolean; error?: string }) => {
+          setNotice(
+            d.pagado
+              ? "Agente activado. Ya puedes conectarle sus cuentas desde Agentes."
+              : (d.error ?? "No se ha podido confirmar el pago del agente."),
+          );
+          if (d.pagado) setAgentesOpen(true);
+        })
+        .catch(() => setNotice("No se ha podido confirmar el pago del agente."));
+    } else if (agente && paid === "cancelado") {
+      window.history.replaceState({}, "", "/");
+      setNotice("Has salido del pago. No se ha contratado ni cobrado nada.");
     }
   }, []);
 

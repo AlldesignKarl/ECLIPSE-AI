@@ -89,6 +89,7 @@ export async function contratar(
   email: string,
   agenteId: string,
   estado: Contratado["estado"],
+  suscripcion?: string,
 ): Promise<Contratado | null> {
   const agente = agenteDe(agenteId);
   if (!agente) return null;
@@ -99,14 +100,25 @@ export async function contratar(
 
   const nuevo: Contratado = {
     agenteId,
+    /*
+      Su instancia, distinta en cada compra.
+
+      `randomUUID` y no el correo ni el nombre del agente: dos empresas con el
+      mismo agente tienen dos instancias que no se parecen en nada, y quien
+      rescinde y vuelve a contratar empieza otra, así que el registro de antes
+      no se confunde con el de ahora.
+    */
+    instancia: randomUUID(),
     estado,
     desde: Date.now(),
     config: configPorDefecto(agente),
+    ...(suscripcion ? { suscripcion } : {}),
   };
   await guardarContratos(email, [...lista, nuevo]);
   await apuntar(email, agenteId, {
     tipo: "estado",
     texto: estado === "activo" ? "Agente contratado y activo." : "Agente contratado, pendiente de pago.",
+    detalle: `Instancia ${nuevo.instancia}`,
     ok: true,
   });
   return nuevo;
@@ -116,12 +128,14 @@ export async function cambiarEstado(
   email: string,
   agenteId: string,
   estado: Contratado["estado"],
+  suscripcion?: string,
 ): Promise<Contratado | null> {
   const lista = await contratosDe(email);
   const uno = lista.find((c) => c.agenteId === agenteId);
   if (!uno) return null;
 
   uno.estado = estado;
+  if (suscripcion) uno.suscripcion = suscripcion;
   await guardarContratos(email, lista);
   await apuntar(email, agenteId, {
     tipo: "estado",

@@ -38,8 +38,11 @@ interface Diagnostico {
 
 interface Contrato {
   agenteId: string;
+  /** El de ESTA contratación. Uno distinto por cada compra. */
+  instancia: string;
   estado: "activo" | "pausado" | "pendiente_de_pago";
   desde: number;
+  suscripcion?: string;
   config: { apagadas: string[]; puedeEscribir: boolean; apruebaAntes: boolean };
 }
 
@@ -371,6 +374,11 @@ function Panel({ id, onCambio }: { id: string; onCambio: () => void }) {
           )}
         </div>
         <p className={`mt-1.5 text-[12px] leading-relaxed ${colorDe(diagnostico)}`}>{diagnostico.dice}</p>
+        {contrato && (
+          <p className="mt-1.5 font-mono text-[10px] text-faint" title="El identificador de esta contratación">
+            {contrato.instancia}
+          </p>
+        )}
       </div>
 
       {aviso && (
@@ -479,7 +487,17 @@ function Panel({ id, onCambio }: { id: string; onCambio: () => void }) {
           {!contrato ? (
             <button
               disabled={busy}
-              onClick={() => void mandar({ accion: "contratar" })}
+              onClick={async () => {
+                const { d } = await mandar({ accion: "contratar" });
+                /*
+                  Si el servidor abre la pasarela, se va a Stripe.
+
+                  El navegador no decide nada aquí: si hay dirección de pago es
+                  porque el servidor la ha creado con Stripe, y si no la hay es
+                  porque no se puede cobrar y el contrato se queda pendiente.
+                */
+                if (typeof d.url === "string") window.location.href = d.url;
+              }}
               className="w-full rounded-xl bg-ink px-4 py-2.5 text-[13.5px] font-medium text-void transition hover:opacity-90 disabled:opacity-50"
             >
               {busy ? "Un momento…" : `Contratar · ${ficha.precio} €/mes`}

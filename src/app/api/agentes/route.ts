@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { stripeAvailable } from "@/lib/stripe";
+import { abrirPasarela, comprobarPago, gratisPara, suscripcionViva } from "@/lib/agentes/cobro";
 import { misConexiones } from "@/lib/conexiones/almacen";
 import {
   agentesListos,
@@ -104,28 +105,68 @@ export async function POST(req: NextRequest) {
     if (!agente) return no("Ese agente no existe.", 404);
 
     /*
-      Aquí está la línea que no se cruza.
+      Tres caminos, y ninguno de ellos es dar un agente por pagado sin pago.
 
-      Sin Stripe configurado no hay forma de cobrar 500 € al mes, así que el
-      contrato nace PENDIENTE DE PAGO y no ejecuta nada. Ponerlo activo sería
-      regalar el agente y, peor, hacerle creer a alguien que ha contratado algo
-      que nadie le ha cobrado. Cuando `STRIPE_SECRET_KEY` y el precio de este
-      agente existan, el que lo active será la confirmación del cobro.
+      1. Si este correo está en la lista de regalo (`AGENTES_GRATIS`), se activa
+         directamente. Existe para poder probar la plataforma entera sin
+         cobrarse a uno mismo, y se dice en la respuesta para que quede claro
+         que es un regalo y no un pago.
+      2. Con Stripe configurado, se abre la pasarela DE VERDAD y se devuelve su
+         dirección. El contrato nace pendiente y lo activa la vuelta del pago,
+         después de preguntarle a Stripe si existe.
+      3. Sin Stripe, pendiente de pago y se explica. Nadie cobra nada y el
+         agente no ejecuta nada.
     */
-    // Siempre pendiente de pago, haya Stripe o no: con Stripe, quien lo active
-    // será la confirmación del cobro; sin Stripe, no hay cobro que confirmar.
+    if (gratisPara(email)) {
+      const contrato = await contratar(email, id, "activo");
+      return Response.json({
+        contrato,
+        regalado: true,
+        aviso: `${agente.nombre} activado sin coste para esta cuenta. Es un regalo configurado en el servidor, no un pago.`,
+      });
+    }
+
     const contrato = await contratar(email, id, "pendiente_de_pago");
-    return Response.json({
-      contrato,
-      cobroListo: stripeAvailable(),
-      aviso: stripeAvailable()
-        ? "Contrato creado. Falta completar el pago para activarlo."
-        : "Contrato creado y PENDIENTE DE PAGO: en este servidor todavía no hay cobro configurado, así que nadie te ha cobrado nada y el agente no ejecutará encargos hasta que se active.",
-    });
+    if (!contrato) return no("Ese agente no existe.", 404);
+
+    if (!stripeAvailable())
+      return Response.json({
+        contrato,
+        cobroListo: false,
+        aviso:
+          "Contrato creado y PENDIENTE DE PAGO: en este servidor todavía no hay cobro configurado, así que nadie te ha cobrado nada y el agente no ejecutará encargos hasta que se active.",
+      });
+
+    try {
+      const pasarela = await abrirPasarela({
+        agente,
+        email,
+        instancia: contrato.instancia,
+        origen: req.nextUrl.origin,
+      });
+      return Response.json({ contrato, cobroListo: true, url: pasarela.url });
+    } catch (err) {
+      return no(
+        err instanceof Error ? err.message : "No se ha podido abrir el pago.",
+        502,
+      );
+    }
   }
 
   const contrato = await contratoDe(email, id);
   if (!contrato) return no("Ese agente no está contratado.", 404);
+
+  /* ------------------------- Volver del pago -------------------------- */
+  if (accion === "confirmar") {
+    const r = await comprobarPago({ sesion: texto(cuerpo.sesion, 120), email, agenteId: id });
+    if (!r.ok) return no(r.error, 402, "sin_pago");
+
+    // Solo AQUÍ, y solo después de que Stripe diga que sí, un contrato pasa a
+    // activo. Es el único camino que existe, y por eso `reactivar` de abajo se
+    // niega cuando el contrato está pendiente de pago.
+    const contrato = await cambiarEstado(email, id, "activo", r.suscripcion);
+    return Response.json({ contrato, pagado: true });
+  }
 
   /* ------------------------ Pausar y reactivar ------------------------ */
   if (accion === "pausar") return Response.json({ contrato: await cambiarEstado(email, id, "pausado") });

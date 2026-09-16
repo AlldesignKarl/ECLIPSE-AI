@@ -8,7 +8,8 @@ import { herramientasPara } from "../tools/registro";
 import type { Herramienta } from "../tools/tipos";
 import type { CompatProvider } from "../openai-compat";
 import { agenteDe } from "./catalogo";
-import { apuntar, contratoDe, dejarPendiente, pendientesDe, quitarPendiente } from "./almacen";
+import { apuntar, cambiarEstado, contratoDe, dejarPendiente, pendientesDe, quitarPendiente } from "./almacen";
+import { suscripcionViva } from "./cobro";
 import {
   estadoDe,
   herramientasDe,
@@ -185,6 +186,33 @@ export async function encargar(opts: {
   const permiso = puedeTrabajar(contrato, diagnostico);
   if (!permiso.puede)
     return { ok: false, texto: "", acciones: [], enEspera: 0, error: permiso.porque };
+
+  /*
+    Y que la suscripción siga viva, preguntándoselo a Stripe.
+
+    Es lo que hace que darse de baja apague el agente sin que nadie tenga que
+    tocar nada aquí. Sin esto, un contrato activado por un pago de marzo seguiría
+    trabajando en diciembre aunque la tarjeta hubiera dejado de pagar: el estado
+    en nuestra base de datos diría "activo" y nadie lo desmentiría nunca.
+
+    Los regalados no tienen suscripción y se saltan la consulta: no hay nada que
+    comprobar.
+  */
+  if (contrato!.suscripcion && !(await suscripcionViva(contrato!.suscripcion))) {
+    await cambiarEstado(opts.email, opts.agenteId, "pendiente_de_pago");
+    await apuntar(opts.email, opts.agenteId, {
+      tipo: "estado",
+      texto: "Parado: la suscripción ya no está activa en Stripe.",
+      ok: false,
+    });
+    return {
+      ok: false,
+      texto: "",
+      acciones: [],
+      enEspera: 0,
+      error: "La suscripción de este agente ya no está activa. Renuévala para que vuelva a trabajar.",
+    };
+  }
 
   const provider = await activeProvider();
   if (!provider || provider === "anthropic" || provider === "google")

@@ -53,6 +53,60 @@ const motor = createServer((req, res) => {
 await new Promise((r) => motor.listen(0, "127.0.0.1", r));
 const baseMotor = `http://127.0.0.1:${motor.address().port}`;
 
+/*
+  Un Stripe de mentira.
+
+  Aquí no hay internet, así que contra el Stripe de verdad no se puede probar
+  nada. Lo que sí se puede comprobar —y es lo que importa— es que ECLIPSE abre
+  la pasarela con el precio correcto, que al volver LE PREGUNTA a Stripe si el
+  pago existe, y que un pago de otra cuenta no activa nada.
+*/
+const pagos = new Map();
+let pagoCompleto = true;
+const stripe = createServer((req, res) => {
+  let c = "";
+  req.on("data", (d) => (c += d));
+  req.on("end", () => {
+    const cuerpo = new URLSearchParams(c);
+    res.setHeader("content-type", "application/json");
+
+    if (req.url.startsWith("/v1/checkout/sessions/")) {
+      const id = req.url.split("/").pop().split("?")[0];
+      const guardado = pagos.get(id);
+      if (!guardado) return res.end(JSON.stringify({ error: { message: "No such session" } }));
+      return res.end(JSON.stringify({
+        id,
+        status: pagoCompleto ? "complete" : "open",
+        payment_status: pagoCompleto ? "paid" : "unpaid",
+        subscription: `sub_${id}`,
+        metadata: guardado,
+      }));
+    }
+
+    if (req.url.startsWith("/v1/subscriptions/"))
+      return res.end(JSON.stringify({ id: req.url.split("/").pop(), status: "active" }));
+
+    if (req.url.startsWith("/v1/checkout/sessions")) {
+      const id = `cs_test_${pagos.size + 1}`;
+      pagos.set(id, {
+        eclipse_agente: cuerpo.get("metadata[eclipse_agente]"),
+        eclipse_cliente: cuerpo.get("metadata[eclipse_cliente]"),
+        eclipse_instancia: cuerpo.get("metadata[eclipse_instancia]"),
+        // Lo que se va a cobrar, para poder comprobar el precio.
+        importe: cuerpo.get("line_items[0][price_data][unit_amount]"),
+        moneda: cuerpo.get("line_items[0][price_data][currency]"),
+        intervalo: cuerpo.get("line_items[0][price_data][recurring][interval]"),
+        modo: cuerpo.get("mode"),
+      });
+      return res.end(JSON.stringify({ id, url: `https://pago.ejemplo/${id}` }));
+    }
+
+    res.end(JSON.stringify({}));
+  });
+});
+await new Promise((r) => stripe.listen(0, "127.0.0.1", r));
+const baseStripe = `http://127.0.0.1:${stripe.address().port}`;
+
 const puertoRedis = `${AQUI}redis-agentes.txt`;
 if (existsSync(puertoRedis)) unlinkSync(puertoRedis);
 const redis = spawn("node", [`${AQUI}redis-falso.mjs`, puertoRedis], { stdio: "ignore" });
@@ -72,8 +126,10 @@ const app = spawn("npx", ["next", "start", "-p", String(PUERTO)], {
     AUTH_SECRET: "secreto-agentes", PRO_ACCESS_CODE: "ECLIPSE-PRO",
     GROQ_API_KEY: "gsk_prueba", AI_PROVIDER: "groq", MOTOR_BASE_GROQ: baseMotor,
     CONEXION_BASE_NOTION: baseApis, CONEXION_BASE_HUBSPOT: baseApis,
-    // Sin Stripe a propósito: es el caso que hay que contar bien.
-    STRIPE_SECRET_KEY: "",
+    STRIPE_SECRET_KEY: "sk_test_falsa", MOTOR_BASE_STRIPE: baseStripe,
+    // A este correo se le regalan los agentes, que es lo que pidió Carlos para
+    // poder comprobarlo todo sin cobrarse a sí mismo.
+    AGENTES_GRATIS: "regalado@ejemplo.com",
   },
 });
 const URL_APP = `http://127.0.0.1:${PUERTO}`;
@@ -130,7 +186,7 @@ try {
   const publico = await anon("/api/agentes");
   ok((publico.json?.agentes ?? []).length === 5, `los cinco agentes están en el catálogo (${publico.json?.agentes?.length})`);
   ok(publico.json?.agentes?.every((a) => a.precio > 0), "todos con su precio");
-  ok(publico.json?.cobroListo === false, "y se dice que el cobro NO está configurado en este servidor");
+  ok(publico.json?.cobroListo === true, "y el cobro está configurado: se puede contratar de verdad");
   const comms = publico.json.agentes.find((a) => a.id === "comms");
   ok(/todavía no se puede conectar/i.test(comms.diagnostico.dice), "COMMS avisa de lo que aún no se puede conectar (Gmail, WhatsApp)");
 
@@ -140,16 +196,41 @@ try {
   await yo("/api/auth", { method: "POST", body: JSON.stringify({ action: "signup", email: correo, password: "eclipse2026", nombre: "Empresa" }) });
   await yo("/api/pro", { method: "POST", body: JSON.stringify({ code: "ECLIPSE-PRO" }) });
 
-  console.log("\nContratar SIN cobro no activa nada, y se dice");
+  console.log("\nContratar abre la pasarela de Stripe de verdad");
   const contratado = await yo("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "contratar", id: "support" }) });
-  ok(contratado.json?.contrato?.estado === "pendiente_de_pago", "el contrato nace pendiente de pago");
-  ok(/nadie te ha cobrado nada/i.test(contratado.json?.aviso ?? ""), "y se dice con todas las letras que nadie ha cobrado");
+  ok(/^https:\/\/pago\.ejemplo\//.test(contratado.json?.url ?? ""), "devuelve la dirección de pago que ha creado Stripe");
+  ok(contratado.json?.contrato?.estado === "pendiente_de_pago", "y el contrato sigue pendiente hasta que el pago exista");
+  ok(Boolean(contratado.json?.contrato?.instancia), "con su instancia propia desde el primer momento");
+
+  const cobro = [...pagos.values()][0];
+  ok(cobro.modo === "subscription", "es una suscripción, no un pago suelto");
+  ok(cobro.importe === "30000", `y por el importe del catálogo: 300 € en céntimos (${cobro.importe})`);
+  ok(cobro.moneda === "eur" && cobro.intervalo === "month", "en euros y cada mes");
+  ok(cobro.eclipse_cliente === correo && cobro.eclipse_agente === "support",
+     "y con quién y qué ha contratado apuntado en el pago, para poder comprobarlo al volver");
 
   const intento = await yo("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "reactivar", id: "support" }) });
   ok(intento.estado === 409, `no se puede activar por la puerta de atrás (${intento.estado})`);
 
   const sinPagar = await yo("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "encargar", id: "support", encargo: "hola" }) });
   ok(sinPagar.estado === 422 && /pendiente de pago/i.test(sinPagar.json?.error ?? ""), "y no ejecuta nada mientras esté pendiente de pago");
+
+  console.log("\nAl volver del pago se le PREGUNTA a Stripe");
+  const idSesion = [...pagos.keys()][0];
+  pagoCompleto = false;
+  const aMedias = await yo("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "confirmar", id: "support", sesion: idSesion }) });
+  ok(aMedias.estado === 402, `si Stripe dice que no está pagado, no se activa (${aMedias.estado})`);
+
+  pagoCompleto = true;
+  const inventada = await yo("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "confirmar", id: "support", sesion: "cs_test_inventada" }) });
+  ok(inventada.estado === 402, "una sesión que no existe tampoco activa nada");
+
+  const otroAgente = await yo("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "confirmar", id: "omni", sesion: idSesion }) });
+  ok(otroAgente.estado === 404 || otroAgente.estado === 402, "ni un pago de un agente sirve para activar otro");
+
+  const activado = await yo("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "confirmar", id: "support", sesion: idSesion }) });
+  ok(activado.json?.contrato?.estado === "activo", "con el pago confirmado, el agente se activa");
+  ok(Boolean(activado.json?.contrato?.suscripcion), "y se guarda su suscripción, para poder comprobar que sigue viva");
 
   console.log("\nSin la conexión que necesita, tampoco trabaja");
   await activar(yo, "sales");
@@ -158,7 +239,6 @@ try {
   ok(/requiere conexión.*hubspot/i.test(sinCrm.json?.error ?? ""), `y dice exactamente qué falta: ${sinCrm.json?.error}`);
 
   console.log("\nCon Notion conectado, SUPPORT trabaja de verdad");
-  await activar(yo, "support");
   const conectar = await yo("/api/conexiones", { method: "POST", body: JSON.stringify({ servicio: "notion", campos: { token: ESPERADO.TOKEN_NOTION }, permiso: "escribir" }) });
   ok(conectar.estado === 200, `Notion conectado (${conectar.estado})`);
   ok(conectar.json?.permiso === "escribir", "con permiso de escritura en la conexión");
@@ -252,12 +332,69 @@ try {
   const colada = await otra("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "encargar", id: "support", encargo: "x" }) });
   ok(colada.estado === 404, "ni puede darle encargos a un agente que no ha contratado");
 
+  /*
+    El regalo por correo.
+
+    Lo pidió Carlos para poder comprobar la plataforma entera sin cobrarse a sí
+    mismo. Lo que importa es que sea un camino APARTE del pago —no una forma de
+    saltárselo— y que se diga que es un regalo, no un cobro.
+  */
+  console.log("\nA la cuenta de la lista se le regalan, y se dice que es un regalo");
+  const invitado = sesion();
+  correos.set(invitado, "regalado@ejemplo.com");
+  await invitado("/api/auth", { method: "POST", body: JSON.stringify({ action: "signup", email: "regalado@ejemplo.com", password: "eclipse2026", nombre: "Carlos" }) });
+  const pagosAntes = pagos.size;
+  const regalo = await invitado("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "contratar", id: "omni" }) });
+  ok(regalo.json?.contrato?.estado === "activo", "se activa directamente, sin pasar por el pago");
+  ok(regalo.json?.regalado === true && /regalo/i.test(regalo.json?.aviso ?? ""), "y se dice que es un regalo, no un cobro");
+  ok(pagos.size === pagosAntes, "no se ha abierto ninguna pasarela ni se ha cobrado nada");
+  ok(!regalo.json?.contrato?.suscripcion, "y no tiene suscripción que cobrar");
+
+  const deOtro = sesion();
+  correos.set(deOtro, `nolista${Date.now()}@ejemplo.com`);
+  await deOtro("/api/auth", { method: "POST", body: JSON.stringify({ action: "signup", email: correoDe(deOtro), password: "eclipse2026" }) });
+  const sinRegalo = await deOtro("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "contratar", id: "omni" }) });
+  ok(sinRegalo.json?.regalado !== true, "y a cualquier otra cuenta NO se le regala: se le cobra");
+  ok(typeof sinRegalo.json?.url === "string", "a esa se le abre la pasarela");
+
+  /*
+    Cada contratación, su propia instancia.
+
+    Lo pidió Carlos así: "que cada compra sea un ID distinto... que no tenga el
+    mismo asistente a 100 empresas y que se les junte todo". La separación ya
+    estaba por cuenta; esto la hace explícita y comprobable.
+  */
+  console.log("\nCada contratación tiene su instancia, y no se mezclan");
+  const miInstancia = (await yo("/api/agentes?id=support")).json?.contrato?.instancia;
+  const suInstancia = regalo.json?.contrato?.instancia;
+  ok(Boolean(miInstancia) && Boolean(suInstancia), "las dos tienen instancia");
+  ok(miInstancia !== suInstancia, "y no se parecen en nada, aunque fuera el mismo agente");
+
+  const mismoAgente = await invitado("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "contratar", id: "support" }) });
+  ok(mismoAgente.json?.contrato?.instancia !== miInstancia,
+     "dos empresas con el MISMO agente tienen dos instancias distintas");
+
+  console.log("\nY el trabajo de una no llega a la otra");
+  // La segunda empresa conecta SU Notion. Las dos tienen el mismo agente.
+  await invitado("/api/conexiones", { method: "POST", body: JSON.stringify({ servicio: "notion", campos: { token: ESPERADO.TOKEN_NOTION } }) });
+  recibido.length = 0;
+  guion = [{ texto: "Sin novedades." }];
+  await invitado("/api/agentes", { method: "POST", body: JSON.stringify({ accion: "encargar", id: "support", encargo: "qué hay documentado" }) });
+  const suSistema = recibido.map((p) => p.messages?.find((m) => m.role === "system")?.content ?? "").join("\n");
+  const suHistorial = JSON.stringify(recibido.map((p) => p.messages ?? []));
+  ok(!/devoluciones|Política/i.test(suHistorial),
+     "al agente de la segunda empresa NO le llega nada de los encargos de la primera");
+  ok(!/pol[ií]tica de devoluciones/i.test(suSistema), "ni en sus instrucciones");
+  const suRegistro = (await invitado("/api/agentes?id=support")).json?.registro ?? [];
+  ok(!suRegistro.some((a) => /devoluciones/i.test(a.texto)), "ni en su registro");
+
   console.log("\nY las claves no salen de casa");
   const todo = JSON.stringify((await yo("/api/agentes?id=support")).json);
   ok(!todo.includes(ESPERADO.TOKEN_NOTION), "el token de Notion no viaja al navegador por ninguna parte");
 } finally {
   apis.close();
   motor.close();
+  stripe.close();
   try { process.kill(-app.pid, "SIGKILL"); } catch { app.kill("SIGKILL"); }
   redis.kill();
   if (existsSync(puertoRedis)) unlinkSync(puertoRedis);
