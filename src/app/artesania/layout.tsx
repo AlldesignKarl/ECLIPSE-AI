@@ -49,6 +49,9 @@ export const metadata: Metadata = {
     sobre el archivo. Nombrándolo aquí, esta web se lleva su pestaña y la
     aplicación se queda con la suya.
   */
+  /* Al añadir la web a la pantalla de inicio del móvil, el nombre que salía
+     debajo del icono era "ECLIPSE": lo hereda del layout raíz. */
+  appleWebApp: { capable: true, title: EMPRESA.nombreCorto, statusBarStyle: "black-translucent" },
   icons: {
     icon: [{ url: `${RUTA_BASE}/icon`, type: "image/png", sizes: "64x64" }],
     apple: { url: `${RUTA_BASE}/icon`, sizes: "64x64" },
