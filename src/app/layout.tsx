@@ -5,6 +5,7 @@ import AvisoDeDatos from "@/components/AvisoDeDatos";
 import Navegacion from "@/components/Navegacion";
 import Pie from "@/components/Pie";
 import { EMPRESA } from "@/lib/config";
+import { rutaDelLogo } from "@/lib/logo";
 import { SITE_URL } from "@/lib/sitio";
 import "./globals.css";
 
@@ -81,6 +82,9 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Se mira el disco UNA vez por render de servidor, no una por componente.
+  const logo = rutaDelLogo();
+
   return (
     <html lang="es" className={`${sans.variable} ${serif.variable}`}>
       <body>
@@ -92,9 +96,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Saltar al contenido
           </a>
 
-          <Navegacion />
+          <Navegacion logo={logo} />
           <main id="contenido">{children}</main>
-          <Pie />
+          <Pie logo={logo} />
           <AvisoDeDatos />
 
           {/*

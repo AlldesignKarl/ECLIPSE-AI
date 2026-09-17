@@ -1,5 +1,5 @@
 import { EMPRESA, enlaceCorreo, enlaceTelefono, enlaceWhatsApp } from "@/lib/config";
-import Sello from "./Sello";
+import Logo from "./Logo";
 
 /**
  * El pie.
@@ -48,7 +48,7 @@ const REDES: { clave: keyof typeof EMPRESA.redes; nombre: string; trazo: string 
   },
 ];
 
-export default function Pie() {
+export default function Pie({ logo = null }: { logo?: string | null }) {
   const correo = enlaceCorreo("Consulta desde la web");
   const tel = enlaceTelefono();
   const wa = enlaceWhatsApp("Hola, os escribo desde la web.");
@@ -62,7 +62,7 @@ export default function Pie() {
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <span className="flex items-center gap-3 text-[var(--arte-oro-claro)]">
-              <Sello tamano={44} />
+              <Logo ruta={logo} tamano={44} />
               <span className="font-serif text-2xl text-[var(--arte-texto-claro)]">
                 {EMPRESA.nombreCorto}
               </span>

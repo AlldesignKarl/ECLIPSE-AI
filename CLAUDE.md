@@ -34,6 +34,8 @@ src/
     api/contacto/     El formulario
     aviso-legal/ privacidad/ cookies/
   components/         Una sección por archivo + movimiento.tsx y peticion.ts
+                      Taller.tsx y Pilar.tsx son las dos escenas largas: se
+                      quedan fijas en pantalla y avanzan con el scroll
   lib/
     config.ts         LOS DATOS DE LA EMPRESA. Se toca esto, no los componentes
     productos.ts      El catálogo entero
@@ -88,6 +90,21 @@ pruebas/              2 pruebas. `npm run prueba`
 - **Que lo que se pinta sin fotografía sea una lámina de color con su motivo**
   (`Marco.tsx`), no un rectángulo gris. Un sitio con huecos grises parece roto, y
   a una empresa que entra a comprar al por mayor le importa lo que parece.
+- **Que las escenas fijas escriban su avance en la variable CSS `--p` y no en
+  el estado de React** (`useEscenaFija`). En estado va SOLO el número de paso,
+  que cambia cinco veces en toda la escena. Con el avance en estado, bajar una
+  pantalla repinta el árbol cien veces y el móvil se arrastra.
+- **Que los trazos lleven `pathLength={1}`.** Es lo que permite dibujar un
+  camino con `stroke-dashoffset` sin medir su longitud real. Y si un navegador
+  no entiende el `calc`, el trazo sale entero: se ve el dibujo terminado, nunca
+  una página en blanco.
+- **Que el logotipo se detecte en `public/` y no se escriba en el código**
+  (`lib/logo.ts`). Poner el logo tiene que ser arrastrar un archivo, no editar
+  un componente.
+- **Que las clases de componente vivan en `@layer components`.** Una clase
+  nuestra y una utilidad de Tailwind pesan lo mismo, y ganaba la que iba después
+  en el archivo: `hidden` no escondía un `.arte-boton`, y en el móvil el botón
+  de la cabecera salía partido en dos líneas.
 - **Las 2 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba.
 

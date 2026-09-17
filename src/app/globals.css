@@ -105,6 +105,7 @@ body {
 }
 
 /* El antetítulo: letra pequeña, muy espaciada, con un filo de oro delante. */
+@layer components {
 .arte-ojal {
   display: inline-flex;
   align-items: center;
@@ -120,6 +121,7 @@ body {
   width: 2.2rem;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--arte-oro));
+}
 }
 
 .arte-cuerpo {
@@ -228,6 +230,20 @@ body {
 
 /* -------------------------------- Botones -------------------------------- */
 
+/*
+  Los botones van en `@layer components` y no sueltos, y eso NO es orden: es un
+  fallo real que se arregla aquí.
+
+  Una clase nuestra y una de Tailwind pesan lo mismo, así que decidía cuál iba
+  después en el archivo —y el nuestro va después—. Resultado: `hidden` no
+  escondía nada que llevara `.arte-boton`, porque `.arte-boton` ya trae su
+  `display`. En el móvil eso dejaba el botón de "Solicitar catálogo" metido en
+  una cabecera donde no cabe, partido en dos líneas.
+
+  Dentro de una capa, las utilidades de Tailwind ganan siempre, que es como
+  tiene que ser: lo específico manda sobre lo general.
+*/
+@layer components {
 .arte-boton,
 .arte-boton-claro,
 .arte-boton-fantasma {
@@ -306,6 +322,7 @@ body {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
+}
 }
 
 /* El foco del teclado, visible sobre claro y sobre oscuro. Nunca se quita: sin
@@ -695,4 +712,131 @@ body {
   padding: 0 0.4rem;
   font-size: 0.9em;
   color: #9c4a24;
+}
+
+/* ===================== Escenas que se dibujan al bajar ===================== */
+
+/*
+  Todo lo de aquí abajo se mueve con UNA sola variable: `--p`, el avance de la
+  escena de 0 a 1, que escribe `useEscenaFija` directamente sobre el elemento.
+  Ni una animación por tiempo: lo que manda es el dedo o la rueda del ratón.
+
+  La gracia de hacerlo en CSS y no en JavaScript es que el navegador lo resuelve
+  en el compositor. Calcular esto mismo en React sería repintar el árbol entero
+  cien veces mientras alguien baja una pantalla.
+*/
+.escena {
+  --p: 0;
+}
+
+/*
+  Un trazo que se dibuja entre `--i` y `--f` del avance.
+
+  `pathLength="1"` en el SVG es lo que hace que esto funcione con cualquier
+  camino, largo o corto: la longitud real deja de importar y todos se miden de 0
+  a 1. Sin eso habría que medir cada path a mano y volver a medirlo al cambiarlo.
+
+  Si un navegador no entendiera este `calc`, la propiedad se ignora y el trazo
+  sale ENTERO. Es la reserva correcta: se ve el dibujo terminado, nunca en
+  blanco.
+*/
+.trazo {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(
+    1 - clamp(0, (var(--p) - var(--i, 0)) / (var(--f, 1) - var(--i, 0)), 1)
+  );
+}
+
+/*
+  Un trozo de contenido que entra y (si se quiere) se va, según el avance.
+  `--i`/`--f` cuándo entra; `--oi`/`--of` cuándo se va. Por defecto no se va
+  nunca: los valores están fuera de rango a propósito.
+*/
+.tramo {
+  --entra: clamp(0, (var(--p) - var(--i, 0)) / (var(--f, 0.15) - var(--i, 0)), 1);
+  --sale: clamp(0, (var(--p) - var(--oi, 9)) / (var(--of, 10) - var(--oi, 9)), 1);
+  opacity: calc(var(--entra) - var(--sale));
+  transform: translate3d(0, calc((1 - var(--entra)) * 22px), 0);
+  will-change: opacity, transform;
+}
+
+/* El zoom lento de un fondo mientras dura la escena. */
+.acerca {
+  transform: scale(calc(1 + var(--p) * 0.14));
+}
+.aleja {
+  transform: scale(calc(1.14 - var(--p) * 0.14));
+}
+
+/* El polvo en suspensión de la escena nocturna: son seis puntos, no mil. */
+@keyframes arte-brillo {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateY(-10px);
+  }
+}
+.chispa {
+  animation: arte-brillo 6s ease-in-out infinite;
+}
+
+/* ------------------------- El taller, paso a paso ------------------------- */
+
+/*
+  Aquí el dibujo NO va con el scroll sino con el paso: cuando una escena entra,
+  su ilustración se dibuja sola en un segundo. Es a propósito: el scroll elige
+  QUÉ se ve, y cada dibujo se traza a su ritmo. Atar también el trazo al dedo
+  haría que al parar a mitad se quedara media olla dibujada.
+*/
+@keyframes arte-dibujar {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.escena-activa .trazo-paso {
+  animation: arte-dibujar 0.85s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  animation-delay: var(--retraso, 0ms);
+}
+.trazo-paso {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+/* La barra de lectura de la cabecera. */
+.barra-lectura {
+  transform-origin: left;
+  transform: scaleX(var(--leido, 0));
+  transition: transform 0.12s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .escena {
+    --p: 1;
+  }
+  .trazo-paso {
+    stroke-dashoffset: 0;
+  }
+  .chispa {
+    animation: none;
+    opacity: 0.4;
+  }
+  .acerca,
+  .aleja {
+    transform: none;
+  }
 }

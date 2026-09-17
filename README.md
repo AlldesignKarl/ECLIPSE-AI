@@ -12,6 +12,11 @@ detrás, enseña el catálogo y termina en un formulario que llega de verdad.
 
 - **Portada** con movimiento por capas: *"Tradición que llega más lejos."*
 - **Historia**: *"La artesanía no se fabrica. Se crea."*
+- **El taller**: cinco escenas que se relevan mientras bajas y cuentan cómo se
+  hace una pieza, con la ilustración dibujándose sola en cada paso.
+- **El Pilar**, que se traza línea a línea según bajas —con el ratón o con el
+  dedo— hasta encenderse en oro. Son caminos SVG movidos por el scroll: ni
+  vídeo, ni foto, ni librería de animación.
 - **Zaragoza y El Pilar**, con la silueta de la ciudad dibujada en SVG.
 - **Catálogo** filtrable por categoría, con destacados y botón de solicitar
   información en cada pieza.
@@ -33,6 +38,7 @@ Dos archivos, y ninguno es código difícil:
 |---|---|
 | Nombre, correo, teléfono, WhatsApp, dirección, horario, redes y datos fiscales | `src/lib/config.ts` |
 | Productos: nombre, categoría, descripción, detalle y **foto** | `src/lib/productos.ts` |
+| El logotipo | deja el archivo en `public/logo.svg` (o .png/.webp/.jpg) |
 
 Dos reglas que conviene no romper:
 
@@ -40,6 +46,9 @@ Dos reglas que conviene no romper:
   llamar; sin número de WhatsApp no sale WhatsApp. Nunca hay un botón que no
   hace nada, y nunca hay un dato inventado. En desarrollo sale abajo a la
   izquierda una nota con la lista de lo que falta; en producción no existe.
+- **El logotipo** no se configura: se detecta. En cuanto exista `public/logo.svg`
+  —o .png, .webp, .jpg— aparece en la cabecera y en el pie. Mientras no exista se
+  pinta el sello con el monograma.
 - **Las fotos**: deja el archivo en `public/fotos/` y pon la ruta en el producto
   (`imagen: "/fotos/ceramica.webp"`). Mientras sea `null` se pinta una lámina de
   color con el motivo del oficio, no un hueco gris.

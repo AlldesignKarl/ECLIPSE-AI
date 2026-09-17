@@ -139,6 +139,47 @@ try {
   ok(recibidas[0]?.empresa === "Tienda del Museo", "con la empresa dentro");
   ok(recibidas[0]?.email === "ana@tiendadelmuseo.es", "y con el correo para contestar");
 
+  /* -------------------------- Las escenas que se dibujan ------------------ */
+  console.log("\nLas escenas se mueven con el scroll, no con un temporizador");
+
+  const irADentroDe = async (id, fraccion) => {
+    const caja = await pagina.evaluate((id) => {
+      const r = document.getElementById(id).getBoundingClientRect();
+      return { top: r.top + window.scrollY, alto: r.height };
+    }, id);
+    await pagina.evaluate(
+      (y) => window.scrollTo({ top: y, behavior: "instant" }),
+      caja.top + (caja.alto - 900) * fraccion,
+    );
+    await pagina.waitForTimeout(600);
+  };
+
+  const avanceDe = (id) =>
+    pagina.evaluate(
+      (id) => Number(getComputedStyle(document.getElementById(id)).getPropertyValue("--p")),
+      id,
+    );
+
+  await irADentroDe("pilar", 0.02);
+  const alEmpezar = await avanceDe("pilar");
+  await irADentroDe("pilar", 0.5);
+  const aMitad = await avanceDe("pilar");
+  await irADentroDe("pilar", 0.97);
+  const alFinal = await avanceDe("pilar");
+
+  ok(alEmpezar < 0.1 && aMitad > 0.4 && alFinal > 0.9, "el Pilar se dibuja según bajas, no solo");
+  const dibujado = await pagina.evaluate(
+    () => getComputedStyle(document.querySelector("#pilar .trazo")).strokeDashoffset,
+  );
+  ok(dibujado === "0%" || Number.parseFloat(dibujado) === 0, "y al final del todo está entero");
+
+  await irADentroDe("taller", 0.05);
+  const primerPaso = await pagina.locator("#taller").innerText();
+  await irADentroDe("taller", 0.75);
+  const ultimoPaso = await pagina.locator("#taller").innerText();
+  ok(primerPaso.includes("La materia"), "el taller empieza por la materia");
+  ok(ultimoPaso.includes("El horno") || ultimoPaso.includes("El embalaje"), "y al bajar cambia de paso");
+
   /* ------------------------------ Los enlaces ----------------------------- */
   console.log("\nNi un enlace roto");
   const rotos = await pagina.$$eval("a[href]", (as) =>

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 
 import { EMPRESA, enlaceTelefono } from "@/lib/config";
-import { irA, useHaBajado } from "./movimiento";
+import { irA, useAvanceDePagina, useHaBajado } from "./movimiento";
 import { pedir } from "./peticion";
-import Sello from "./Sello";
+import Logo from "./Logo";
 
 /**
  * La cabecera.
@@ -22,6 +22,7 @@ import Sello from "./Sello";
 
 const ENLACES = [
   { id: "historia", texto: "Historia" },
+  { id: "taller", texto: "Taller" },
   { id: "ciudad", texto: "Zaragoza" },
   { id: "productos", texto: "Productos" },
   { id: "mayoristas", texto: "Por mayor" },
@@ -29,8 +30,9 @@ const ENLACES = [
   { id: "contacto", texto: "Contacto" },
 ];
 
-export default function Navegacion() {
+export default function Navegacion({ logo = null }: { logo?: string | null }) {
   const bajado = useHaBajado(120);
+  const leido = useAvanceDePagina();
   const [abierto, setAbierto] = useState(false);
   const tel = enlaceTelefono();
 
@@ -70,7 +72,7 @@ export default function Navegacion() {
               onClick={() => irA("portada")}
               className="flex items-center gap-3 text-[var(--arte-oro-claro)]"
             >
-              <Sello tamano={34} />
+              <Logo ruta={logo} tamano={34} />
               <span className="font-serif text-lg tracking-tight text-[var(--arte-texto-claro)]">
                 {EMPRESA.nombreCorto}
               </span>
@@ -123,7 +125,16 @@ export default function Navegacion() {
             </div>
           </nav>
         </div>
-        <div className="arte-filo h-px" />
+        {/* El filo de oro de debajo ya no es un adorno: dice cuánto llevas
+            leído de la página. En el móvil no hay barra de scroll, así que es
+            la única pista de por dónde vas. */}
+        <div className="relative h-px bg-white/10">
+          <div
+            className="barra-lectura arte-filo h-px"
+            style={{ ["--leido" as string]: leido }}
+            aria-hidden="true"
+          />
+        </div>
       </header>
 
       {/* El menú de móvil */}
@@ -144,7 +155,7 @@ export default function Navegacion() {
         >
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-3 text-[var(--arte-oro-claro)]">
-              <Sello tamano={34} />
+              <Logo ruta={logo} tamano={34} />
               <span className="font-serif text-lg text-[var(--arte-texto-claro)]">
                 {EMPRESA.nombreCorto}
               </span>
