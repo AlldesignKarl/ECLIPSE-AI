@@ -40,7 +40,7 @@ export default function Historia() {
   return (
     <section
       id="historia"
-      className="arte-crema-fondo relative overflow-hidden py-24 sm:py-32"
+      className="fondo-historia relative overflow-hidden pb-24 pt-32 sm:pb-32 sm:pt-44"
       aria-labelledby="historia-titulo"
     >
       <div className="arte-trama pointer-events-none absolute inset-0 opacity-60" />

@@ -89,6 +89,17 @@ npm run prueba:ligeras   # solo la rápida
 
 ---
 
+## Los colores
+
+Los siete colores de la marca están juntos en `src/app/globals.css`, al
+principio: azul noche, azul profundo, azul cielo, oro, terracota, marfil y gris
+azulado. Cambiar uno cambia la web entera.
+
+La web va cambiando de color según se baja —noche, amanecer, marfil, anochecer,
+el Pilar encendiéndose, azul luminoso, marfil otra vez, azul profundo y negro
+azulado—, y cada sección arranca en el color donde terminó la anterior. Cada una
+tiene su clase `.fondo-*`, así que retocar un acto es tocar un sitio.
+
 ## Cómo está hecho
 
 Next.js 15 (App Router) + React 19 + TypeScript + Tailwind CSS v4. Sin base de

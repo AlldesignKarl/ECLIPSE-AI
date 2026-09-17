@@ -76,7 +76,7 @@ export default function Pilar() {
     <section
       id="pilar"
       ref={contenedor}
-      className="escena arte-noche relative"
+      className="escena fondo-pilar relative"
       style={{ height: "500vh" }}
       aria-labelledby="pilar-titulo"
     >
@@ -89,7 +89,7 @@ export default function Pilar() {
           className="acerca pointer-events-none absolute left-1/2 top-1/2 h-[80vmin] w-[80vmin] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
           style={{
             background:
-              "radial-gradient(circle, rgba(232,207,132,0.28), rgba(201,162,39,0.1) 45%, transparent 70%)",
+              "radial-gradient(circle, rgba(242,221,166,0.26), rgba(212,168,79,0.1) 46%, transparent 70%)",
             opacity: "calc(0.25 + var(--p) * 0.75)",
           }}
         />
@@ -124,7 +124,7 @@ export default function Pilar() {
             aria-hidden="true"
           >
             {/* El suelo y el cuerpo */}
-            <path className="trazo" style={{ ["--i" as string]: 0.04, ["--f" as string]: 0.16 }} pathLength={1} d="M120 340 L1080 340" />
+            <path className="trazo" style={{ ["--i" as string]: 0.03, ["--f" as string]: 0.14 }} pathLength={1} d="M120 340 L1080 340" />
             <path className="trazo" style={{ ["--i" as string]: 0.1, ["--f" as string]: 0.22 }} pathLength={1} d="M170 300 L1030 300" />
 
             {/* Los arcos de la fachada */}
@@ -168,14 +168,14 @@ export default function Pilar() {
 
           <p
             className="tramo arte-ojal justify-center"
-            style={{ ["--i" as string]: 0.02, ["--f" as string]: 0.1, ["--oi" as string]: 0.22, ["--of" as string]: 0.3 }}
+            style={{ ["--i" as string]: 0.005, ["--f" as string]: 0.05, ["--oi" as string]: 0.22, ["--of" as string]: 0.3 }}
           >
             De dónde sale todo
           </p>
 
           <p
             className="tramo arte-display absolute inset-x-0 top-0 mx-auto max-w-[14ch] text-[var(--arte-texto-claro)]"
-            style={{ ["--i" as string]: 0.06, ["--f" as string]: 0.16, ["--oi" as string]: 0.26, ["--of" as string]: 0.34 }}
+            style={{ ["--i" as string]: 0.03, ["--f" as string]: 0.12, ["--oi" as string]: 0.26, ["--of" as string]: 0.34 }}
           >
             Aquí empieza todo.
           </p>

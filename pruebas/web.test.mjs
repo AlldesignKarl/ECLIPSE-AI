@@ -7,6 +7,7 @@
 //   3. Si no hay dónde entregar una solicitud, se DICE. Nunca "gracias" por un
 //      mensaje que se ha perdido.
 import { createServer } from "node:http";
+import { readFileSync } from "node:fs";
 import { SRC, crearJiti, enSrc } from "./entorno.mjs";
 
 const jiti = await crearJiti(import.meta.url, { alias: { "@": SRC } });
@@ -29,6 +30,61 @@ const BUENA = {
   mensaje: "Nos interesa la colección de cerámica para la tienda del museo. ¿Mínimos?",
   asunto: "catalogo",
 };
+
+/* ------------------------------ La paleta -------------------------------- */
+
+/*
+  Que los colores de la marca se PUEDAN LEER.
+  Esto no es una prueba de gusto: es la que habría cazado el fallo que tuvimos,
+  con el texto de los párrafos en gris oscuro sobre el azul de la noche. Se veía
+  "elegante" en una captura y no se leía en un móvil a pleno sol.
+*/
+const css = readFileSync(enSrc("app/globals.css"), "utf8");
+
+/** Saca un color de la paleta por su nombre de variable. */
+function color(nombre) {
+  const m = css.match(new RegExp(`--arte-${nombre}:\\s*(#[0-9a-fA-F]{6})`));
+  if (!m) throw new Error(`No existe --arte-${nombre} en globals.css`);
+  const hex = m[1];
+  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+}
+
+/** El contraste tal y como lo define la norma de accesibilidad (WCAG). */
+function contraste(a, b) {
+  const luz = (rgb) =>
+    rgb
+      .map((v) => v / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+      .reduce((t, v, i) => t + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const [x, y] = [luz(a), luz(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+
+console.log("\nLos colores de la marca se leen");
+const pares = [
+  ["marfil", "noche", 7, "los titulares sobre la noche de la portada"],
+  ["marfil", "azul", 7, "los titulares sobre el azul profundo"],
+  ["texto-claro-suave", "noche", 4.5, "el gris azulado sobre la noche"],
+  ["texto-claro-suave", "azul", 4.5, "el gris azulado sobre el azul profundo"],
+  ["texto-suave", "marfil", 4.5, "el texto de párrafo sobre marfil"],
+  ["texto", "marfil", 7, "los titulares oscuros sobre marfil"],
+  ["oro", "noche", 4.5, "el oro sobre la noche"],
+];
+for (const [frente, fondo, minimo, que] of pares) {
+  const r = contraste(color(frente), color(fondo));
+  ok(r >= minimo, `${que}: ${r.toFixed(1)} (hace falta ${minimo})`);
+}
+
+ok(
+  css.includes(".fondo-portada") &&
+    css.includes(".fondo-ciudad") &&
+    css.includes(".fondo-contacto"),
+  "cada acto de la web tiene su fondo propio",
+);
+ok(
+  /\.fondo-\w+[^}]*linear-gradient\(\s*180deg/.test(css),
+  "y los fondos son degradados, no colores planos",
+);
 
 console.log("\nEl formulario valida lo que tiene que validar");
 ok(esValida(BUENA), "una solicitud completa pasa");

@@ -131,7 +131,7 @@ export default function PorMayor() {
   return (
     <section
       id="mayoristas"
-      className="arte-crema-fondo relative overflow-hidden py-24 sm:py-32"
+      className="fondo-mayor relative overflow-hidden pb-24 pt-32 sm:pb-32 sm:pt-44"
       aria-labelledby="mayoristas-titulo"
     >
       <div className="relative mx-auto max-w-7xl px-5 sm:px-8">
@@ -140,7 +140,7 @@ export default function PorMayor() {
             <p className="arte-ojal">Venta al por mayor</p>
           </Revelar>
           <Revelar retraso={90}>
-            <h2 id="mayoristas-titulo" className="arte-titulo mt-6 text-[var(--arte-tinta)]">
+            <h2 id="mayoristas-titulo" className="arte-titulo mt-6 text-[var(--arte-marfil)]">
               Trabajamos con <em className="arte-realce">empresas</em>, no con pedidos sueltos.
             </h2>
           </Revelar>
@@ -155,12 +155,14 @@ export default function PorMayor() {
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {VENTAJAS.map((v, i) => (
             <Revelar key={v.titulo} retraso={i * 80}>
-              <div className="arte-tarjeta h-full p-7">
-                <span className="grid h-12 w-12 place-items-center rounded-full border border-[var(--arte-borde)] bg-[var(--arte-crema)] text-[var(--arte-azul)]">
+              <div className="arte-tarjeta-oscura h-full p-7">
+                <span className="grid h-12 w-12 place-items-center rounded-full border border-[var(--arte-borde-claro)] bg-white/5 text-[var(--arte-oro)]">
                   <Icono nombre={v.icono} />
                 </span>
-                <h3 className="mt-5 font-serif text-xl text-[var(--arte-tinta)]">{v.titulo}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-[var(--arte-texto-suave)]">{v.texto}</p>
+                <h3 className="mt-5 font-serif text-xl text-[var(--arte-marfil)]">{v.titulo}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-[var(--arte-texto-claro-suave)]">
+                  {v.texto}
+                </p>
               </div>
             </Revelar>
           ))}
@@ -168,7 +170,7 @@ export default function PorMayor() {
 
         {/* La llamada grande */}
         <Revelar como="escala" retraso={120}>
-          <div className="arte-noche arte-grano relative mt-20 overflow-hidden rounded-[1.75rem] px-7 py-16 text-center sm:px-14 sm:py-20">
+          <div className="arte-noche arte-grano relative mt-20 overflow-hidden rounded-[1.75rem] border border-[var(--arte-borde-claro)] px-7 py-16 text-center shadow-[var(--arte-sombra-alta)] sm:px-14 sm:py-20">
             <div ref={fondo} className="arte-parallax pointer-events-none absolute inset-x-0 bottom-0 -z-10">
               <Silueta className="h-[34vh] w-full text-[var(--arte-oro)] opacity-[0.12]" conRio={false} />
             </div>

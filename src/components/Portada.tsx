@@ -58,7 +58,7 @@ export default function Portada() {
     <section
       id="portada"
       ref={seccion}
-      className="arte-noche arte-grano relative isolate flex min-h-[100svh] flex-col justify-end overflow-hidden"
+      className="fondo-portada arte-grano relative isolate flex min-h-[100svh] flex-col justify-end overflow-hidden"
       style={{ ["--salida" as string]: 0 }}
     >
       {/* El halo: el sol detrás de la ciudad, que es de donde sale el oro */}
@@ -67,12 +67,12 @@ export default function Portada() {
           className="arte-latido absolute left-1/2 top-[38%] h-[70vmin] w-[70vmin] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
           style={{
             background:
-              "radial-gradient(circle, rgba(232,207,132,0.5), rgba(201,162,39,0.18) 45%, transparent 70%)",
+              "radial-gradient(circle, rgba(242,221,166,0.42), rgba(212,168,79,0.16) 46%, transparent 70%)",
           }}
         />
         <div
           className="absolute inset-x-0 bottom-0 h-1/2"
-          style={{ background: "linear-gradient(180deg, transparent, rgba(6,11,24,0.92))" }}
+          style={{ background: "linear-gradient(180deg, transparent, rgba(5,8,23,0.94))" }}
         />
       </div>
 
@@ -98,7 +98,7 @@ export default function Portada() {
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "linear-gradient(95deg, rgba(6,11,24,0.82) 0%, rgba(6,11,24,0.55) 38%, transparent 68%)",
+            "linear-gradient(95deg, rgba(5,8,23,0.86) 0%, rgba(5,8,23,0.58) 38%, transparent 68%)",
         }}
       />
 

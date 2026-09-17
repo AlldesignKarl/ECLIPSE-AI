@@ -130,7 +130,7 @@ export default function Contacto() {
   return (
     <section
       id="contacto"
-      className="arte-noche arte-grano relative overflow-hidden py-24 sm:py-32"
+      className="fondo-contacto arte-grano relative overflow-hidden py-24 sm:py-32"
       aria-labelledby="contacto-titulo"
     >
       <div className="arte-filo absolute inset-x-0 top-0 h-px" />

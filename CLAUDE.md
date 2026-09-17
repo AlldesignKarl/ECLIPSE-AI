@@ -46,7 +46,33 @@ src/
 pruebas/              2 pruebas. `npm run prueba`
 ```
 
-## 3. Reglas que hay que respetar
+## 3. La paleta y los actos de color
+
+Los siete colores están en `src/app/globals.css`, arriba del todo, en `.sitio`:
+azul noche `#050817`, azul profundo `#0b1f4d`, azul cielo `#3b82c4`, oro
+`#d4a84f`, terracota `#b85c3a`, marfil `#f5f0e6` y gris azulado `#b7c0d4`.
+
+La web **cambia de color mientras se baja**, y eso es la historia, no un adorno:
+noche (portada) → amanecer → marfil (historia y taller) → anochecer → noche con
+el Pilar encendiéndose → azul luminoso (la ciudad) → marfil (el catálogo, para
+que mande el producto) → azul profundo (venta al por mayor) → negro azulado
+(contacto y pie).
+
+Cada sección tiene su clase `.fondo-*` y **empieza en el color en el que terminó
+la anterior**: los primeros stops de cada degradado repiten el último de arriba.
+Si se añade una sección en medio, hay que encadenarla igual o se ve la costura.
+
+Tres cosas que no son opinión:
+
+- **El oro necesita tres tonos** (`--arte-oro-oscuro`, `--arte-oro`,
+  `--arte-oro-claro`). Un dorado plano es amarillo de bazar; lo que lo convierte
+  en metal es que tenga sombra, luz y un filo claro en medio.
+- **De azul a marfil no se pasa directamente**: sale una banda gris de barro. Se
+  pasa por donde pasa un amanecer —azul, malva, terracota, marfil—, y ahí es
+  donde el terracota hace su trabajo.
+- **El terracota nunca manda una sección.** Es el detalle artesano.
+
+## 4. Reglas que hay que respetar
 
 1. **No inventes datos de la empresa.** Correo, teléfono, WhatsApp, dirección,
    redes, CIF y razón social salen de `config.ts`. Lo que no está va como `null`
@@ -65,7 +91,7 @@ pruebas/              2 pruebas. `npm run prueba`
 8. **Nunca escribas claves en el código**: variables de entorno siempre.
 9. **Antes de dar algo por hecho: `npm run build` y `npm run prueba`.**
 
-## 4. Lo que NO debes romper
+## 5. Lo que NO debes romper
 
 - **Que el movimiento use UN observador y UN escuchador de scroll para toda la
   web** (`components/movimiento.tsx`), leyendo todas las posiciones antes de
@@ -105,10 +131,15 @@ pruebas/              2 pruebas. `npm run prueba`
   nuestra y una utilidad de Tailwind pesan lo mismo, y ganaba la que iba después
   en el archivo: `hidden` no escondía un `.arte-boton`, y en el móvil el botón
   de la cabecera salía partido en dos líneas.
+- **Que el texto de párrafo tenga su color según el FONDO** (la lista de
+  `.fondo-* .arte-cuerpo` en `globals.css`). `.arte-cuerpo` trae el gris oscuro
+  de las secciones claras; sin esa lista, en las oscuras se queda en 2,4 de
+  contraste: se lee a duras penas y en un móvil a pleno sol no se lee. La prueba
+  de la paleta mide esto y falla si alguien baja un color.
 - **Las 2 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba.
 
-## 5. Sin red
+## 6. Sin red
 
 En el contenedor de desarrollo casi todo internet está bloqueado. Por eso la
 prueba de navegador levanta servidores de mentira (el buzón del formulario y

@@ -16,7 +16,9 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #fdfaf4;
+  /* Del color de la primera pantalla: así, si el móvil estira el scroll por
+     arriba o por abajo, lo que asoma es azul noche y no una franja blanca. */
+  background: #050817;
 }
 
 * {
@@ -38,39 +40,206 @@ body {
 */
 
 .sitio {
-  --arte-noche: #060b18;
-  --arte-tinta: #0a1430;
-  --arte-azul: #14306b;
-  --arte-azul-vivo: #1d4ea8;
-  --arte-cielo: #8dbdea;
-  --arte-cielo-claro: #cfe3f7;
-  --arte-oro: #c9a227;
-  --arte-oro-claro: #e8cf84;
-  --arte-crema: #f7f1e4;
-  --arte-hueso: #fdfaf4;
-  --arte-terracota: #c2643c;
-  --arte-burdeos: #7c1f2e;
+  /* ---------------- Los siete colores de la marca ----------------
+     Son los que eligió Carlos, sin retocar. Todo lo demás sale de mezclarlos. */
+  --arte-noche: #050817;       /* la primera pantalla y la última */
+  --arte-azul: #0b1f4d;        /* azul profundo: el color de la casa */
+  --arte-cielo: #3b82c4;       /* el acento luminoso */
+  --arte-oro: #d4a84f;         /* oro elegante. NUNCA amarillo */
+  --arte-terracota: #b85c3a;   /* el detalle artesano, en pequeño */
+  --arte-marfil: #f5f0e6;      /* los titulares */
+  --arte-gris-azul: #b7c0d4;   /* el texto secundario sobre oscuro */
 
-  --arte-texto: #101828;
-  --arte-texto-suave: #4a5568;
-  --arte-texto-claro: #f2eade;
-  --arte-texto-claro-suave: rgba(242, 234, 222, 0.72);
+  /* ---------------- Los que salen de mezclarlos ----------------
+     Escritos aquí y no repartidos por la web: cambiar el azul de la casa tiene
+     que ser tocar UNA línea, no buscar cuarenta. */
+  --arte-tinta: #071231;
+  --arte-azul-vivo: #14417e;
+  --arte-cielo-claro: #9fc6e8;
 
-  --arte-borde: rgba(16, 24, 40, 0.1);
-  --arte-borde-claro: rgba(232, 207, 132, 0.28);
+  /*
+    El oro no es un color, son tres.
+    Un dorado plano es amarillo de bazar. Lo que hace que parezca metal es que
+    tenga sombra por un lado, luz por el otro y un filo claro en medio: por eso
+    hay un oro oscuro y un oro claro, y los degradados de los botones y de las
+    letras doradas usan los tres.
+  */
+  --arte-oro-oscuro: #8a6a25;
+  --arte-oro-claro: #f2dda6;
 
-  --arte-sombra: 0 24px 60px -28px rgba(10, 20, 48, 0.45);
-  --arte-sombra-alta: 0 40px 90px -40px rgba(10, 20, 48, 0.65);
+  --arte-crema: #efe7d6;
+  --arte-hueso: #f5f0e6;
+  --arte-burdeos: #8c3a2c;
+
+  /* ---------------- El texto ----------------
+     Sobre oscuro, marfil para los títulos y gris azulado para lo demás, como
+     pidió Carlos. Sobre claro NO se puede usar ese gris azulado: sobre marfil
+     se queda en 1,9 de contraste y no se lee. Ahí va su versión oscura, que es
+     el mismo tono bajado hasta 6,4. */
+  --arte-texto: #101a33;
+  --arte-texto-suave: #55607a;
+  --arte-texto-claro: #f5f0e6;
+  --arte-texto-claro-suave: #b7c0d4;
+
+  --arte-borde: rgba(16, 26, 51, 0.12);
+  --arte-borde-claro: rgba(212, 168, 79, 0.3);
+
+  /* Las sombras son azul noche y no negro: una sombra negra sobre una web azul
+     ensucia; la del color del fondo hunde de verdad. */
+  --arte-sombra: 0 24px 60px -28px rgba(5, 8, 23, 0.5);
+  --arte-sombra-alta: 0 40px 90px -40px rgba(5, 8, 23, 0.72);
+  --arte-brillo-oro: 0 14px 34px -14px rgba(212, 168, 79, 0.55);
 
   --arte-curva: cubic-bezier(0.22, 1, 0.36, 1);
 
-  background: var(--arte-hueso);
-  color: var(--arte-texto);
+  background: var(--arte-noche);
+  color: var(--arte-texto-claro);
   font-family: var(--font-sans);
   overflow-x: clip;
-  /* El navegador ya sabe que aquí hay un sitio claro: los menús nativos, la
-     barra de scroll y los campos del formulario salen a juego sin tocarlos. */
-  color-scheme: light;
+  /* La web empieza y acaba de noche, así que la barra de scroll y los menús del
+     navegador salen oscuros. Los campos del formulario están sobre azul noche. */
+  color-scheme: dark;
+}
+
+/* ========================= Los actos de color =============================
+   La web cambia de color mientras bajas, y no por adorno: es la historia.
+
+   Noche (portada) → amanecer → marfil (quiénes somos y el taller) → anochecer
+   → noche otra vez con el Pilar encendiéndose → azul luminoso (la ciudad) →
+   marfil (el catálogo, para que el producto mande) → azul profundo (la venta al
+   por mayor) → y de ahí hasta el negro azulado del contacto.
+
+   Dos reglas que hacen que esto no parezca un arcoíris:
+
+   1. Cada sección EMPIEZA en el color en el que terminó la anterior. Por eso
+      los primeros stops de cada degradado repiten el último de arriba: sin eso
+      se ve la costura entre secciones.
+   2. Los pasos de claro a oscuro NO van de azul a marfil directamente —eso da
+      una banda gris de barro—, sino por donde pasa un amanecer de verdad: azul,
+      malva, terracota, marfil. Ahí es donde el terracota hace su trabajo.
+*/
+
+.fondo-portada {
+  background:
+    radial-gradient(120% 80% at 50% 14%, rgba(59, 130, 196, 0.22), transparent 62%),
+    radial-gradient(70% 55% at 80% 78%, rgba(212, 168, 79, 0.16), transparent 68%),
+    linear-gradient(180deg, #050817 0%, #060d24 46%, #0a1c45 100%);
+  color: var(--arte-texto-claro);
+}
+
+/* El amanecer: de la noche de la portada al marfil de la historia. */
+.fondo-historia {
+  background:
+    radial-gradient(55% 40% at 88% 30%, rgba(184, 92, 58, 0.1), transparent 70%),
+    linear-gradient(
+      180deg,
+      #0a1c45 0%,
+      #2b3a63 1.6%,
+      #6d6a7b 3.2%,
+      #b28d74 5%,
+      #e7d9c4 7%,
+      #f5f0e6 9%,
+      #f5f0e6 58%,
+      #f0e6d6 100%
+    );
+}
+
+.fondo-taller {
+  background:
+    radial-gradient(50% 35% at 12% 20%, rgba(184, 92, 58, 0.08), transparent 72%),
+    linear-gradient(180deg, #f0e6d6 0%, #f5efe2 28%, #efe4d0 64%, #e6dccb 100%);
+}
+
+/*
+  El anochecer y el encendido del Pilar, en una sola escena de cinco pantallas.
+  Aquí el degradado se ve MOVERSE: la escena se queda fija y el fondo sigue
+  bajando por detrás, así que el color pasa de marfil a noche y de noche a azul
+  luminoso delante de quien mira. Es lo más parecido a una puesta de sol que se
+  puede hacer sin una sola imagen.
+*/
+.fondo-pilar {
+  background:
+    radial-gradient(60% 40% at 50% 78%, rgba(212, 168, 79, 0.12), transparent 70%),
+    linear-gradient(
+      180deg,
+      #e6dccb 0%,
+      #b09a8d 1.4%,
+      #5a5470 2.8%,
+      #182a54 4.4%,
+      #070f28 18%,
+      #050817 40%,
+      #081a40 62%,
+      #0b2a5e 82%,
+      #123f7a 100%
+    );
+  color: var(--arte-texto-claro);
+}
+
+/* La ciudad: el azul más luminoso de toda la web, con el oro encima. */
+.fondo-ciudad {
+  background:
+    radial-gradient(90% 60% at 50% 18%, rgba(59, 130, 196, 0.3), transparent 66%),
+    radial-gradient(70% 50% at 18% 88%, rgba(212, 168, 79, 0.16), transparent 70%),
+    linear-gradient(180deg, #123f7a 0%, #0e3064 38%, #0b2350 78%, #0a1f48 100%);
+  color: var(--arte-texto-claro);
+}
+
+/* El catálogo, en marfil: aquí el color lo tiene que poner el producto. */
+.fondo-catalogo {
+  background:
+    radial-gradient(60% 40% at 50% 0%, rgba(59, 130, 196, 0.1), transparent 70%),
+    linear-gradient(180deg, #f5f0e6 0%, #f3ede1 55%, #efe7d6 100%);
+}
+
+/* El anochecer otra vez: del marfil del catálogo al azul de la venta al por
+   mayor. Mismo camino que el amanecer, del revés. */
+.fondo-mayor {
+  background:
+    radial-gradient(80% 50% at 50% 30%, rgba(59, 130, 196, 0.16), transparent 68%),
+    radial-gradient(60% 45% at 85% 85%, rgba(212, 168, 79, 0.14), transparent 70%),
+    linear-gradient(
+      180deg,
+      #efe7d6 0%,
+      #d8c3ad 1.4%,
+      #94806f 2.8%,
+      #3c4360 4.6%,
+      #132a55 7%,
+      #0b1f4d 12%,
+      #0b1f4d 62%,
+      #091a3f 100%
+    );
+  color: var(--arte-texto-claro);
+}
+
+.fondo-proceso {
+  background:
+    radial-gradient(70% 50% at 82% 12%, rgba(59, 130, 196, 0.16), transparent 66%),
+    linear-gradient(180deg, #091a3f 0%, #071231 52%, #060d24 100%);
+  color: var(--arte-texto-claro);
+}
+
+/* El contacto: lo más oscuro y lo más quieto, para que mande el formulario. */
+.fondo-contacto {
+  background:
+    radial-gradient(80% 55% at 50% 0%, rgba(11, 31, 77, 0.9), transparent 70%),
+    radial-gradient(50% 40% at 88% 92%, rgba(184, 92, 58, 0.12), transparent 72%),
+    linear-gradient(180deg, #060d24 0%, #050817 55%, #04060f 100%);
+  color: var(--arte-texto-claro);
+}
+
+.fondo-pie {
+  background: linear-gradient(180deg, #04060f 0%, #03050c 100%);
+  color: var(--arte-texto-claro);
+}
+
+/*
+  El acto claro dentro de una sección oscura (y al revés).
+  Sirve para los trozos que van a contracorriente: la cinta de palabras que hace
+  de bisagra entre el azul de la ciudad y el marfil del catálogo.
+*/
+.bisagra-clara {
+  background: linear-gradient(180deg, #f3ede1, #f5f0e6);
+  color: var(--arte-azul);
 }
 
 /* ------------------------------ Tipografía ------------------------------- */
@@ -130,17 +299,64 @@ body {
   color: var(--arte-texto-suave);
 }
 
-.sobre-oscuro .arte-cuerpo {
-  color: var(--arte-texto-claro-suave);
-}
-.sobre-oscuro {
+/*
+  El texto de párrafo, sobre oscuro.
+  ---------------------------------------------------------------------------
+  Esto arregla un fallo que no daba ningún error y se notaba poco: `.arte-cuerpo`
+  traía el gris oscuro de las secciones claras, y en las oscuras se quedaba en
+  2,4 de contraste sobre el azul. Se leía a duras penas y en un móvil a pleno sol
+  no se leía.
+
+  Cada acto oscuro se nombra aquí. Es más largo que poner una clase suelta, pero
+  no hay que acordarse de nada al escribir una sección nueva: el color va con el
+  fondo, que es de donde depende de verdad.
+*/
+.sobre-oscuro,
+.fondo-portada,
+.fondo-pilar,
+.fondo-ciudad,
+.fondo-mayor,
+.fondo-proceso,
+.fondo-contacto,
+.fondo-pie,
+.arte-noche {
   color: var(--arte-texto-claro);
 }
 
+.sobre-oscuro .arte-cuerpo,
+.fondo-portada .arte-cuerpo,
+.fondo-pilar .arte-cuerpo,
+.fondo-ciudad .arte-cuerpo,
+.fondo-mayor .arte-cuerpo,
+.fondo-proceso .arte-cuerpo,
+.fondo-contacto .arte-cuerpo,
+.fondo-pie .arte-cuerpo,
+.arte-noche .arte-cuerpo {
+  color: var(--arte-texto-claro-suave);
+}
+
+/* Y al revés: un trozo claro dentro de una sección oscura recupera su tinta. */
+.bisagra-clara .arte-cuerpo,
+.arte-cristal .arte-cuerpo {
+  color: var(--arte-texto-suave);
+}
+
 /* La palabra en cursiva de oro que rompe un titular. */
+/*
+  La palabra dorada de un titular.
+  Cuatro paradas y no dos: un degradado de dos colores es un texto amarillo con
+  sombra, y cuatro —claro, oro, oscuro, claro otra vez— es un reflejo. Esa
+  segunda subida al final es la que hace que parezca metal pulido.
+*/
 .arte-realce {
   font-style: italic;
-  background: linear-gradient(100deg, var(--arte-oro-claro), var(--arte-oro) 60%, #a5801a);
+  background: linear-gradient(
+    100deg,
+    var(--arte-oro-claro) 0%,
+    var(--arte-oro) 38%,
+    var(--arte-oro-oscuro) 62%,
+    #eacf92 88%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -154,44 +370,52 @@ body {
   claro sobre una foto clara, que no se lee.
 */
 .arte-cristal {
-  background: rgba(253, 250, 244, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(245, 240, 230, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: var(--arte-sombra);
 }
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .arte-cristal {
-    background: rgba(253, 250, 244, 0.5);
+    background: rgba(245, 240, 230, 0.52);
     -webkit-backdrop-filter: blur(18px) saturate(150%);
     backdrop-filter: blur(18px) saturate(150%);
   }
 }
 
+/*
+  El cristal oscuro lleva un filo de luz arriba (`inset 0 1px`). Es un pelo de
+  un píxel y es lo que separa un panel translúcido de un rectángulo gris: imita
+  el canto de un cristal de verdad cuando le da la luz.
+*/
 .arte-cristal-oscuro {
-  background: rgba(10, 20, 48, 0.62);
+  background: rgba(11, 31, 77, 0.66);
   border: 1px solid var(--arte-borde-claro);
-  box-shadow: var(--arte-sombra-alta);
+  box-shadow:
+    0 1px 0 rgba(245, 240, 230, 0.12) inset,
+    var(--arte-sombra-alta);
 }
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .arte-cristal-oscuro {
-    background: rgba(10, 20, 48, 0.42);
+    background: rgba(9, 24, 60, 0.45);
     -webkit-backdrop-filter: blur(20px) saturate(140%);
     backdrop-filter: blur(20px) saturate(140%);
   }
 }
 
-/* El fondo nocturno de las secciones premium. */
+/* Fondo nocturno suelto, para trozos dentro de una sección clara. */
 .arte-noche {
   background:
-    radial-gradient(120% 90% at 78% 8%, rgba(29, 78, 168, 0.5), transparent 62%),
-    radial-gradient(90% 70% at 12% 92%, rgba(124, 31, 46, 0.34), transparent 60%),
-    linear-gradient(170deg, var(--arte-tinta), var(--arte-noche) 68%);
+    radial-gradient(120% 90% at 78% 8%, rgba(59, 130, 196, 0.34), transparent 62%),
+    radial-gradient(90% 70% at 12% 92%, rgba(184, 92, 58, 0.22), transparent 62%),
+    linear-gradient(170deg, var(--arte-azul), var(--arte-noche) 72%);
   color: var(--arte-texto-claro);
 }
 
 .arte-crema-fondo {
   background:
-    radial-gradient(100% 60% at 50% 0%, rgba(141, 189, 234, 0.22), transparent 70%),
+    radial-gradient(100% 60% at 50% 0%, rgba(59, 130, 196, 0.12), transparent 70%),
     linear-gradient(180deg, var(--arte-hueso), var(--arte-crema));
+  color: var(--arte-texto);
 }
 
 /*
@@ -221,9 +445,11 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(201, 162, 39, 0.55) 22%,
-    rgba(232, 207, 132, 0.9) 50%,
-    rgba(201, 162, 39, 0.55) 78%,
+    rgba(138, 106, 37, 0.6) 18%,
+    rgba(212, 168, 79, 0.85) 38%,
+    rgba(242, 221, 166, 0.95) 50%,
+    rgba(212, 168, 79, 0.85) 62%,
+    rgba(138, 106, 37, 0.6) 82%,
     transparent
   );
 }
@@ -268,43 +494,87 @@ body {
     border-color 0.3s ease;
 }
 
+/*
+  El botón de oro.
+  Lleva CUATRO capas y cada una hace una cosa:
+   1. El degradado de metal: oscuro arriba a la izquierda, filo claro en medio,
+      oscuro otra vez abajo. Es lo que hace que se vea curvo.
+   2. Un velo de luz en la mitad de arriba, como el reflejo de una superficie
+      pulida.
+   3. Dos sombras interiores de un píxel —luz arriba, sombra abajo— que le dan
+      el canto. Sin ellas el botón es una pegatina.
+   4. Dos sombras fuera: una dorada muy abierta (el metal devuelve luz al
+      fondo) y otra oscura y corta, que es la que lo despega de verdad.
+*/
 .arte-boton {
-  color: #1b1405;
-  background: linear-gradient(135deg, var(--arte-oro-claro), var(--arte-oro) 55%, #b08a1c);
-  box-shadow: 0 14px 30px -14px rgba(201, 162, 39, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #2a1c05;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(
+      172deg,
+      #b98f38 0%,
+      var(--arte-oro) 24%,
+      var(--arte-oro-claro) 50%,
+      var(--arte-oro) 74%,
+      var(--arte-oro-oscuro) 100%
+    );
+  border: 1px solid rgba(255, 243, 214, 0.5);
+  box-shadow:
+    0 1px 0 rgba(255, 250, 235, 0.6) inset,
+    0 -1px 0 rgba(78, 55, 10, 0.45) inset,
+    var(--arte-brillo-oro),
+    0 4px 10px -4px rgba(5, 8, 23, 0.55);
 }
 
-/* El brillo que cruza el botón al pasar por encima. Se mueve una sola vez y
-   sale por el otro lado: un brillo que va y viene marea. */
+/* El brillo que cruza al pasar por encima. Va y sale por el otro lado una sola
+   vez: un brillo que va y viene marea. */
 .arte-boton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-120%) skewX(-18deg);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
-  transition: transform 0.7s var(--arte-curva);
+  background: linear-gradient(90deg, transparent, rgba(255, 253, 245, 0.6), transparent);
+  transition: transform 0.75s var(--arte-curva);
 }
 .arte-boton:hover::after {
   transform: translateX(120%) skewX(-18deg);
 }
-
-.arte-boton-claro {
-  color: var(--arte-tinta);
-  background: var(--arte-hueso);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: var(--arte-sombra);
+.arte-boton:hover {
+  /* Se aclara un punto y la luz que suelta se abre. Nada de cambiar de color:
+     un metal no cambia de color al tocarlo, le da más la luz. */
+  filter: brightness(1.05) saturate(1.04);
+  box-shadow:
+    0 1px 0 rgba(255, 250, 235, 0.7) inset,
+    0 -1px 0 rgba(78, 55, 10, 0.45) inset,
+    0 18px 42px -14px rgba(212, 168, 79, 0.7),
+    0 6px 14px -6px rgba(5, 8, 23, 0.6);
 }
 
+/* El botón de marfil, para cuando el de oro ya está puesto al lado. */
+.arte-boton-claro {
+  color: var(--arte-azul);
+  background: linear-gradient(180deg, #ffffff 0%, var(--arte-marfil) 60%, #e9e1d2 100%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    var(--arte-sombra);
+}
+.arte-boton-claro:hover {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    var(--arte-sombra-alta);
+}
+
+/* El de contorno, para el segundo lugar. El borde se enciende en oro. */
 .arte-boton-fantasma {
   color: inherit;
-  background: transparent;
-  border: 1px solid currentColor;
-  opacity: 0.85;
+  background: linear-gradient(180deg, rgba(245, 240, 230, 0.08), rgba(245, 240, 230, 0.02));
+  border: 1px solid rgba(183, 192, 212, 0.45);
 }
 .arte-boton-fantasma:hover {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(212, 168, 79, 0.75);
+  background: linear-gradient(180deg, rgba(212, 168, 79, 0.16), rgba(212, 168, 79, 0.04));
+  box-shadow: 0 10px 26px -16px rgba(212, 168, 79, 0.6);
 }
 
 .arte-boton:hover,
@@ -315,7 +585,10 @@ body {
 .arte-boton:active,
 .arte-boton-claro:active,
 .arte-boton-fantasma:active {
-  transform: translateY(0);
+  /* Se hunde un pelo por debajo de su sitio: es lo que hace que un botón se
+     sienta pulsado y no simplemente "clicado". */
+  transform: translateY(1px) scale(0.99);
+  transition-duration: 0.08s;
 }
 .arte-boton[disabled],
 .arte-boton-claro[disabled] {
@@ -339,9 +612,9 @@ body {
   position: relative;
   overflow: hidden;
   border-radius: 1.25rem;
-  background: var(--arte-hueso);
+  background: linear-gradient(180deg, #fffdf8 0%, var(--arte-hueso) 100%);
   border: 1px solid var(--arte-borde);
-  box-shadow: 0 10px 30px -22px rgba(10, 20, 48, 0.5);
+  box-shadow: 0 10px 30px -22px rgba(5, 8, 23, 0.5);
   transition:
     transform 0.5s var(--arte-curva),
     box-shadow 0.5s var(--arte-curva),
@@ -350,7 +623,35 @@ body {
 .arte-tarjeta:hover {
   transform: translateY(-6px);
   box-shadow: var(--arte-sombra-alta);
-  border-color: rgba(201, 162, 39, 0.45);
+  border-color: rgba(212, 168, 79, 0.5);
+}
+
+/*
+  La misma tarjeta, sobre azul profundo.
+  No es la clara con otro fondo: sobre oscuro, una tarjeta se separa por la LUZ
+  de su canto de arriba, no por la sombra de abajo, que ahí no se ve.
+*/
+.arte-tarjeta-oscura {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, rgba(20, 45, 100, 0.55), rgba(7, 18, 49, 0.6));
+  border: 1px solid rgba(183, 192, 212, 0.18);
+  box-shadow:
+    0 1px 0 rgba(245, 240, 230, 0.1) inset,
+    0 20px 40px -30px rgba(0, 0, 0, 0.8);
+  transition:
+    transform 0.5s var(--arte-curva),
+    box-shadow 0.5s var(--arte-curva),
+    border-color 0.5s ease;
+}
+.arte-tarjeta-oscura:hover {
+  transform: translateY(-6px);
+  border-color: rgba(212, 168, 79, 0.45);
+  box-shadow:
+    0 1px 0 rgba(245, 240, 230, 0.16) inset,
+    0 26px 50px -30px rgba(0, 0, 0, 0.9),
+    0 0 40px -18px rgba(212, 168, 79, 0.45);
 }
 
 /* La foto crece un pelo dentro de su marco al pasar por encima. El marco no se
@@ -381,21 +682,25 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
+  /* Un punto menos de saturación. Estas láminas ocupan media pantalla y a todo
+     color se comen la sección: el terracota tiene que ser el detalle artesano,
+     no el que manda. Las fotos de verdad, cuando lleguen, van sin filtro. */
+  filter: saturate(0.9);
 }
 .arte-lamina[data-tono="oro"] {
-  background: linear-gradient(145deg, #f6e9c9, #d9b75f 55%, #a8811e);
+  background: linear-gradient(145deg, #f7e6bd 0%, var(--arte-oro) 52%, var(--arte-oro-oscuro) 100%);
 }
 .arte-lamina[data-tono="terracota"] {
-  background: linear-gradient(145deg, #f3d9c6, #c2643c 58%, #8a3f21);
+  background: linear-gradient(145deg, #eccbb8 0%, var(--arte-terracota) 56%, #6f3220 100%);
 }
 .arte-lamina[data-tono="cielo"] {
-  background: linear-gradient(145deg, #e3f0fb, #8dbdea 55%, #2f68ad);
+  background: linear-gradient(145deg, #dcebf9 0%, var(--arte-cielo) 54%, #14477f 100%);
 }
 .arte-lamina[data-tono="burdeos"] {
-  background: linear-gradient(145deg, #e9cdd2, #7c1f2e 62%, #4c101b);
+  background: linear-gradient(145deg, #e4c3b9 0%, var(--arte-burdeos) 60%, #4a1a14 100%);
 }
 .arte-lamina[data-tono="azul"] {
-  background: linear-gradient(145deg, #dbe7f7, #14306b 60%, #071022);
+  background: linear-gradient(145deg, #cddcf0 0%, var(--arte-azul) 58%, var(--arte-noche) 100%);
 }
 
 /* ------------------------------ Movimiento ------------------------------- */
@@ -535,24 +840,24 @@ body {
 .arte-campo {
   width: 100%;
   border-radius: 0.85rem;
-  border: 1px solid rgba(242, 234, 222, 0.22);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(183, 192, 212, 0.28);
+  background: rgba(245, 240, 230, 0.05);
   padding: 0.85rem 1rem;
   font-size: 1rem;
   color: var(--arte-texto-claro);
   transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
 }
 .arte-campo::placeholder {
-  color: rgba(242, 234, 222, 0.38);
+  color: rgba(183, 192, 212, 0.5);
 }
 .arte-campo:hover {
-  border-color: rgba(242, 234, 222, 0.35);
+  border-color: rgba(183, 192, 212, 0.5);
 }
 .arte-campo:focus {
   outline: none;
   border-color: var(--arte-oro);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.18);
+  background: rgba(245, 240, 230, 0.09);
+  box-shadow: 0 0 0 3px rgba(212, 168, 79, 0.2);
 }
 .arte-campo[aria-invalid="true"] {
   border-color: #e98d8d;
@@ -566,7 +871,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(242, 234, 222, 0.66);
+  color: var(--arte-texto-claro-suave);
 }
 
 /* El campo trampa para los robots: fuera de la vista, fuera del tabulador y
@@ -587,7 +892,7 @@ body {
     180deg,
     var(--arte-oro) 0%,
     var(--arte-oro) var(--avance, 0%),
-    rgba(232, 207, 132, 0.14) var(--avance, 0%)
+    rgba(183, 192, 212, 0.16) var(--avance, 0%)
   );
 }
 
@@ -598,7 +903,7 @@ body {
   line-height: 0.85;
   font-weight: 500;
   color: transparent;
-  -webkit-text-stroke: 1px rgba(232, 207, 132, 0.45);
+  -webkit-text-stroke: 1px rgba(212, 168, 79, 0.5);
 }
 
 .arte-linea-clamp-2 {

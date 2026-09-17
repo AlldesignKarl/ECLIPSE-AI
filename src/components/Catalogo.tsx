@@ -97,7 +97,7 @@ export default function Catalogo() {
   const lista = ordenados(categoria ?? undefined);
 
   return (
-    <section id="productos" className="relative bg-[var(--arte-hueso)] py-24 sm:py-32" aria-labelledby="productos-titulo">
+    <section id="productos" className="fondo-catalogo relative py-24 sm:py-32" aria-labelledby="productos-titulo">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div>

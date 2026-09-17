@@ -39,7 +39,7 @@ export default function Ciudad() {
   return (
     <section
       id="ciudad"
-      className="arte-noche arte-grano relative isolate overflow-hidden py-24 sm:py-32"
+      className="fondo-ciudad arte-grano relative isolate overflow-hidden pt-24 sm:pt-32"
       aria-labelledby="ciudad-titulo"
     >
       <div className="arte-filo absolute inset-x-0 top-0 h-px" />
@@ -112,13 +112,19 @@ export default function Ciudad() {
       {/* La cinta: pasa despacio y sin fin, como el letrero de un taller. Está
           marcada como decorativa para que un lector de pantalla no la lea siete
           veces seguidas. */}
-      <div className="relative mt-20 overflow-hidden border-y border-[var(--arte-borde-claro)] py-6" aria-hidden="true">
+      {/*
+        La cinta ya no es un adorno: es la BISAGRA entre el acto azul de la
+        ciudad y el marfil del catálogo. Por eso va en marfil con las palabras
+        en azul y pegada al borde de abajo de la sección: el cambio de color no
+        se disimula con un degradado, se enseña.
+      */}
+      <div className="bisagra-clara relative mt-20 overflow-hidden border-t border-[var(--arte-borde-claro)] py-6" aria-hidden="true">
         <div className="arte-cinta flex w-max items-center gap-10 whitespace-nowrap">
           {[0, 1].map((vuelta) => (
             <div key={vuelta} className="flex items-center gap-10">
               {CINTA.map((palabra) => (
                 <span key={`${vuelta}-${palabra}`} className="flex items-center gap-10">
-                  <span className="font-serif text-2xl text-[var(--arte-texto-claro-suave)] sm:text-3xl">
+                  <span className="font-serif text-2xl text-[var(--arte-azul)] sm:text-3xl">
                     {palabra}
                   </span>
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--arte-oro)]" />

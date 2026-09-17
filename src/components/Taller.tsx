@@ -159,7 +159,7 @@ export default function Taller() {
     <section
       id="taller"
       ref={contenedor}
-      className="escena arte-crema-fondo relative"
+      className="escena fondo-taller relative"
       style={{ height: `${PASOS.length * 120}vh` }}
       aria-labelledby="taller-titulo"
     >

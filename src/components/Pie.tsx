@@ -55,7 +55,7 @@ export default function Pie({ logo = null }: { logo?: string | null }) {
   const redes = REDES.filter((r) => EMPRESA.redes[r.clave]);
 
   return (
-    <footer className="arte-noche arte-grano relative overflow-hidden pt-20">
+    <footer className="fondo-pie arte-grano relative overflow-hidden pt-20">
       <div className="arte-filo absolute inset-x-0 top-0 h-px" />
 
       <div className="mx-auto max-w-7xl px-5 pb-12 sm:px-8">

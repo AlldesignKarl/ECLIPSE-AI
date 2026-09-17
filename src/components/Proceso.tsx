@@ -60,7 +60,7 @@ export default function Proceso() {
   return (
     <section
       id="proceso"
-      className="arte-noche arte-grano relative overflow-hidden py-24 sm:py-32"
+      className="fondo-proceso arte-grano relative overflow-hidden py-24 sm:py-32"
       aria-labelledby="proceso-titulo"
     >
       <div className="arte-filo absolute inset-x-0 top-0 h-px" />
