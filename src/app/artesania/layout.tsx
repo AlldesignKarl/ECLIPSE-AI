@@ -23,7 +23,11 @@ const TITULO = `${EMPRESA.nombreCorto} · Artesanía de Zaragoza al por mayor`;
 
 export const metadata: Metadata = {
   title: {
-    default: TITULO,
+    // `absolute` y no `default`: el layout raíz tiene una plantilla
+    // ("%s · ECLIPSE AI") y se la pegaba detrás al título de esta web, que
+    // acababa siendo "AlldesignKarl · ... · ECLIPSE AI". Son dos marcas
+    // distintas y no pueden compartir pestaña.
+    absolute: TITULO,
     template: `%s · ${EMPRESA.nombreCorto}`,
   },
   description: EMPRESA.descripcion,
@@ -38,6 +42,17 @@ export const metadata: Metadata = {
     "venta al por mayor Aragón",
   ],
   alternates: { canonical: RUTA_BASE },
+  /*
+    El icono, dicho a mano.
+    El archivo `icon.tsx` de esta carpeta genera la imagen, pero no basta: el
+    layout raíz declara los iconos de ECLIPSE en sus `metadata` y eso gana
+    sobre el archivo. Nombrándolo aquí, esta web se lleva su pestaña y la
+    aplicación se queda con la suya.
+  */
+  icons: {
+    icon: [{ url: `${RUTA_BASE}/icon`, type: "image/png", sizes: "64x64" }],
+    apple: { url: `${RUTA_BASE}/icon`, sizes: "64x64" },
+  },
   openGraph: {
     type: "website",
     locale: "es_ES",
