@@ -139,7 +139,15 @@ Tres cosas que no son opinión:
 - **Las 2 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba.
 
-## 6. Sin red
+## 6. La guía de diseño
+
+En `.claude/skills/frontend-design/SKILL.md` está la skill de diseño del
+proyecto: los criterios con los que se decide si una pantalla está terminada
+(identidad, jerarquía, tipografía, color, componentes, movimiento, estados,
+responsive y lo que delata a una web generada). Claude Code la carga sola al
+abrir este proyecto. Léela antes de tocar la interfaz.
+
+## 7. Sin red
 
 En el contenedor de desarrollo casi todo internet está bloqueado. Por eso la
 prueba de navegador levanta servidores de mentira (el buzón del formulario y
