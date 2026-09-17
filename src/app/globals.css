@@ -1,0 +1,698 @@
+@import "tailwindcss";
+
+/*
+  Las dos familias de la marca, declaradas para Tailwind (`font-serif`,
+  `font-sans`). Los valores los pone `next/font` en el layout, así que las
+  fuentes viajan desde nuestro propio dominio: ni una petición a Google desde el
+  navegador de quien entra.
+*/
+@theme {
+  --font-sans: var(--fuente-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: var(--fuente-serif), ui-serif, Georgia, "Times New Roman", serif;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #fdfaf4;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+  La piel de AlldesignKarl.
+  ===========================================================================
+  Todo cuelga de `.sitio`, la clase que envuelve la web entera en el layout.
+  No es manía: deja la paleta de la marca junta en un sitio, separada de lo que
+  Tailwind genera, y permite que un día esta web viva dentro de otra sin que se
+  pisen los colores. Las variables van con prefijo `--arte-*` por lo mismo.
+
+  La paleta es la que eligió Carlos: azul profundo, azul cielo, oro, crema,
+  terracota y burdeos de detalle. El oro NO se usa como relleno de superficies
+  grandes —ahí se convierte en amarillo de bazar— sino en filos, letras
+  pequeñas, líneas y el botón principal.
+*/
+
+.sitio {
+  --arte-noche: #060b18;
+  --arte-tinta: #0a1430;
+  --arte-azul: #14306b;
+  --arte-azul-vivo: #1d4ea8;
+  --arte-cielo: #8dbdea;
+  --arte-cielo-claro: #cfe3f7;
+  --arte-oro: #c9a227;
+  --arte-oro-claro: #e8cf84;
+  --arte-crema: #f7f1e4;
+  --arte-hueso: #fdfaf4;
+  --arte-terracota: #c2643c;
+  --arte-burdeos: #7c1f2e;
+
+  --arte-texto: #101828;
+  --arte-texto-suave: #4a5568;
+  --arte-texto-claro: #f2eade;
+  --arte-texto-claro-suave: rgba(242, 234, 222, 0.72);
+
+  --arte-borde: rgba(16, 24, 40, 0.1);
+  --arte-borde-claro: rgba(232, 207, 132, 0.28);
+
+  --arte-sombra: 0 24px 60px -28px rgba(10, 20, 48, 0.45);
+  --arte-sombra-alta: 0 40px 90px -40px rgba(10, 20, 48, 0.65);
+
+  --arte-curva: cubic-bezier(0.22, 1, 0.36, 1);
+
+  background: var(--arte-hueso);
+  color: var(--arte-texto);
+  font-family: var(--font-sans);
+  overflow-x: clip;
+  /* El navegador ya sabe que aquí hay un sitio claro: los menús nativos, la
+     barra de scroll y los campos del formulario salen a juego sin tocarlos. */
+  color-scheme: light;
+}
+
+/* ------------------------------ Tipografía ------------------------------- */
+
+/*
+  Los titulares en serif (la misma Newsreader que ya carga la aplicación: ni una
+  fuente más que descargar) y el texto en la grotesca. `clamp` en vez de saltos
+  por media query: entre el móvil y una pantalla de 27 pulgadas hay veinte
+  tamaños intermedios y así ninguno queda mal.
+*/
+.arte-display {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  font-size: clamp(2.6rem, 7.2vw, 6.5rem);
+}
+
+.arte-titulo {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  font-size: clamp(2rem, 4.4vw, 3.6rem);
+}
+
+.arte-subtitulo {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.2;
+  font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+}
+
+/* El antetítulo: letra pequeña, muy espaciada, con un filo de oro delante. */
+.arte-ojal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--arte-oro);
+}
+.arte-ojal::before {
+  content: "";
+  width: 2.2rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--arte-oro));
+}
+
+.arte-cuerpo {
+  font-size: clamp(1rem, 1.15vw, 1.12rem);
+  line-height: 1.7;
+  color: var(--arte-texto-suave);
+}
+
+.sobre-oscuro .arte-cuerpo {
+  color: var(--arte-texto-claro-suave);
+}
+.sobre-oscuro {
+  color: var(--arte-texto-claro);
+}
+
+/* La palabra en cursiva de oro que rompe un titular. */
+.arte-realce {
+  font-style: italic;
+  background: linear-gradient(100deg, var(--arte-oro-claro), var(--arte-oro) 60%, #a5801a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ------------------------------ Superficies ------------------------------ */
+
+/*
+  El cristal. Con `backdrop-filter` donde lo haya y con un fondo sólido de
+  reserva donde no: sin esa reserva, en un navegador sin soporte queda texto
+  claro sobre una foto clara, que no se lee.
+*/
+.arte-cristal {
+  background: rgba(253, 250, 244, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: var(--arte-sombra);
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .arte-cristal {
+    background: rgba(253, 250, 244, 0.5);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+}
+
+.arte-cristal-oscuro {
+  background: rgba(10, 20, 48, 0.62);
+  border: 1px solid var(--arte-borde-claro);
+  box-shadow: var(--arte-sombra-alta);
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .arte-cristal-oscuro {
+    background: rgba(10, 20, 48, 0.42);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    backdrop-filter: blur(20px) saturate(140%);
+  }
+}
+
+/* El fondo nocturno de las secciones premium. */
+.arte-noche {
+  background:
+    radial-gradient(120% 90% at 78% 8%, rgba(29, 78, 168, 0.5), transparent 62%),
+    radial-gradient(90% 70% at 12% 92%, rgba(124, 31, 46, 0.34), transparent 60%),
+    linear-gradient(170deg, var(--arte-tinta), var(--arte-noche) 68%);
+  color: var(--arte-texto-claro);
+}
+
+.arte-crema-fondo {
+  background:
+    radial-gradient(100% 60% at 50% 0%, rgba(141, 189, 234, 0.22), transparent 70%),
+    linear-gradient(180deg, var(--arte-hueso), var(--arte-crema));
+}
+
+/*
+  Grano y trama: lo que separa un degradado de CSS de algo que parece papel.
+  Van como pseudo-elemento y con `pointer-events: none` para no comerse ni un
+  clic, y el grano es un SVG en línea —no una imagen— así que no cuesta ni una
+  petición.
+*/
+.arte-grano::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+.arte-trama {
+  background-image:
+    repeating-linear-gradient(90deg, rgba(16, 24, 40, 0.045) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, rgba(16, 24, 40, 0.035) 0 1px, transparent 1px 7px);
+}
+
+/* El filo de oro de arriba de una sección: un pelo de luz, no una raya. */
+.arte-filo {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 162, 39, 0.55) 22%,
+    rgba(232, 207, 132, 0.9) 50%,
+    rgba(201, 162, 39, 0.55) 78%,
+    transparent
+  );
+}
+
+/* -------------------------------- Botones -------------------------------- */
+
+.arte-boton,
+.arte-boton-claro,
+.arte-boton-fantasma {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.95rem 1.7rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 0.35s var(--arte-curva),
+    box-shadow 0.35s var(--arte-curva),
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.arte-boton {
+  color: #1b1405;
+  background: linear-gradient(135deg, var(--arte-oro-claro), var(--arte-oro) 55%, #b08a1c);
+  box-shadow: 0 14px 30px -14px rgba(201, 162, 39, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* El brillo que cruza el botón al pasar por encima. Se mueve una sola vez y
+   sale por el otro lado: un brillo que va y viene marea. */
+.arte-boton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%) skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transition: transform 0.7s var(--arte-curva);
+}
+.arte-boton:hover::after {
+  transform: translateX(120%) skewX(-18deg);
+}
+
+.arte-boton-claro {
+  color: var(--arte-tinta);
+  background: var(--arte-hueso);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--arte-sombra);
+}
+
+.arte-boton-fantasma {
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  opacity: 0.85;
+}
+.arte-boton-fantasma:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.arte-boton:hover,
+.arte-boton-claro:hover,
+.arte-boton-fantasma:hover {
+  transform: translateY(-2px);
+}
+.arte-boton:active,
+.arte-boton-claro:active,
+.arte-boton-fantasma:active {
+  transform: translateY(0);
+}
+.arte-boton[disabled],
+.arte-boton-claro[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* El foco del teclado, visible sobre claro y sobre oscuro. Nunca se quita: sin
+   él, quien navega con el tabulador no sabe dónde está. */
+.sitio :focus-visible {
+  outline: 2px solid var(--arte-oro);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* -------------------------------- Tarjetas ------------------------------- */
+
+.arte-tarjeta {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--arte-hueso);
+  border: 1px solid var(--arte-borde);
+  box-shadow: 0 10px 30px -22px rgba(10, 20, 48, 0.5);
+  transition:
+    transform 0.5s var(--arte-curva),
+    box-shadow 0.5s var(--arte-curva),
+    border-color 0.5s ease;
+}
+.arte-tarjeta:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--arte-sombra-alta);
+  border-color: rgba(201, 162, 39, 0.45);
+}
+
+/* La foto crece un pelo dentro de su marco al pasar por encima. El marco no se
+   mueve: lo que se mueve es la imagen, como en una vitrina. */
+.arte-marco {
+  position: relative;
+  overflow: hidden;
+  background: var(--arte-crema);
+}
+.arte-marco > img,
+.arte-marco > .arte-lamina {
+  transition: transform 1.1s var(--arte-curva);
+  will-change: transform;
+}
+.arte-tarjeta:hover .arte-marco > img,
+.arte-tarjeta:hover .arte-marco > .arte-lamina {
+  transform: scale(1.06);
+}
+
+/*
+  La lámina: lo que se pinta MIENTRAS no hay fotografía.
+  Un rectángulo gris diría "esto está a medias". Un degradado con su grano, su
+  sello y su trama de oficio se sostiene solo, y el día que llegue la foto se
+  cambia `imagen: null` por una ruta y no hay que tocar nada más.
+*/
+.arte-lamina {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.arte-lamina[data-tono="oro"] {
+  background: linear-gradient(145deg, #f6e9c9, #d9b75f 55%, #a8811e);
+}
+.arte-lamina[data-tono="terracota"] {
+  background: linear-gradient(145deg, #f3d9c6, #c2643c 58%, #8a3f21);
+}
+.arte-lamina[data-tono="cielo"] {
+  background: linear-gradient(145deg, #e3f0fb, #8dbdea 55%, #2f68ad);
+}
+.arte-lamina[data-tono="burdeos"] {
+  background: linear-gradient(145deg, #e9cdd2, #7c1f2e 62%, #4c101b);
+}
+.arte-lamina[data-tono="azul"] {
+  background: linear-gradient(145deg, #dbe7f7, #14306b 60%, #071022);
+}
+
+/* ------------------------------ Movimiento ------------------------------- */
+
+/*
+  Aparecer al entrar en pantalla.
+  El estado de partida está en CSS y no en JavaScript para que no haya fogonazo:
+  si se pusiera al montar, el contenido se vería entero durante un fotograma y
+  luego desaparecería para entrar otra vez.
+
+  El desenfoque es pequeño a propósito: mucho blur cuesta caro en móvil y se
+  nota más el tirón que el efecto.
+*/
+.arte-revelar {
+  opacity: 0;
+  transform: translate3d(0, 26px, 0);
+  filter: blur(6px);
+  transition:
+    opacity 0.9s var(--arte-curva),
+    transform 0.9s var(--arte-curva),
+    filter 0.9s var(--arte-curva);
+  transition-delay: var(--retraso, 0ms);
+  will-change: opacity, transform;
+}
+.arte-revelar[data-como="lado"] {
+  transform: translate3d(-32px, 0, 0);
+}
+.arte-revelar[data-como="lado-derecho"] {
+  transform: translate3d(32px, 0, 0);
+}
+.arte-revelar[data-como="escala"] {
+  transform: scale(1.06);
+  filter: blur(10px);
+}
+.arte-revelar[data-como="cortina"] {
+  clip-path: inset(0 0 100% 0);
+  transform: none;
+  filter: none;
+  transition: clip-path 1.1s var(--arte-curva), opacity 0.6s ease;
+}
+.arte-revelar.es-visible {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  will-change: auto;
+}
+/*
+  El recorte SOLO lo abre la cortina.
+  Puesto en todos, `clip-path: inset(0)` deja la caja recortando su propio
+  contenido para siempre, y lo que sobresale a propósito —la cita sobre la foto
+  del taller, el sello bajo la imagen de la ciudad— se quedaba cortado por la
+  mitad al terminar de aparecer.
+*/
+.arte-revelar[data-como="cortina"].es-visible {
+  clip-path: inset(0 0 0 0);
+}
+
+/* El parallax: el desplazamiento lo escribe JavaScript en `--desplazo` y lo
+   aplica el compositor. Solo `transform`, nunca `top`: lo segundo repinta. */
+.arte-parallax {
+  transform: translate3d(0, var(--desplazo, 0px), 0);
+  will-change: transform;
+}
+
+@keyframes arte-flotar {
+  0%,
+  100% {
+    transform: translateY(-6px);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+@keyframes arte-latido {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.04);
+  }
+}
+@keyframes arte-bajar {
+  0% {
+    transform: translateY(-40%);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(120%);
+    opacity: 0;
+  }
+}
+
+.arte-flotar {
+  animation: arte-flotar 9s ease-in-out infinite;
+}
+.arte-latido {
+  animation: arte-latido 7s ease-in-out infinite;
+}
+.arte-gota {
+  animation: arte-bajar 2.4s ease-in-out infinite;
+}
+
+/*
+  Quien pide menos movimiento se queda sin movimiento, no sin web.
+  Todo lo que aparecía al entrar en pantalla se ve directamente, y las
+  animaciones en bucle se paran. Esto no es un extra: para algunas personas el
+  parallax es mareo de verdad.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .sitio *,
+  .sitio *::before,
+  .sitio *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .arte-revelar {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    clip-path: none;
+  }
+  .arte-parallax {
+    transform: none;
+  }
+}
+
+/* ------------------------------ Formulario ------------------------------- */
+
+.arte-campo {
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(242, 234, 222, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  color: var(--arte-texto-claro);
+  transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+}
+.arte-campo::placeholder {
+  color: rgba(242, 234, 222, 0.38);
+}
+.arte-campo:hover {
+  border-color: rgba(242, 234, 222, 0.35);
+}
+.arte-campo:focus {
+  outline: none;
+  border-color: var(--arte-oro);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.18);
+}
+.arte-campo[aria-invalid="true"] {
+  border-color: #e98d8d;
+  box-shadow: 0 0 0 3px rgba(233, 141, 141, 0.16);
+}
+
+.arte-etiqueta {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(242, 234, 222, 0.66);
+}
+
+/* El campo trampa para los robots: fuera de la vista, fuera del tabulador y
+   fuera del lector de pantalla, pero presente en el HTML. */
+.arte-trampa {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* ------------------------------- Detalles -------------------------------- */
+
+/* La línea vertical del proceso, que se va llenando con el scroll. */
+.arte-hilo {
+  background: linear-gradient(
+    180deg,
+    var(--arte-oro) 0%,
+    var(--arte-oro) var(--avance, 0%),
+    rgba(232, 207, 132, 0.14) var(--avance, 0%)
+  );
+}
+
+/* Un número enorme de fondo, como en una revista. */
+.arte-cifra {
+  font-family: var(--font-serif);
+  font-size: clamp(3.5rem, 9vw, 7rem);
+  line-height: 0.85;
+  font-weight: 500;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(232, 207, 132, 0.45);
+}
+
+.arte-linea-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/*
+  La cinta de palabras.
+  Se pinta DOS veces seguidas y se desplaza media anchura: al llegar, la segunda
+  copia está exactamente donde empezó la primera, así que el salto no existe. Es
+  la única forma de que un letrero sin fin no dé un tirón cada vuelta.
+*/
+@keyframes arte-cinta {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+.arte-cinta {
+  animation: arte-cinta 38s linear infinite;
+}
+
+/*
+  El scroll suave y el hueco de la cabecera.
+  `scroll-padding-top` es lo que evita que la cabecera fija tape el titular de
+  la sección a la que se acaba de saltar.
+*/
+:root {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    scroll-behavior: auto;
+  }
+}
+
+/* El enlace de saltar al contenido: solo existe cuando se le da al tabulador. */
+.arte-saltar {
+  position: absolute;
+  left: 50%;
+  top: 0.75rem;
+  z-index: 100;
+  transform: translate(-50%, -200%);
+  transition: transform 0.2s ease;
+}
+.arte-saltar:focus {
+  transform: translate(-50%, 0);
+}
+
+/* ---------------------------- Páginas legales ----------------------------- */
+
+/*
+  El aviso legal y la privacidad son texto largo y se leen de verdad cuando una
+  empresa te está comprobando. Así que tienen medida de lectura (65 caracteres),
+  aire entre párrafos y jerarquía; no es relleno, es lo que hace que parezca una
+  empresa seria en vez de un texto pegado.
+*/
+.arte-prosa {
+  max-width: 65ch;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--arte-texto-suave);
+}
+.arte-prosa h2 {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  line-height: 1.25;
+  color: var(--arte-tinta);
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+.arte-prosa h3 {
+  font-weight: 650;
+  color: var(--arte-tinta);
+  margin-top: 1.75rem;
+  margin-bottom: 0.4rem;
+}
+.arte-prosa p + p,
+.arte-prosa ul {
+  margin-top: 1rem;
+}
+.arte-prosa ul {
+  padding-left: 1.2rem;
+  list-style: disc;
+}
+.arte-prosa li + li {
+  margin-top: 0.4rem;
+}
+.arte-prosa a {
+  color: var(--arte-azul);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.arte-prosa strong {
+  color: var(--arte-tinta);
+}
+
+/* Un dato que todavía no está. Se ve a la legua, que es justo lo que se busca:
+   nadie publica una web con esto puesto sin darse cuenta. */
+.arte-pendiente {
+  display: inline-block;
+  border-radius: 0.35rem;
+  border: 1px dashed rgba(194, 100, 60, 0.6);
+  background: rgba(194, 100, 60, 0.08);
+  padding: 0 0.4rem;
+  font-size: 0.9em;
+  color: #9c4a24;
+}

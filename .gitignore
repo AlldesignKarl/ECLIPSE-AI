@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+build
+.env
+.env.local
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+.vercel
+
+# Lo que fabrican las pruebas al correr. Se rehace solo.
+pruebas/app-*.log
+pruebas/redis-*.txt
+pruebas/*.png
