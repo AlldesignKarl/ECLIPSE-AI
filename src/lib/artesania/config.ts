@@ -23,12 +23,15 @@ export interface Redes {
 }
 
 export const EMPRESA = {
-  /** ⚠️ SUSTITUIR: el nombre comercial, tal cual se lee en la factura. */
-  nombre: "[Nombre de la empresa]",
-  /** ⚠️ SUSTITUIR: la versión corta, la del logotipo. */
-  nombreCorto: "[Marca]",
-  /** Las dos letras del monograma. Si se deja vacío se sacan del nombre. */
-  monograma: "",
+  /** El nombre comercial. Lo eligió Carlos. */
+  nombre: "AlldesignKarl",
+  /** La versión corta, la del logotipo. Aquí es la misma. */
+  nombreCorto: "AlldesignKarl",
+  /**
+   * Las dos letras del sello. Escritas y no deducidas: de "AlldesignKarl"
+   * saldría "AL", y las iniciales que dice el nombre son Alldesign + Karl.
+   */
+  monograma: "AK",
 
   /** La frase de la portada. Esta la eligió Carlos. */
   reclamo: "Tradición que llega más lejos.",
@@ -76,9 +79,9 @@ export const EMPRESA = {
 /** Las dos letras del sello. Del monograma si lo hay; si no, del nombre. */
 export function monograma(): string {
   if (EMPRESA.monograma) return EMPRESA.monograma;
-  // Del nombre corto —el del logotipo— y sin corchetes: mientras el nombre sea
-  // el marcador "[Marca]", las iniciales de "[Nombre de la empresa]" darían un
-  // "ND" que no significa nada y que encima parece de verdad.
+  // Del nombre corto —el del logotipo— y sin signos: si un día se cambia por un
+  // marcador entre corchetes, las iniciales de los corchetes darían dos letras
+  // que no significan nada y que encima parecerían de verdad.
   const limpio = EMPRESA.nombreCorto.replace(/[^\p{L}\s]/gu, "").trim();
   const palabras = limpio ? limpio.split(/\s+/) : [];
   const iniciales = palabras.length > 1 ? palabras.map((p) => p[0]).join("") : limpio.slice(0, 2);
