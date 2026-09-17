@@ -183,6 +183,35 @@ src/
   límite. Si te pasa a menudo, sube `maxDuration` en `src/app/api/*/route.ts` (hace
   falta un plan de pago de Vercel, o alojarlo tú).
 
+## La web corporativa de artesanía (`/artesania`)
+
+En el mismo despliegue vive una segunda web, independiente de la aplicación: la
+web corporativa de venta de producto artesanal al por mayor. Está en
+**`/artesania`** y no toca nada de ECLIPSE.
+
+Para dejarla lista hay que cambiar dos archivos y, si se quiere, poner una
+variable:
+
+| Qué | Dónde |
+|---|---|
+| Nombre, correo, teléfono, WhatsApp, dirección, redes y datos fiscales | `src/lib/artesania/config.ts` |
+| Productos: nombre, categoría, descripción, detalle y **foto** | `src/lib/artesania/productos.ts` |
+| A dónde llega el formulario | variables de entorno (ver `.env.example`) |
+
+- Lo que no esté puesto **no se pinta**: sin teléfono no sale el botón de
+  llamar, sin número no sale WhatsApp. No hay datos de relleno en ningún sitio.
+  En desarrollo, abajo a la izquierda, sale una nota con lo que falta.
+- Las fotos: deja el archivo en `public/artesania/` y pon la ruta en el producto
+  (`imagen: "/artesania/ceramica.webp"`). Mientras sea `null` se pinta una
+  lámina de color con el motivo del oficio.
+- El formulario prueba tres salidas y usa todas las que estén configuradas:
+  `ARTESANIA_WEBHOOK_URL` (Zapier, Make, n8n, tu CRM), Resend
+  (`RESEND_API_KEY` + `ARTESANIA_EMAIL_DESTINO`) y la base de datos de ECLIPSE.
+  Si no hay ninguna, el formulario **avisa de que no ha podido enviarse** y
+  ofrece el correo directo, en lugar de dar las gracias por un mensaje perdido.
+
+---
+
 ## Comandos
 
 ```bash

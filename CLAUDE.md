@@ -138,7 +138,14 @@ src/
                                 toda la lógica y no toca la red
     memoria/relevancia.ts       Qué parte de la memoria se manda en ESTE mensaje
     cuenta.ts                   Borrar la cuenta y todo lo que hay de alguien
-pruebas/                        82 pruebas. Ver pruebas/LEEME.md
+    artesania/                  La web corporativa de `/artesania`, que NO es la
+                                aplicación: `config.ts` son los datos de la
+                                empresa (lo que no se sabe va marcado y no se
+                                pinta), `productos.ts` el catálogo entero,
+                                `solicitud.ts` la validación que usan el
+                                navegador Y el servidor, y `entrega.ts` los tres
+                                caminos por los que puede salir una solicitud
+pruebas/                        84 pruebas. Ver pruebas/LEEME.md
 ```
 
 ### Por dónde empezar a leer, según lo que vayas a tocar
@@ -206,6 +213,18 @@ y eso no es una puerta de pago: en un grupo hay que saber quién habla, y un
 encargo corre de madrugada sin nadie delante, así que sin saber de quién es no
 hay a quién entregarle el parte. El tope diario de mensajes sigue siendo el de
 cada plan, así que por ahí no se cuela nadie.
+
+### La web corporativa de artesanía (`/artesania`)
+
+No es una parte de ECLIPSE: es **otra web** en el mismo despliegue, para una
+empresa artesanal que vende al por mayor. Vive entera bajo `src/app/artesania/`
++ `src/components/artesania/` + `src/lib/artesania/`, con su propio `layout`, su
+propia hoja de estilo (`artesania.css`) y su propia paleta. Todo cuelga de la
+clase `.web-artesania`, que es la frontera: dentro manda la marca, fuera manda
+el tema de la aplicación. La portada de ECLIPSE no se ha tocado.
+
+Lo único que comparten: el `layout` raíz (fuentes ya cargadas, idioma,
+analítica) y la base de datos, si está configurada.
 
 ---
 
@@ -489,7 +508,27 @@ Cosas que costaron encontrar y que un cambio descuidado vuelve a romper:
   instrucciones"*—. Vale para el catálogo de Conexiones y para la ficha de un
   agente. Y cuando el proveedor no está configurado en el servidor, ese botón
   deja de decir "Conectar" y dice lo que pasa.
-- **Las 82 pruebas.** Si una falla después de un cambio tuyo, el roto es el
+- **Que la web corporativa NO invente datos de la empresa**
+  (`lib/artesania/config.ts`). Lo que no está puesto va como `null` y el enlace
+  que lo necesita no se pinta: sin teléfono no hay botón de llamar, sin número
+  no hay WhatsApp y en el aviso legal se ve el hueco marcado. Un CIF inventado
+  en un aviso legal no es un detalle pendiente, es una mentira publicada.
+- **Que el formulario de artesanía NO dé las gracias si no ha entregado nada**
+  (`entrega.ts` y el 503 de `api/artesania/contacto`). Con tres caminos posibles
+  y ninguno obligatorio, es facilísimo dejarlo "funcionando" contra la nada: un
+  "gracias, te contestamos pronto" sobre un mensaje perdido es el peor fallo que
+  puede tener una web de ventas, porque nadie se entera nunca.
+- **Que el movimiento de `/artesania` use UN observador y UN escuchador de
+  scroll** (`components/artesania/movimiento.tsx`), leyendo todas las posiciones
+  antes de escribir ningún estilo, y que la portada escriba su salida en una
+  variable CSS y no en el estado de React. Treinta componentes con su propio
+  listener, o un `setState` por fotograma, es exactamente el parallax a tirones
+  que se quería evitar.
+- **Que `clip-path` solo lo abra la cortina** (`.arte-revelar[data-como="cortina"]`).
+  Puesto en todos los reveals, la caja se recorta a sí misma para siempre y lo
+  que sobresale a propósito —la cita sobre la foto, el sello bajo la imagen— se
+  queda cortado.
+- **Las 84 pruebas.** Si una falla después de un cambio tuyo, el roto es el
   cambio, no la prueba. Solo se toca una prueba cuando el comportamiento
   correcto ha cambiado a propósito, y entonces se dice.
 
@@ -502,8 +541,8 @@ npm install
 npm run dev              # desarrollo
 npm run build            # SIEMPRE antes de dar algo por hecho
 npx tsc --noEmit         # comprobar tipos
-npm run prueba           # las 82 pruebas (~7 min)
-npm run prueba:ligeras   # las 60 que no abren navegador (~12 s)
+npm run prueba           # las 84 pruebas (~7 min)
+npm run prueba:ligeras   # las 61 que no abren navegador (~12 s)
 node pruebas/mapa.test.mjs   # una suelta, para depurar
 ```
 

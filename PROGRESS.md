@@ -1,8 +1,9 @@
 # Estado del proyecto
 
-Última actualización: **16 de septiembre de 2026**
-Rama: `claude/multimodal-ai-free-pro-tbxhtn`, la de siempre · Versión que ve el
-usuario: **2.49**
+Última actualización: **17 de septiembre de 2026**
+Rama: `claude/artisan-premium-corporate-site-i4yttq` (la web corporativa) ·
+La de siempre sigue siendo `claude/multimodal-ai-free-pro-tbxhtn` · Versión que
+ve el usuario de la aplicación: **2.49**
 
 Este archivo cuenta **por dónde va el trabajo**. Para saber cómo está hecho el
 proyecto y qué reglas tiene, lee `CLAUDE.md`.
@@ -11,8 +12,11 @@ proyecto y qué reglas tiene, lee `CLAUDE.md`.
 
 ## 1. Resumen en tres líneas
 
-La aplicación está **en producción y funcionando**, con 82 pruebas en verde.
-Lo último: **Gmail se conecta de verdad** (OAuth con Google, sin pedirle a nadie
+La aplicación está **en producción y funcionando**, con 84 pruebas en verde.
+Lo último: hay una **web corporativa premium de artesanía** en `/artesania`, con
+su propia identidad visual, su scroll narrativo y un formulario que funciona de
+verdad; la aplicación ECLIPSE sigue intacta en la portada. Antes: **Gmail se
+conecta de verdad** (OAuth con Google, sin pedirle a nadie
 ninguna contraseña), hay un **agente del correo incluido en el plan Pro**
 (ECLIPSE INBOX) y **tus agentes contratados salen arriba del todo**. Antes: los
 **agentes ya se cobran de verdad** por Stripe, con una instancia propia por
@@ -79,7 +83,58 @@ el repositorio es público), plan Pro por código, por lista o por Stripe.
 
 ---
 
-## 3. Lo último: el correo, de verdad
+## 3. Lo último: la web corporativa de artesanía (`/artesania`)
+
+Carlos pidió una web corporativa PREMIUM para una empresa artesanal que vende al
+por mayor a tiendas, distribuidores y empresas: producto de Zaragoza y El Pilar,
+experiencia cinematográfica al bajar, y **ni un botón falso**.
+
+**Dónde vive.** En `/artesania`, con su propio `layout`, su propia hoja de estilo
+y su propia paleta. NO se ha tocado la aplicación: ECLIPSE sigue entero en `/`.
+Comparten fuentes (las que ya cargaba el `layout` raíz, así que la web
+corporativa no descarga ni una más) y poco más. Pasarla a portada el día que
+Carlos lo diga es mover una carpeta.
+
+**Qué hay.** Portada con titular "Tradición que llega más lejos", historia
+("La artesanía no se fabrica. Se crea."), sección de Zaragoza y El Pilar,
+catálogo filtrable con mosaico y destacados, venta al por mayor con su llamada
+grande ("¿Quieres trabajar con nosotros?"), proceso de cinco pasos que se
+enciende con el scroll, contacto y pie. Más aviso legal, privacidad y cookies.
+
+**Cómo se mueve.** Un solo `IntersectionObserver` y un solo escuchador de scroll
+para toda la página (`components/artesania/movimiento.tsx`), leyendo todas las
+posiciones antes de escribir ningún estilo. El parallax y la salida de la
+portada se escriben en variables CSS, no en el estado de React: repintar React
+en cada fotograma es lo que convierte un parallax en una web a tirones. Quien
+pide menos movimiento no entra en ningún registro.
+
+**El formulario funciona.** `POST /api/artesania/contacto` valida con la MISMA
+función que el navegador (`lib/artesania/solicitud.ts`), tiene campo trampa para
+robots y un freno de un envío cada 30 segundos. La entrega prueba tres caminos y
+usa todos los configurados: webhook (`ARTESANIA_WEBHOOK_URL`), correo con Resend
+o la base de datos que ya hay. **Si no hay ninguno, no da las gracias**: dice que
+no ha podido entregarse y ofrece el mismo mensaje por correo.
+
+**Nada inventado.** El nombre, el correo, el teléfono, el WhatsApp, la dirección,
+las redes y los datos fiscales están en `src/lib/artesania/config.ts` marcados
+como pendientes. Lo que no está NO se pinta: no hay un botón de WhatsApp sin
+número ni un CIF de mentira en el aviso legal. En desarrollo sale una nota
+discreta con la lista de lo que falta; en producción no existe.
+
+**Las fotos.** Todavía no hay, así que cada hueco pinta una lámina de color con
+su motivo de oficio, su grano y su viñeta en vez de un rectángulo gris. Poner
+las de verdad es cambiar `imagen: null` por una ruta en
+`lib/artesania/productos.ts`.
+
+Comprobado con la web levantada y en un navegador de verdad
+(`pruebas/artesania-ui.test.mjs`): sin errores de JavaScript, sin desbordes
+horizontales en móvil, los botones llevan al formulario con el asunto puesto, el
+envío llega al buzón, el robot que cae en la trampa no llega y el segundo envío
+seguido se frena.
+
+---
+
+## 3 bis. Antes: el correo, de verdad
 
 Carlos pidió tres cosas: una sección con los agentes comprados, un agente de
 Gmail gratis solo para quien tiene Pro, y que todo lo de los agentes funcione al
@@ -789,11 +844,11 @@ Ninguno bloquea nada, pero conviene saberlos.
 
 ## 6. Las pruebas
 
-**82 archivos, todas en verde.** Viven en `pruebas/`.
+**84 archivos, todas en verde.** Viven en `pruebas/`.
 
 ```bash
 npm run prueba           # todas (~6 min)
-npm run prueba:ligeras   # las 60 sin navegador (~12 s) ← para trabajar
+npm run prueba:ligeras   # las 61 sin navegador (~12 s) ← para trabajar
 node pruebas/mapa.test.mjs   # una suelta
 ```
 
